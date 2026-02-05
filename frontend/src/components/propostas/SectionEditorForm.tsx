@@ -83,6 +83,47 @@ export function SectionEditorForm({ section, onChange, propostaId }: Props) {
               placeholder="Ex: milhares de pessoas impactadas"
             />
           </div>
+          {/* Informações da Proposta */}
+          <div className="rounded border p-3 space-y-3 bg-muted/30">
+            <Label className="text-sm font-medium">Informações da Proposta</Label>
+            <p className="text-xs text-muted-foreground">
+              Dados que aparecem abaixo do subtítulo com ícones
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <Label className="text-xs">Proposta Nº</Label>
+                <Input
+                  value={(d.proposta_numero as string) ?? ""}
+                  onChange={(e) => update("proposta_numero", e.target.value)}
+                  placeholder="Ex: 2024-001"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Cliente</Label>
+                <Input
+                  value={(d.cliente as string) ?? ""}
+                  onChange={(e) => update("cliente", e.target.value)}
+                  placeholder="Nome do cliente"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Responsável</Label>
+                <Input
+                  value={(d.responsavel as string) ?? ""}
+                  onChange={(e) => update("responsavel", e.target.value)}
+                  placeholder="Nome do responsável"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Telefone</Label>
+                <Input
+                  value={(d.telefone as string) ?? ""}
+                  onChange={(e) => update("telefone", e.target.value)}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+            </div>
+          </div>
           <div className="rounded border p-3 space-y-3 bg-muted/30">
             <Label className="text-sm font-medium">Cores do Hero</Label>
             <div className="grid gap-2">
@@ -2236,8 +2277,17 @@ export function SectionEditorForm({ section, onChange, propostaId }: Props) {
 
           <div className="rounded border p-3 space-y-3 bg-cyan-500/10">
             <Label className="text-sm font-medium">Valores</Label>
+            <p className="text-xs text-muted-foreground">O valor parcelado aparece em destaque</p>
             <div className="grid gap-2">
-              <Label className="text-xs">Valor Total</Label>
+              <Label className="text-xs font-medium">💳 Valor Parcelado (destaque principal)</Label>
+              <Input
+                value={(d.parcelas as string) ?? ""}
+                onChange={(e) => update("parcelas", e.target.value)}
+                placeholder="Ex: 12x de R$ 1.250"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-xs">💰 Valor à Vista (menor, abaixo)</Label>
               <Input
                 value={(d.valor_total as string) ?? ""}
                 onChange={(e) => update("valor_total", e.target.value)}
@@ -2245,15 +2295,7 @@ export function SectionEditorForm({ section, onChange, propostaId }: Props) {
               />
             </div>
             <div className="grid gap-2">
-              <Label className="text-xs">Parcelamento (opcional)</Label>
-              <Input
-                value={(d.parcelas as string) ?? ""}
-                onChange={(e) => update("parcelas", e.target.value)}
-                placeholder="Ex: ou 3x de R$ 5.000"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label className="text-xs">Prazo de Entrega</Label>
+              <Label className="text-xs">⏱️ Prazo de Entrega</Label>
               <Input
                 value={(d.prazo_entrega as string) ?? ""}
                 onChange={(e) => update("prazo_entrega", e.target.value)}

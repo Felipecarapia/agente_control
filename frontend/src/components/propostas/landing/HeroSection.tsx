@@ -1,9 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { FileText, User, Phone, Building2 } from "lucide-react";
 import { findHighlightMatchRelaxed, getDataString } from "./utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Em produção, deixe NEXT_PUBLIC_API_URL vazio para usar o proxy interno
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 type Data = {
   logo_url?: string;
@@ -16,6 +18,11 @@ type Data = {
   background_image_url?: string;
   cor_texto?: string;
   cor_destaque?: string;
+  // Informações da proposta
+  proposta_numero?: string;
+  responsavel?: string;
+  telefone?: string;
+  cliente?: string;
 };
 
 const HERO_TEXT_CLASSES: Record<
@@ -128,6 +135,35 @@ export function HeroSection({ data }: { data: Data }) {
               highlightClass
             )}
           </p>
+        )}
+        {/* Informações da Proposta */}
+        {(data.proposta_numero || data.responsavel || data.telefone || data.cliente) && (
+          <div className={`flex flex-wrap gap-x-6 gap-y-2 text-sm ${text.subheadline} opacity-80 pt-2`}>
+            {data.proposta_numero && (
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                <span>Proposta Nº: <strong>{data.proposta_numero}</strong></span>
+              </div>
+            )}
+            {data.responsavel && (
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span>Responsável: <strong>{data.responsavel}</strong></span>
+              </div>
+            )}
+            {data.telefone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                <span>Telefone: <strong>{data.telefone}</strong></span>
+              </div>
+            )}
+            {data.cliente && (
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                <span>Cliente: <strong>{data.cliente}</strong></span>
+              </div>
+            )}
+          </div>
         )}
         {data.cta_text && (
           <a

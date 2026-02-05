@@ -147,35 +147,39 @@ export function ResumoPropostaSection({ data }: { data: Data }) {
           <div className="p-8 md:p-12">
             {/* Valor e Prazo */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-10 pb-10 border-b border-white/10">
-              {/* Investimento */}
-              <div className="text-center md:text-left">
-                <div className={`flex items-center gap-2 text-sm font-medium ${colorClasses.text} mb-2`}>
+              {/* Investimento - Foco no Parcelado */}
+              <div className="text-center md:text-left flex-1">
+                <div className={`flex items-center justify-center md:justify-start gap-2 text-sm font-medium ${colorClasses.text} mb-3`}>
                   <CreditCard className="w-4 h-4" />
-                  Investimento Total
+                  Investimento
                 </div>
-                <div className={`text-4xl md:text-5xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
-                  {valor_total}
-                </div>
+                {/* Valor Parcelado - Destaque Principal */}
                 {parcelas && (
-                  <div className={`text-sm mt-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  <div className={`text-4xl md:text-5xl lg:text-6xl font-bold ${colorClasses.text} mb-3`}>
                     {parcelas}
+                  </div>
+                )}
+                {/* Valor à Vista - Menor */}
+                {valor_total && (
+                  <div className={`text-base ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    ou <span className="font-semibold">{valor_total}</span> à vista
                   </div>
                 )}
               </div>
 
               {/* Divisor */}
-              <div className={`hidden md:block w-px h-20 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+              <div className={`hidden md:block w-px h-24 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
 
               {/* Prazo */}
-              <div className="text-center md:text-left">
-                <div className={`flex items-center gap-2 text-sm font-medium ${colorClasses.text} mb-2`}>
+              <div className="text-center md:text-left flex-1">
+                <div className={`flex items-center justify-center md:justify-start gap-2 text-sm font-medium ${colorClasses.text} mb-3`}>
                   <Clock className="w-4 h-4" />
                   Prazo de Entrega
                 </div>
-                <div className={`text-4xl md:text-5xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                <div className={`text-4xl md:text-5xl lg:text-6xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
                   {prazo_entrega}
                 </div>
-                <div className={`text-sm mt-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                <div className={`text-base mt-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                   a partir da aprovação
                 </div>
               </div>

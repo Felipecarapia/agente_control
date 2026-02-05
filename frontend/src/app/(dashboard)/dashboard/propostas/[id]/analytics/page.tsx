@@ -24,7 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Em produção, deixe NEXT_PUBLIC_API_URL vazio para usar o proxy interno
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 // Tipos
 interface AnalyticsOverview {

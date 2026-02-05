@@ -65,6 +65,11 @@ export function defaultSectionData(type: SectionType): Record<string, unknown> {
         background_image_url: "",
         cor_texto: "white",
         cor_destaque: "cyan",
+        // Informações da proposta
+        proposta_numero: "",
+        responsavel: "",
+        telefone: "",
+        cliente: "",
       };
     case "beneficios":
       return { titulo: "", items: [{ titulo: "", descricao: "", icon: "" }] };
@@ -268,7 +273,7 @@ export function defaultSectionData(type: SectionType): Record<string, unknown> {
         titulo: "Resumo da Proposta",
         titulo_highlight: "Proposta",
         valor_total: "R$ 15.000",
-        parcelas: "ou 3x de R$ 5.000",
+        parcelas: "3x de R$ 5.000",
         prazo_entrega: "30 dias",
         cor: "cyan",
         bg_tipo: "cor",

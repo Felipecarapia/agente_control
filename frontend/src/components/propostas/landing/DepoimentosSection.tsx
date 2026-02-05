@@ -1,6 +1,7 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Em produção, deixe NEXT_PUBLIC_API_URL vazio para usar o proxy interno
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 type Item = { nome?: string; texto?: string; role?: string; avatar_url?: string };
 type Data = { titulo?: string; items?: Item[] };

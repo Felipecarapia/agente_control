@@ -14,7 +14,9 @@ type PropostaPublic = {
 };
 
 async function getPropostaBySlug(slug: string): Promise<PropostaPublic | null> {
-  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  // Server Component: usa BACKEND_URL diretamente (não há Mixed Content no servidor)
+  // Se não tiver BACKEND_URL, tenta NEXT_PUBLIC_API_URL como fallback
+  const base = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const res = await fetch(`${base}/api/v1/propostas/public/${slug}`, { cache: "no-store" });
   if (!res.ok) return null;
   return res.json();

@@ -2,7 +2,8 @@
 
 import { findHighlightMatchRelaxed, getDataString } from "./utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Em produção, deixe NEXT_PUBLIC_API_URL vazio para usar o proxy interno
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 type Item = { logo_url?: string; nome?: string };
 type Data = { titulo?: string; titulo_highlight?: string; items?: Item[]; cor?: string };

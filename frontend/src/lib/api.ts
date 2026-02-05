@@ -1,4 +1,6 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Em produção, deixe NEXT_PUBLIC_API_URL vazio para usar o proxy interno
+// Isso resolve o problema de Mixed Content (HTTPS frontend -> HTTP backend)
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
