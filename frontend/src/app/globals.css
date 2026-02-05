@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.625rem;
+    /* Sidebar (FUSE-style) */
+    --sidebar-bg: 222 47% 11%;
+    --sidebar-accent: 217 91% 60%;
+    --sidebar-text: 210 40% 98%;
+    --sidebar-muted: 215 20% 65%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 22%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 22%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 217 91% 60%;
+    --sidebar-bg: 222 47% 8%;
+    --sidebar-accent: 217 91% 60%;
+    --sidebar-text: 210 40% 98%;
+    --sidebar-muted: 215 20% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Sidebar FUSE-style: sempre escura, destaque azul */
+.sidebar {
+  background-color: hsl(var(--sidebar-bg));
+  color: hsl(var(--sidebar-text));
+}
+.sidebar-section-title {
+  color: hsl(var(--sidebar-accent));
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.sidebar-section-desc {
+  color: hsl(var(--sidebar-muted));
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+.sidebar-link {
+  color: hsl(var(--sidebar-muted));
+  transition: color 0.15s, background-color 0.15s;
+}
+.sidebar-link:hover {
+  color: hsl(var(--sidebar-text));
+  background-color: hsl(217 33% 18%);
+}
+.sidebar-link.active {
+  color: hsl(var(--sidebar-text));
+  background-color: hsl(217 33% 18%);
+  border-left: 3px solid hsl(var(--sidebar-accent));
+}
+
+/* Carrossel de logos (Nossos Clientes) */
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-scroll-left {
+  animation: scroll-left 30s linear infinite;
+}
