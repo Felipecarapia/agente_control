@@ -6,7 +6,10 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Configuração carregada do .env."""
 
-    # Database (variáveis separadas)
+    # Database - aceita DATABASE_URL direta (Railway) ou variáveis separadas
+    DATABASE_URL: Optional[str] = None
+    
+    # Variáveis separadas (fallback para desenvolvimento local)
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_SERVER: str = "localhost"
@@ -14,7 +17,10 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "sistemaxi_crm"
 
     @property
-    def DATABASE_URL(self) -> str:
+    def database_url(self) -> str:
+        """Retorna DATABASE_URL se definida, senão monta a partir das variáveis separadas."""
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return (
             f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
