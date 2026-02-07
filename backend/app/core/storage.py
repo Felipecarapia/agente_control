@@ -157,16 +157,18 @@ class StorageService:
         except ClientError:
             return False
 
-    def generate_unique_filename(self, original_filename: str) -> str:
+    def generate_unique_filename(self, original_filename: str, allowed_extensions: set[str] | None = None) -> str:
         """Gera um nome de arquivo único mantendo a extensão."""
+        default_exts = {"jpg", "jpeg", "png", "webp", "gif", "pdf", "doc", "docx", "txt", "csv", "xlsx", "xls", "pptx", "md", "json"}
+        allowed = allowed_extensions or default_exts
         ext = ""
         if original_filename and "." in original_filename:
             ext = original_filename.rsplit(".", 1)[-1].lower()
-            if ext not in ("jpg", "jpeg", "png", "webp", "gif", "pdf"):
-                ext = "jpg"
+            if ext not in allowed:
+                ext = "bin"
             ext = f".{ext}"
         else:
-            ext = ".jpg"
+            ext = ".bin"
         return f"{uuid.uuid4().hex}{ext}"
 
 
