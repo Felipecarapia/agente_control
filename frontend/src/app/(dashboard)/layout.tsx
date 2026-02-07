@@ -19,6 +19,10 @@ import {
   Bell,
   ChevronUp,
   Sparkles,
+  Menu,
+  X,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 
 const navGroups = [
@@ -74,6 +78,8 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [userOpen, setUserOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -94,6 +100,11 @@ export default function DashboardLayout({
     }
   }, [router]);
 
+  // Fechar sidebar mobile ao navegar
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   function handleLogout() {
     clearToken();
     router.replace("/login");
@@ -112,93 +123,152 @@ export default function DashboardLayout({
     return <div className="min-h-screen w-full">{children}</div>;
   }
 
-  return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar fixa escura (estilo FUSE) */}
-      <aside className="sidebar w-[260px] flex-shrink-0 flex flex-col border-r border-white/10">
-        <div className="p-5 flex items-center gap-2 border-b border-white/10">
+  const sidebarContent = (
+    <>
+      <div className="p-5 flex items-center justify-between border-b border-white/10">
+        <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-accent))] text-white">
             <Sparkles className="h-5 w-5" />
           </div>
           <span className="font-semibold text-lg text-white">Sistemaxi CRM</span>
         </div>
+        {/* Fechar no mobile */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-6">
-          {navGroups.map((group) => (
-            <div key={group.title}>
-              <p className="sidebar-section-title px-3">{group.title}</p>
-              <p className="sidebar-section-desc px-3">{group.desc}</p>
-              <ul className="mt-2 space-y-0.5">
-                {group.items.map((item) => {
-                  const active =
-                    pathname === item.href || pathname.startsWith(item.href + "/");
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className={`sidebar-link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${
-                          active ? "active" : ""
-                        }`}
-                      >
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </nav>
+      <nav className="flex-1 overflow-y-auto p-4 space-y-6">
+        {navGroups.map((group) => (
+          <div key={group.title}>
+            <p className="sidebar-section-title px-3">{group.title}</p>
+            <p className="sidebar-section-desc px-3">{group.desc}</p>
+            <ul className="mt-2 space-y-0.5">
+              {group.items.map((item) => {
+                const active =
+                  pathname === item.href || pathname.startsWith(item.href + "/");
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`sidebar-link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${
+                        active ? "active" : ""
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
 
-        <div className="p-4 border-t border-white/10 space-y-3">
-          <div className="rounded-lg bg-white/5 px-3 py-2.5">
-            <p className="text-xs font-medium text-white/90">Precisa de ajuda?</p>
-            <a
-              href="#"
-              className="text-xs text-[hsl(var(--sidebar-accent))] hover:underline"
-            >
-              Documentação →
-            </a>
-          </div>
-          <div className="relative" ref={userMenuRef}>
-            <button
-              type="button"
-              onClick={() => setUserOpen(!userOpen)}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white">
-                <UserCircle className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">Usuário</p>
-                <p className="text-xs text-white/60 truncate">admin@sistemaxi.com</p>
-              </div>
-              <ChevronUp
-                className={`h-4 w-4 text-white/60 transition-transform ${userOpen ? "" : "rotate-180"}`}
-              />
-            </button>
-            {userOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg bg-[hsl(222_47%_15%)] border border-white/10 py-1 shadow-xl">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white/90 hover:bg-white/10"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sair
-                </button>
-              </div>
-            )}
-          </div>
+      <div className="p-4 border-t border-white/10 space-y-3">
+        <div className="rounded-lg bg-white/5 px-3 py-2.5">
+          <p className="text-xs font-medium text-white/90">Precisa de ajuda?</p>
+          <a
+            href="#"
+            className="text-xs text-[hsl(var(--sidebar-accent))] hover:underline"
+          >
+            Documentação &rarr;
+          </a>
         </div>
+        <div className="relative" ref={userMenuRef}>
+          <button
+            type="button"
+            onClick={() => setUserOpen(!userOpen)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white">
+              <UserCircle className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">Usuário</p>
+              <p className="text-xs text-white/60 truncate">admin@sistemaxi.com</p>
+            </div>
+            <ChevronUp
+              className={`h-4 w-4 text-white/60 transition-transform ${userOpen ? "" : "rotate-180"}`}
+            />
+          </button>
+          {userOpen && (
+            <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg bg-[hsl(222_47%_15%)] border border-white/10 py-1 shadow-xl z-50">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white/90 hover:bg-white/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Sair
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen flex bg-background">
+      {/* Overlay mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Desktop - colapsável */}
+      <aside
+        className={`sidebar hidden lg:flex flex-col border-r border-white/10 flex-shrink-0 transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "w-[260px]" : "w-0 overflow-hidden border-r-0"
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Sidebar Mobile - overlay */}
+      <aside
+        className={`sidebar fixed inset-y-0 left-0 z-50 w-[280px] flex flex-col border-r border-white/10 shadow-2xl lg:hidden transition-transform duration-300 ease-in-out ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {sidebarContent}
       </aside>
 
       {/* Área principal: header + conteúdo */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex-shrink-0 h-14 px-6 flex items-center justify-between border-b border-border bg-card shadow-sm">
-          <h1 className="text-lg font-semibold text-foreground">{pageTitle}</h1>
+        <header className="flex-shrink-0 h-14 px-4 md:px-6 flex items-center justify-between border-b border-border bg-card shadow-sm gap-3">
+          <div className="flex items-center gap-3">
+            {/* Hamburguer mobile */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden text-muted-foreground"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            {/* Toggle desktop */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:flex text-muted-foreground"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}
+            >
+              {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
+            </Button>
+            <h1 className="text-lg font-semibold text-foreground">{pageTitle}</h1>
+          </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label="Buscar">
               <Search className="h-5 w-5" />
@@ -210,7 +280,7 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6 bg-muted/30">
+        <main className="flex-1 overflow-auto p-4 md:p-6 bg-muted/30">
           {children}
         </main>
       </div>
