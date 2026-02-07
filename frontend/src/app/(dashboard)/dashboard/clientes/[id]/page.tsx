@@ -39,6 +39,7 @@ type Cliente = {
   bairro: string | null;
   cidade: string | null;
   estado: string | null;
+  logo_url: string | null;
 };
 
 const emptyForm = {
@@ -68,6 +69,8 @@ export default function EditarClientePage() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (!id || isNaN(id)) return;
@@ -92,9 +95,33 @@ export default function EditarClientePage() {
           cidade: c.cidade || "",
           estado: c.estado || "",
         });
+        setLogoUrl(c.logo_url || null);
       })
       .catch((e) => setLoadErr(e instanceof Error ? e.message : "Erro ao carregar"));
   }, [id]);
+
+  async function uploadLogo(file: File) {
+    setUploadingLogo(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const formData = new FormData();
+      formData.append("file", file);
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/v1/clientes/${id}/upload-logo`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Erro no upload");
+      const data = await res.json();
+      setLogoUrl(data.logo_url);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -152,11 +179,49 @@ export default function EditarClientePage() {
         <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard/clientes"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Cliente: {form.nome || "..."}</h1>
-          <p className="text-muted-foreground">Cadastro e informações do cliente</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight truncate">Cliente: {form.nome || "..."}</h1>
+          <p className="text-muted-foreground text-sm">Cadastro e informações do cliente</p>
         </div>
       </div>
+
+      {/* Logo do cliente - tamanho real */}
+      <label className="cursor-pointer group block w-fit">
+        <input
+          type="file"
+          className="hidden"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) uploadLogo(file);
+            e.target.value = "";
+          }}
+        />
+        {uploadingLogo ? (
+          <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 px-6 py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Enviando logo...</span>
+          </div>
+        ) : logoUrl ? (
+          <div className="relative rounded-xl border bg-white dark:bg-muted/20 p-3 inline-block">
+            <img src={logoUrl} alt="Logo" className="max-h-24 max-w-xs object-contain" />
+            <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <div className="flex items-center gap-2 bg-white/90 dark:bg-black/70 rounded-lg px-3 py-1.5 text-xs font-medium shadow">
+                <Upload className="h-3.5 w-3.5" />
+                Trocar logo
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/20 px-6 py-4 transition-all group-hover:border-primary/50 group-hover:bg-primary/5">
+            <Image className="h-6 w-6 text-muted-foreground/40 group-hover:text-primary/60" />
+            <div>
+              <span className="text-sm font-medium text-muted-foreground group-hover:text-primary/80">Clique para enviar a logo do cliente</span>
+              <p className="text-xs text-muted-foreground/50">PNG, JPG, SVG</p>
+            </div>
+          </div>
+        )}
+      </label>
 
       <Tabs defaultValue="dados" className="w-full">
         <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
@@ -907,22 +972,58 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
               <p className="text-sm text-muted-foreground">Logo, fotos e redes sociais do cliente</p>
             </CardHeader>
             <CardContent className="space-y-5">
+              {/* Upload do Logo */}
               <div className="grid gap-2">
-                <Label>URL do Logo</Label>
-                <Input
-                  value={onboarding.logo_url}
-                  onChange={(e) => setOnboarding((f) => ({ ...f, logo_url: e.target.value }))}
-                  placeholder="https://..."
-                />
+                <Label className="flex items-center gap-2">
+                  <Image className="h-4 w-4" /> Logo da empresa
+                </Label>
+                <div className="flex items-center gap-4">
+                  {onboarding.logo_url && (
+                    <div className="h-16 w-16 rounded-lg border overflow-hidden bg-muted/30 shrink-0">
+                      <img src={onboarding.logo_url} alt="Logo" className="h-full w-full object-contain p-1" />
+                    </div>
+                  )}
+                  <label className="cursor-pointer flex-1">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        e.target.value = "";
+                        setUploading(true);
+                        try {
+                          const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          const headers: HeadersInit = {};
+                          if (token) headers["Authorization"] = `Bearer ${token}`;
+                          const res = await fetch(`/api/v1/clientes/${clienteId}/imagens/upload`, {
+                            method: "POST", headers, body: fd,
+                          });
+                          if (!res.ok) throw new Error("Erro no upload");
+                          const data = await res.json();
+                          setOnboarding((f) => ({ ...f, logo_url: data.url }));
+                          showSaved("Logo enviado!");
+                        } catch (err) { console.error(err); }
+                        finally { setUploading(false); }
+                      }}
+                    />
+                    <div className={`flex items-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-all ${uploading ? "opacity-50" : ""}`}>
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {onboarding.logo_url ? "Trocar logo" : "Enviar logo"}
+                    </div>
+                  </label>
+                </div>
               </div>
+
+              {/* Upload de Fotos */}
               <div className="grid gap-2">
-                <Label>URLs das Fotos reais <span className="text-xs text-muted-foreground">(uma URL por linha)</span></Label>
-                <Textarea
-                  rows={3}
-                  value={onboarding.fotos_urls}
-                  onChange={(e) => setOnboarding((f) => ({ ...f, fotos_urls: e.target.value }))}
-                  placeholder="https://foto1.jpg&#10;https://foto2.jpg"
-                />
+                <Label className="flex items-center gap-2">
+                  <Image className="h-4 w-4" /> Fotos reais
+                </Label>
+                <p className="text-xs text-muted-foreground">Use a tab &quot;Imagens&quot; para fazer upload de fotos do cliente</p>
               </div>
 
               <hr className="border-border" />
