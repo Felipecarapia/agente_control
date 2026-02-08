@@ -23,6 +23,7 @@ import {
   X,
   PanelLeftClose,
   PanelLeft,
+  Target,
 } from "lucide-react";
 
 const navGroups = [
@@ -35,6 +36,7 @@ const navGroups = [
     title: "Gestão",
     desc: "Clientes, projetos e entregas",
     items: [
+      { href: "/dashboard/leads", label: "Leads", icon: Target },
       { href: "/dashboard/clientes", label: "Clientes", icon: UserCircle },
       { href: "/dashboard/projetos", label: "Projetos", icon: FolderKanban },
       { href: "/dashboard/tarefas", label: "Tarefas", icon: ListTodo },
@@ -51,6 +53,7 @@ const navGroups = [
 
 const pathToTitle: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/dashboard/leads": "Leads",
   "/dashboard/clientes": "Clientes",
   "/dashboard/projetos": "Projetos",
   "/dashboard/tarefas": "Tarefas",
@@ -61,6 +64,7 @@ const pathToTitle: Record<string, string> = {
 
 function getPageTitle(pathname: string): string {
   if (pathToTitle[pathname]) return pathToTitle[pathname];
+  if (pathname.startsWith("/dashboard/leads")) return "Leads";
   if (pathname.startsWith("/dashboard/clientes")) return "Clientes";
   if (pathname.startsWith("/dashboard/projetos")) return "Projetos";
   if (pathname.startsWith("/dashboard/tarefas")) return "Tarefas";
