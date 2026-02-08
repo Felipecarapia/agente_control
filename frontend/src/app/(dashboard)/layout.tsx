@@ -48,6 +48,7 @@ const navGroups = [
     title: "Gestão",
     desc: "Clientes, projetos e entregas",
     items: [
+      { href: "/dashboard/leads", label: "Leads", icon: Target },
       { href: "/dashboard/clientes", label: "Clientes", icon: UserCircle },
       { href: "/dashboard/funil", label: "Funil de Vendas", icon: TrendingUp },
       { href: "/dashboard/projetos", label: "Projetos", icon: FolderKanban },
@@ -70,6 +71,7 @@ const pathToTitle: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/dashboard/notificacoes": "Notificações",
   "/dashboard/mensagens": "Mensagens",
+  "/dashboard/leads": "Leads",
   "/dashboard/clientes": "Clientes",
   "/dashboard/funil": "Funil de Vendas",
   "/dashboard/projetos": "Projetos",
