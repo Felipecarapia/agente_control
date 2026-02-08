@@ -197,6 +197,7 @@ export default function TarefasPage() {
   }
 
   async function save() {
+    setLoading(true);
     try {
       const body = {
         titulo: form.titulo,
@@ -252,6 +253,8 @@ export default function TarefasPage() {
           variant: "destructive",
         });
       }
+    } finally {
+      setLoading(false);
     }
   }
 
