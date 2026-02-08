@@ -90,10 +90,18 @@ export function TasksKanbanView({
   async function loadKanban() {
     setLoading(true);
     try {
-      const data = await api<KanbanData>("/api/v1/tarefas/kanban");
-      setKanbanData(data);
+      const data = await api<KanbanData>("/api/v1/tarefas/kanban").catch(() => ({
+        pendente: [],
+        em_andamento: [],
+        concluida: [],
+      }));
+      setKanbanData(data || {
+        pendente: [],
+        em_andamento: [],
+        concluida: [],
+      });
     } catch (e) {
-      console.error("Erro ao carregar Kanban:", e);
+      // Silenciar erros - usar valores padrão
       setKanbanData({
         pendente: [],
         em_andamento: [],

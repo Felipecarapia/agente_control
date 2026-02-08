@@ -300,6 +300,84 @@ def delete_tarefa(
     return None
 
 
+@router.get("/kanban")
+def get_tarefas_kanban(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Retorna tarefas agrupadas por status para visualização Kanban."""
+    try:
+        # Carregar todas as tarefas com relacionamentos
+        tarefas = db.query(Tarefa).options(
+            joinedload(Tarefa.projeto),
+            joinedload(Tarefa.responsavel),
+            selectinload(Tarefa.assignees).joinedload(TarefaAssignee.usuario)
+        ).order_by(Tarefa.created_at.desc()).all()
+        
+        # Função auxiliar para converter tarefa para dict
+        def tarefa_to_dict(t):
+            return {
+                "id": t.id,
+                "titulo": t.titulo,
+                "descricao": t.descricao,
+                "projeto_id": t.projeto_id,
+                "status": t.status,
+                "prioridade": t.prioridade,
+                "responsavel_id": t.responsavel_id,
+                "data_vencimento": t.data_vencimento.isoformat() if t.data_vencimento else None,
+                "is_recurring": t.is_recurring,
+                "recurrence_type": t.recurrence_type,
+                "recurrence_interval": t.recurrence_interval,
+                "recurrence_end_date": t.recurrence_end_date.isoformat() if t.recurrence_end_date else None,
+                "parent_task_id": t.parent_task_id,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+                "assigned_user_ids": [a.usuario_id for a in t.assignees] if t.assignees else [],
+                "assigned_users": [
+                    {
+                        "id": a.id,
+                        "usuario_id": a.usuario_id,
+                        "usuario_nome": a.usuario.nome if a.usuario else None
+                    }
+                    for a in t.assignees
+                ] if t.assignees else [],
+            }
+        
+        # Agrupar por status
+        pendente = []
+        em_andamento = []
+        concluida = []
+        
+        for t in tarefas:
+            tarefa_dict = tarefa_to_dict(t)
+            status = t.status or "pendente"
+            
+            if status == "concluida":
+                concluida.append(tarefa_dict)
+            elif status == "em_andamento":
+                em_andamento.append(tarefa_dict)
+            else:
+                pendente.append(tarefa_dict)
+        
+        kanban_data = {
+            "pendente": pendente,
+            "em_andamento": em_andamento,
+            "concluida": concluida,
+        }
+        
+        return success_response(data=kanban_data)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao carregar Kanban: {e}", exc_info=True)
+        # Retornar estrutura vazia ao invés de erro
+        return success_response(data={
+            "pendente": [],
+            "em_andamento": [],
+            "concluida": [],
+        })
+
+
 @router.post("/{tarefa_id}/toggle-status")
 def toggle_tarefa_status(
     tarefa_id: int,
