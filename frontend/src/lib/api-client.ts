@@ -213,7 +213,7 @@ export async function apiClient<T = any>(
   }
   
   // Timeout
-  const timeout = options.timeout || DEFAULT_TIMEOUT;
+  const timeout = (options as any).timeout || DEFAULT_TIMEOUT;
   const controller = createTimeoutController(timeout);
   
   let response: Response | null = null;
