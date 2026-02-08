@@ -1,6 +1,6 @@
 from typing import Annotated, Optional
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
@@ -79,6 +79,7 @@ def get_pipeline(
 
 @router.post("/bootstrap")
 def bootstrap_pipeline(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -87,6 +88,8 @@ def bootstrap_pipeline(
     Pode ser chamado múltiplas vezes sem duplicar dados.
     Retorna: { ok: true, data: { pipelineId, created, pipelineName } }
     """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
         # Verificar se já existe ao menos um pipeline
         existing_pipeline = db.query(Pipeline).first()
@@ -102,7 +105,8 @@ def bootstrap_pipeline(
                     "created": False,
                     "pipelineName": pipeline.name
                 },
-                meta={"message": "Pipeline já existe"}
+                meta={"message": "Pipeline já existe"},
+                request_id=request_id
             )
         
         # Não existe pipeline - criar pipeline padrão
@@ -152,17 +156,19 @@ def bootstrap_pipeline(
                 "created": True,
                 "pipelineName": pipeline.name
             },
-            meta={"message": "Pipeline padrão criado com sucesso"}
+            meta={"message": "Pipeline padrão criado com sucesso"},
+            request_id=request_id
         )
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao criar pipeline bootstrap: {str(e)}", exc_info=True)
+        logger.error(f"Erro ao criar pipeline bootstrap: {str(e)}", exc_info=True, extra={"request_id": request_id})
         db.rollback()
         return error_response(
             code="BOOTSTRAP_ERROR",
             message=f"Erro ao criar pipeline padrão: {str(e)}",
-            status_code=500
+            status_code=500,
+            request_id=request_id
         )
 
 

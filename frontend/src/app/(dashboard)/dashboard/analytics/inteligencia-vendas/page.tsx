@@ -152,7 +152,7 @@ export default function InteligenciaVendasPage() {
       
       return true; // Sucesso
     } catch (e) {
-      console.error("Erro ao carregar pipelines/usuários:", e);
+      // Silenciar erro - não quebrar UX
       setPipelines([]);
       setUsuarios([]);
       return false; // Falha
@@ -249,21 +249,14 @@ export default function InteligenciaVendasPage() {
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e);
       const errorCode = (e as any)?.code || "UNKNOWN";
-      const errorDetails = (e as any)?.details;
-      
-      console.error("Erro ao carregar dados de inteligência de vendas:");
-      console.error("  Mensagem:", errorMsg);
-      console.error("  Código:", errorCode);
-      if (errorDetails) {
-        console.error("  Detalhes:", errorDetails);
-      }
       
       // Se for erro de pipeline não encontrado, mostrar setup
-      if (errorCode === "PIPELINE_NOT_FOUND" || errorMsg.includes("pipeline")) {
+      if (errorCode === "PIPELINE_NOT_FOUND" || errorMsg.toLowerCase().includes("pipeline")) {
         setRequiresSetup(true);
-        setSetupMessage("Pipeline não encontrado. Selecione um pipeline válido.");
+        setSetupMessage("Pipeline não encontrado. Crie um pipeline padrão para visualizar o funil.");
       } else {
-        setError(errorMsg);
+        // Para outros erros, mostrar mensagem genérica (não quebrar UX)
+        setError("Erro ao carregar dados. Tente novamente.");
       }
       
       setData({

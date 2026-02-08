@@ -164,6 +164,7 @@ def get_funnel_stages() -> list[dict]:
 
 @router.get("/inteligencia-vendas")
 def get_inteligencia_vendas(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     start_date: Optional[date] = Query(None, description="Data inicial (YYYY-MM-DD)"),
@@ -181,6 +182,8 @@ def get_inteligencia_vendas(
     """
     from app.core.response import success_response, error_response
     
+    request_id = getattr(request.state, "request_id", None)
+    
     # Validar datas
     if not end_date:
         end_date = date.today()
@@ -191,7 +194,8 @@ def get_inteligencia_vendas(
         return error_response(
             code="INVALID_DATE_RANGE",
             message="Data inicial deve ser anterior à data final",
-            status_code=400
+            status_code=400,
+            request_id=request_id
         )
     
     # Validar valores
@@ -200,7 +204,8 @@ def get_inteligencia_vendas(
             return error_response(
                 code="INVALID_VALUE_RANGE",
                 message="Valor mínimo deve ser menor ou igual ao valor máximo",
-                status_code=400
+                status_code=400,
+                request_id=request_id
             )
     
     # Validar pipeline_id se fornecido
@@ -209,14 +214,32 @@ def get_inteligencia_vendas(
             return error_response(
                 code="INVALID_PIPELINE_ID",
                 message="ID do pipeline deve ser maior que 0",
-                status_code=400
+                status_code=400,
+                request_id=request_id
             )
         pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
         if not pipeline:
-            return error_response(
-                code="PIPELINE_NOT_FOUND",
-                message=f"Pipeline com ID {pipeline_id} não encontrado",
-                status_code=404
+            # Se pipeline_id foi fornecido mas não existe, retornar empty state com requiresSetup
+            return success_response(
+                data=InteligenciaVendasResponse(
+                    sankey_nodes=[],
+                    sankey_links=[],
+                    stage_metrics=[],
+                    insights=[],
+                    forecast_total_cents=0,
+                    forecast_items=[],
+                    sales_performance=[],
+                    segment_analysis=[],
+                    period_start=start_date,
+                    period_end=end_date,
+                    previous_period_start=previous_start,
+                    previous_period_end=previous_end
+                ),
+                meta={
+                    "requiresSetup": True,
+                    "message": f"Pipeline com ID {pipeline_id} não encontrado. Selecione um pipeline válido ou crie um pipeline padrão."
+                },
+                request_id=request_id
             )
     
     # Período anterior para comparação
@@ -254,8 +277,9 @@ def get_inteligencia_vendas(
                 ),
                 meta={
                     "requiresSetup": True,
-                    "message": "Nenhum pipeline encontrado. Selecione um pipeline ou crie um pipeline padrão."
-                }
+                    "message": "Nenhum pipeline encontrado. Crie um pipeline padrão para visualizar o funil de vendas."
+                },
+                request_id=request_id
             )
         
         # Buscar stages do pipeline ordenadas
@@ -508,7 +532,8 @@ def get_inteligencia_vendas(
                     "min_value_cents": min_value_cents,
                     "max_value_cents": max_value_cents,
                 }
-            }
+            },
+            request_id=request_id
         )
     except Exception as e:
         logger.error(f"Erro ao calcular inteligência de vendas: {str(e)}", exc_info=True)
