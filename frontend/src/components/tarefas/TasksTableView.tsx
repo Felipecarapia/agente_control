@@ -74,11 +74,11 @@ export function TasksTableView({
   async function loadTasks() {
     setLoading(true);
     try {
+      // apiClient já extrai data do formato {ok: true, data: [...]}
       const data = await api<Tarefa[]>(`/api/v1/tarefas?projeto_id=0`);
-      // Filtrar por database se necessário
-      setTasks(data);
+      setTasks(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("Erro ao carregar tarefas:", e);
+      // Silenciar erro - não quebrar UX
       setTasks([]);
     } finally {
       setLoading(false);

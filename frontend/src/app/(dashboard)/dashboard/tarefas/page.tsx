@@ -119,17 +119,12 @@ export default function TarefasPage() {
         api<Usuario[]>("/api/v1/usuarios").catch(() => []),
       ]);
       
+      // apiClient já extrai data do formato {ok: true, data: [...]}
       setList(Array.isArray(t) ? t : []);
       setProjetos(Array.isArray(p) ? p : []);
       setUsuarios(Array.isArray(u) ? u : []);
     } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      const errorCode = (e as any)?.code || "UNKNOWN";
-      console.error("Erro ao carregar tarefas:", {
-        message: errorMsg,
-        code: errorCode,
-        error: e,
-      });
+      // Silenciar erro - não quebrar UX
       setList([]);
       setProjetos([]);
       setUsuarios([]);
@@ -228,14 +223,35 @@ export default function TarefasPage() {
         description: editId ? "Tarefa atualizada com sucesso" : "Tarefa criada com sucesso",
       });
       load();
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Erro ao salvar";
-      console.error("Erro ao salvar tarefa:", e);
-      toast({
-        title: "Erro",
-        description: errorMsg,
-        variant: "destructive",
-      });
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao salvar tarefa";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        toast({
+          title: "Erro de validação",
+          description: "Dados inválidos. Verifique os campos obrigatórios.",
+          variant: "destructive",
+        });
+      } else if (errorCode === "TASK_DUPLICATE") {
+        toast({
+          title: "Tarefa duplicada",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      } else if (errorCode === "PROJECT_NOT_FOUND") {
+        toast({
+          title: "Projeto não encontrado",
+          description: "O projeto selecionado não existe.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      }
     }
   }
 
@@ -249,14 +265,23 @@ export default function TarefasPage() {
         description: "Tarefa excluída com sucesso",
       });
       load();
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Erro ao excluir";
-      console.error("Erro ao excluir tarefa:", e);
-      toast({
-        title: "Erro",
-        description: errorMsg,
-        variant: "destructive",
-      });
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir tarefa";
+      
+      if (errorCode === "TASK_NOT_FOUND") {
+        toast({
+          title: "Tarefa não encontrada",
+          description: "A tarefa já foi excluída.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      }
     }
   }
 
@@ -282,20 +307,34 @@ export default function TarefasPage() {
       });
       // Recarregar para garantir sincronização
       load();
-    } catch (e) {
+    } catch (e: any) {
       // Reverter em caso de erro
       setList((prev) =>
         prev.map((t) => (t.id === id ? { ...t, status: previousStatus } : t))
       );
-      toast({
-        title: "Erro",
-        description: e instanceof Error ? e.message : "Erro ao atualizar tarefa",
-        variant: "destructive",
-      });
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao atualizar tarefa";
+      
+      if (errorCode === "TASK_NOT_FOUND") {
+        toast({
+          title: "Tarefa não encontrada",
+          description: "A tarefa já foi excluída.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      }
     }
   }
 
   function handleViewChange(newView: TasksView) {
+    // Não disparar requests duplicados se já está na mesma view
+    if (newView === view) return;
+    
     setView(newView);
     if (typeof window !== "undefined") {
       localStorage.setItem("tarefas_view", newView);

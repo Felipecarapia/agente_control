@@ -187,10 +187,10 @@ export function TasksKanbanView({
       
       // Recarregar para garantir sincronização
       await loadKanban();
-    } catch (e) {
-      console.error("Erro ao atualizar status:", e);
+    } catch (e: any) {
       // Reverter em caso de erro
       setKanbanData(previousData);
+      // Silenciar erro - não quebrar UX
     }
   }
 
@@ -224,10 +224,10 @@ export function TasksKanbanView({
       // Recarregar para garantir sincronização e pegar nova tarefa recorrente se houver
       await loadKanban();
       onToggleComplete(id);
-    } catch (e) {
-      console.error("Erro ao alternar status:", e);
+    } catch (e: any) {
       // Reverter em caso de erro
       setKanbanData(previousData);
+      // Silenciar erro - não quebrar UX
     }
   }
 

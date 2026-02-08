@@ -42,9 +42,10 @@ export function TasksAgendaView({
       try {
         const fromDate = format(currentWeekStart, "yyyy-MM-dd");
         const toDate = format(weekEnd, "yyyy-MM-dd");
+        // apiClient já extrai data do formato {ok: true, data: [...]}
         const data = await api<Tarefa[]>(
           `/api/v1/tarefas/range?from=${fromDate}&to=${toDate}`
-        ).catch(() => []); // Retornar array vazio em caso de erro
+        );
         
         if (!cancelled) {
           setTasks(Array.isArray(data) ? data : []);
@@ -64,7 +65,7 @@ export function TasksAgendaView({
     return () => {
       cancelled = true;
     };
-  }, [currentWeekStart]);
+  }, [currentWeekStart, weekEnd]);
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
 
