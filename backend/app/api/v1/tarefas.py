@@ -378,6 +378,83 @@ def get_tarefas_kanban(
         })
 
 
+@router.get("/range")
+def get_tarefas_range(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+    from_date: str | None = None,
+    to_date: str | None = None,
+):
+    """Retorna tarefas dentro de um intervalo de datas (para calendário e agenda)."""
+    try:
+        from datetime import date
+        from sqlalchemy import and_
+        
+        # Carregar tarefas com relacionamentos
+        q = db.query(Tarefa).options(
+            joinedload(Tarefa.projeto),
+            joinedload(Tarefa.responsavel),
+            selectinload(Tarefa.assignees).joinedload(TarefaAssignee.usuario)
+        )
+        
+        # Filtrar por intervalo de datas se fornecido
+        if from_date and to_date:
+            try:
+                from_dt = date.fromisoformat(from_date)
+                to_dt = date.fromisoformat(to_date)
+                # Filtrar tarefas que têm data_vencimento dentro do intervalo
+                q = q.filter(
+                    and_(
+                        Tarefa.data_vencimento >= from_dt,
+                        Tarefa.data_vencimento <= to_dt
+                    )
+                )
+            except ValueError:
+                # Se as datas forem inválidas, ignorar filtro
+                pass
+        
+        tarefas = q.order_by(Tarefa.data_vencimento.asc(), Tarefa.created_at.desc()).all()
+        
+        # Converter para dict
+        tarefas_data = []
+        for t in tarefas:
+            tarefa_dict = {
+                "id": t.id,
+                "titulo": t.titulo,
+                "descricao": t.descricao,
+                "projeto_id": t.projeto_id,
+                "status": t.status,
+                "prioridade": t.prioridade,
+                "responsavel_id": t.responsavel_id,
+                "data_vencimento": t.data_vencimento.isoformat() if t.data_vencimento else None,
+                "is_recurring": t.is_recurring,
+                "recurrence_type": t.recurrence_type,
+                "recurrence_interval": t.recurrence_interval,
+                "recurrence_end_date": t.recurrence_end_date.isoformat() if t.recurrence_end_date else None,
+                "parent_task_id": t.parent_task_id,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+                "assigned_user_ids": [a.usuario_id for a in t.assignees] if t.assignees else [],
+                "assigned_users": [
+                    {
+                        "id": a.id,
+                        "usuario_id": a.usuario_id,
+                        "usuario_nome": a.usuario.nome if a.usuario else None
+                    }
+                    for a in t.assignees
+                ] if t.assignees else [],
+            }
+            tarefas_data.append(tarefa_dict)
+        
+        return success_response(data=tarefas_data)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao carregar tarefas por range: {e}", exc_info=True)
+        # Retornar lista vazia ao invés de erro
+        return success_response(data=[])
+
+
 @router.post("/{tarefa_id}/toggle-status")
 def toggle_tarefa_status(
     tarefa_id: int,

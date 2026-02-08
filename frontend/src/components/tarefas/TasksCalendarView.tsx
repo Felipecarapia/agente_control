@@ -63,10 +63,10 @@ export function TasksCalendarView({
         const toDate = format(calendarEnd, "yyyy-MM-dd");
         const data = await api<Tarefa[]>(
           `/api/v1/tarefas/range?from=${fromDate}&to=${toDate}`
-        );
-        setTasks(data);
+        ).catch(() => []); // Retornar array vazio em caso de erro
+        setTasks(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.error("Erro ao carregar tarefas:", e);
+        // Silenciar erros - usar array vazio
         setTasks([]);
       } finally {
         setLoading(false);
