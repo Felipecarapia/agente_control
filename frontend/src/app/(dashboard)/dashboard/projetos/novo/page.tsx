@@ -44,7 +44,10 @@ export default function NovoProjetoPage() {
   useEffect(() => {
     api<Cliente[]>("/api/v1/clientes")
       .then(setClientes)
-      .catch(console.error);
+      .catch(() => {
+        // Silenciar erro - não quebrar UX
+        setClientes([]);
+      });
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -73,9 +76,19 @@ export default function NovoProjetoPage() {
       });
       router.push("/dashboard/projetos");
       router.refresh();
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar");
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar projeto";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "PROJECT_DUPLICATE") {
+        alert(`Projeto duplicado: ${errorMsg}`);
+      } else if (errorCode === "CLIENT_NOT_FOUND") {
+        alert("Cliente não encontrado.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }

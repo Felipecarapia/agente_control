@@ -1,11 +1,13 @@
 from typing import Annotated
+import logging
+from pydantic import ValidationError
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.core.response import success_response, error_response
+from app.core.response import success_response, error_response, serialize_data
 from app.core.validators import IDValidator
 # Removida restrição de permissão - qualquer usuário autenticado pode cobrar
 from app.models.projeto import Projeto
@@ -14,126 +16,273 @@ from app.schemas.projeto import ProjetoCreate, ProjetoUpdate, ProjetoResponse
 from app.schemas.mensagem import ProjectNudgeRequest
 from app.services.mensagem_service import send_project_nudge, get_project_members
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projetos", tags=["projetos"])
 
 
 @router.get("")
 def list_projetos(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """
     Lista todos os projetos.
-    Retorna lista vazia se não houver projetos (nunca retorna 500).
+    Retorna sempre 200 com lista vazia se não houver projetos (nunca retorna 500).
     """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
         projetos = db.query(Projeto).all()
-        # Converter para schema Pydantic para serialização correta
-        from app.schemas.projeto import ProjetoResponse
-        projetos_data = [ProjetoResponse.model_validate(p) for p in projetos]
-        return success_response(data=projetos_data)
+        # Converter usando serialize_data para serialização correta (datas/decimal)
+        projetos_data = [serialize_data(p) for p in projetos]
+        return success_response(data=projetos_data if projetos_data else [], request_id=request_id)
     except Exception as e:
+        logger.error(f"Erro ao listar projetos: {e}", exc_info=True, extra={"request_id": request_id})
         # Em caso de erro, retornar lista vazia ao invés de quebrar
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao listar projetos: {e}", exc_info=True)
-        return success_response(data=[])
+        return success_response(data=[], request_id=request_id)
 
 
-@router.get("/{projeto_id}", response_model=ProjetoResponse)
+@router.get("/{projeto_id}")
 def get_projeto(
+    request: Request,
     projeto_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
+    """
+    Busca um projeto por ID.
+    Retorna 404 padronizado se não encontrado.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     # Validar ID
     if projeto_id <= 0:
         return error_response(
             code="INVALID_ID",
             message="ID do projeto deve ser maior que 0",
-            status_code=400
+            status_code=400,
+            request_id=request_id
         )
     
-    obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
-    if not obj:
+    try:
+        obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+        if not obj:
+            return error_response(
+                code="PROJECT_NOT_FOUND",
+                message=f"Projeto com ID {projeto_id} não encontrado",
+                status_code=404,
+                request_id=request_id
+            )
+        projeto_data = serialize_data(obj)
+        return success_response(data=projeto_data, request_id=request_id)
+    except Exception as e:
+        logger.error(f"Erro ao buscar projeto {projeto_id}: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
-            code="PROJECT_NOT_FOUND",
-            message="Projeto não encontrado",
-            status_code=404
+            code="INTERNAL_ERROR",
+            message="Erro ao buscar projeto",
+            status_code=500,
+            request_id=request_id
         )
-    return success_response(data=obj)
 
 
-@router.post("", response_model=ProjetoResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_projeto(
+    request: Request,
     data: ProjetoCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
+    """
+    Cria um novo projeto.
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 409 se projeto duplicado (mesmo nome + cliente).
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
+        # Validação Pydantic já é feita automaticamente pelo FastAPI
+        # Verificar duplicado: mesmo nome + cliente_id
+        existing = db.query(Projeto).filter(
+            Projeto.nome == data.nome,
+            Projeto.cliente_id == data.cliente_id
+        ).first()
+        if existing:
+            return error_response(
+                code="PROJECT_DUPLICATE",
+                message=f"Projeto '{data.nome}' já existe para este cliente",
+                details={"existing_project_id": existing.id, "field": "nome"},
+                status_code=409,
+                request_id=request_id
+            )
+        
+        # Verificar se cliente existe
+        from app.models.cliente import Cliente
+        cliente = db.query(Cliente).filter(Cliente.id == data.cliente_id).first()
+        if not cliente:
+            return error_response(
+                code="CLIENT_NOT_FOUND",
+                message=f"Cliente com ID {data.cliente_id} não encontrado",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Criar projeto
         obj = Projeto(**data.model_dump(), usuario_id=current_user.id)
         db.add(obj)
         db.commit()
         db.refresh(obj)
-        return success_response(data=obj, status_code=201)
+        
+        projeto_data = serialize_data(obj)
+        return success_response(data=projeto_data, status_code=status.HTTP_201_CREATED, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
+        logger.error(f"Erro ao criar projeto: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
             code="CREATE_ERROR",
             message=f"Erro ao criar projeto: {str(e)}",
-            status_code=500
+            status_code=500,
+            request_id=request_id
         )
 
 
-@router.patch("/{projeto_id}", response_model=ProjetoResponse)
+@router.patch("/{projeto_id}")
 def update_projeto(
+    request: Request,
     projeto_id: int,
     data: ProjetoUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
+    """
+    Atualiza um projeto existente.
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 404 se projeto não encontrado.
+    Retorna 409 se nome+cliente duplicado.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     # Validar ID
     if projeto_id <= 0:
         return error_response(
             code="INVALID_ID",
             message="ID do projeto deve ser maior que 0",
-            status_code=400
-        )
-    
-    obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
-    if not obj:
-        return error_response(
-            code="PROJECT_NOT_FOUND",
-            message="Projeto não encontrado",
-            status_code=404
+            status_code=400,
+            request_id=request_id
         )
     
     try:
-        for k, v in data.model_dump(exclude_unset=True).items():
+        obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+        if not obj:
+            return error_response(
+                code="PROJECT_NOT_FOUND",
+                message=f"Projeto com ID {projeto_id} não encontrado",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Verificar duplicados se nome ou cliente_id estão sendo atualizados
+        update_data = data.model_dump(exclude_unset=True)
+        if "nome" in update_data or "cliente_id" in update_data:
+            nome = update_data.get("nome", obj.nome)
+            cliente_id = update_data.get("cliente_id", obj.cliente_id)
+            existing = db.query(Projeto).filter(
+                Projeto.nome == nome,
+                Projeto.cliente_id == cliente_id,
+                Projeto.id != projeto_id
+            ).first()
+            if existing:
+                return error_response(
+                    code="PROJECT_DUPLICATE",
+                    message=f"Projeto '{nome}' já existe para este cliente",
+                    details={"existing_project_id": existing.id, "field": "nome"},
+                    status_code=409,
+                    request_id=request_id
+                )
+        
+        # Verificar se cliente existe (se cliente_id está sendo atualizado)
+        if "cliente_id" in update_data:
+            from app.models.cliente import Cliente
+            cliente = db.query(Cliente).filter(Cliente.id == update_data["cliente_id"]).first()
+            if not cliente:
+                return error_response(
+                    code="CLIENT_NOT_FOUND",
+                    message=f"Cliente com ID {update_data['cliente_id']} não encontrado",
+                    status_code=404,
+                    request_id=request_id
+                )
+        
+        # Atualizar campos
+        for k, v in update_data.items():
             setattr(obj, k, v)
         db.commit()
         db.refresh(obj)
-        return success_response(data=obj)
+        
+        projeto_data = serialize_data(obj)
+        return success_response(data=projeto_data, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
+        logger.error(f"Erro ao atualizar projeto {projeto_id}: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
             code="UPDATE_ERROR",
             message=f"Erro ao atualizar projeto: {str(e)}",
-            status_code=500
+            status_code=500,
+            request_id=request_id
         )
 
 
-@router.delete("/{projeto_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{projeto_id}")
 def delete_projeto(
+    request: Request,
     projeto_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
-    if not obj:
-        raise HTTPException(status_code=404, detail="Projeto não encontrado")
-    db.delete(obj)
-    db.commit()
+    """
+    Deleta um projeto.
+    Retorna 404 padronizado se projeto não encontrado.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
+    try:
+        obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+        if not obj:
+            return error_response(
+                code="PROJECT_NOT_FOUND",
+                message=f"Projeto com ID {projeto_id} não encontrado",
+                status_code=404,
+                request_id=request_id
+            )
+        db.delete(obj)
+        db.commit()
+        return success_response(data={"deleted": True, "projeto_id": projeto_id}, request_id=request_id)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erro ao deletar projeto {projeto_id}: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="DELETE_ERROR",
+            message=f"Erro ao deletar projeto: {str(e)}",
+            status_code=500,
+            request_id=request_id
+        )
 
 
 @router.get("/{projeto_id}/members", response_model=list[dict])

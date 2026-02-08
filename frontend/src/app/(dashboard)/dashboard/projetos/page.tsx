@@ -62,24 +62,15 @@ export default function ProjetosPage() {
     setLoading(true);
     try {
       const [p, c] = await Promise.all([
-        api<any>("/api/v1/projetos").catch(() => ({ ok: true, data: [] })),
-        api<any>("/api/v1/clientes").catch(() => ({ ok: true, data: [] })),
+        api<Projeto[]>("/api/v1/projetos").catch(() => []),
+        api<Cliente[]>("/api/v1/clientes").catch(() => []),
       ]);
       
-      // Extrair dados do formato padronizado
-      const projetos = p?.ok === true ? (p.data || []) : (Array.isArray(p) ? p : []);
-      const clientes = c?.ok === true ? (c.data || []) : (Array.isArray(c) ? c : []);
-      
-      setList(Array.isArray(projetos) ? projetos : []);
-      setClientes(Array.isArray(clientes) ? clientes : []);
+      // apiClient já extrai data do formato {ok: true, data: [...]}
+      setList(Array.isArray(p) ? p : []);
+      setClientes(Array.isArray(c) ? c : []);
     } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      const errorCode = (e as any)?.code || "UNKNOWN";
-      console.error("Erro ao carregar projetos:", {
-        message: errorMsg,
-        code: errorCode,
-        error: e,
-      });
+      // Silenciar erro - não quebrar UX
       setList([]);
       setClientes([]);
     } finally {
@@ -97,9 +88,15 @@ export default function ProjetosPage() {
       await api(`/api/v1/projetos/${deleteId}`, { method: "DELETE" });
       setDeleteId(null);
       loadList();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao excluir");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir projeto";
+      
+      if (errorCode === "PROJECT_NOT_FOUND") {
+        alert("Projeto não encontrado");
+      } else {
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
     }
   }
 
@@ -144,7 +141,7 @@ export default function ProjetosPage() {
             <>
               {/* Cards Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
-                {Array.isArray(list) && list.length > 0 ? (
+                {list.length > 0 ? (
                   list.map((p) => (
                     <Card key={p.id} className="border border-border/60 shadow-md hover:shadow-lg transition-shadow bg-card">
                       <CardContent className="p-4">

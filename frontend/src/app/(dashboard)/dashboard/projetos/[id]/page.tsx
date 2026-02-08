@@ -67,7 +67,8 @@ export default function EditarProjetoPage() {
       api<Cliente[]>("/api/v1/clientes"),
     ])
       .then(([p, c]) => {
-        setClientes(c);
+        // apiClient já extrai data do formato {ok: true, data: {...}}
+        setClientes(Array.isArray(c) ? c : []);
         setForm({
           tipo: p.tipo || "desenvolvimento_software",
           nome: p.nome || "",
@@ -81,8 +82,16 @@ export default function EditarProjetoPage() {
           moeda: p.moeda || "BRL",
           observacoes_financeiras: p.observacoes_financeiras || "",
         });
+        setLoadErr(null);
       })
-      .catch((e) => setLoadErr(e instanceof Error ? e.message : "Erro ao carregar"));
+      .catch((e: any) => {
+        const errorCode = e?.code || "UNKNOWN";
+        if (errorCode === "PROJECT_NOT_FOUND") {
+          setLoadErr("Projeto não encontrado");
+        } else {
+          setLoadErr(e instanceof Error ? e.message : "Erro ao carregar");
+        }
+      });
   }, [id]);
 
   async function submit(e: React.FormEvent) {
