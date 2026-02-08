@@ -244,6 +244,7 @@ def list_deals(
 
 @router.get("/kanban")
 def get_kanban(
+    request: Request,
     pipelineId: Optional[int] = Query(None, description="ID do pipeline"),
     clientSearch: Optional[str] = Query(None, description="Busca de clientes"),
     clientPage: int = Query(1, ge=1, description="Página de clientes"),
@@ -431,6 +432,14 @@ def get_kanban(
             updated_at=None
         )
     
+    # Se não há pipeline real, adicionar meta.requiresSetup
+    meta = {}
+    if not pipeline:
+        meta = {
+            "requiresSetup": True,
+            "message": "Nenhum pipeline encontrado. Crie um pipeline padrão para visualizar o funil de vendas."
+        }
+    
     return success_response(
         data=PipelineKanbanResponse(
             pipeline=pipeline_response,
@@ -439,7 +448,9 @@ def get_kanban(
             clients_total=clients_total,
             clients_page=client_page,
             clients_page_size=client_page_size
-        )
+        ),
+        meta=meta if meta else None,
+        request_id=request_id
     )
 
 
@@ -776,54 +787,156 @@ def create_deal_from_client(
 # Endpoint move_deal para adicionar em deals.py
 # Adicionar após a função create_deal_from_client
 
-@router.post("/{deal_id}/move", response_model=DealResponse)
+@router.post("/{deal_id}/move")
 def move_deal(
+    request: Request,
     deal_id: int,
     data: DealMoveRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Move um deal para uma nova etapa (stage)."""
+    """
+    Move um deal para uma nova etapa (stage).
+    Valida body (to_stage_id obrigatório) -> 400 se inválido.
+    Usa transação para garantir atomicidade.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     # Validar ID
     if deal_id <= 0:
         return error_response(
             code="INVALID_ID",
             message="ID do deal deve ser maior que 0",
-            status_code=400
+            status_code=400,
+            request_id=request_id
         )
     
-    # Buscar deal
-    deal = db.query(Deal).filter(Deal.id == deal_id).first()
-    if not deal:
+    # Validar body
+    if not data.to_stage_id or data.to_stage_id <= 0:
         return error_response(
-            code="DEAL_NOT_FOUND",
-            message="Deal não encontrado",
-            status_code=404
+            code="VALIDATION_ERROR",
+            message="to_stage_id é obrigatório e deve ser maior que 0",
+            details=[{"loc": ["body", "to_stage_id"], "msg": "to_stage_id é obrigatório"}],
+            status_code=400,
+            request_id=request_id
         )
     
-    # Verificar permissão
-    if not _can_edit_deal(db, current_user, deal):
-        return error_response(
-            code="FORBIDDEN",
-            message="Você não tem permissão para mover este deal",
-            status_code=403
+    try:
+        # Buscar deal
+        deal = db.query(Deal).filter(Deal.id == deal_id).first()
+        if not deal:
+            return error_response(
+                code="DEAL_NOT_FOUND",
+                message=f"Deal com ID {deal_id} não encontrado",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Verificar permissão
+        if not _can_edit_deal(db, current_user, deal):
+            return error_response(
+                code="FORBIDDEN",
+                message="Você não tem permissão para mover este deal",
+                status_code=403,
+                request_id=request_id
+            )
+        
+        # Verificar se stage existe e pertence ao mesmo pipeline
+        new_stage = db.query(PipelineStage).filter(
+            PipelineStage.id == data.to_stage_id,
+            PipelineStage.pipeline_id == deal.pipeline_id
+        ).first()
+        
+        if not new_stage:
+            return error_response(
+                code="STAGE_NOT_FOUND",
+                message=f"Stage com ID {data.to_stage_id} não encontrada ou não pertence ao pipeline deste deal",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Se já está na mesma stage, retornar sem mudanças
+        if deal.stage_id == data.to_stage_id:
+            deal = db.query(Deal).options(
+                joinedload(Deal.client),
+                joinedload(Deal.assignees).joinedload(DealAssignee.user),
+                joinedload(Deal.tag_links).joinedload(DealTagLink.tag),
+                joinedload(Deal.activities).joinedload(DealActivity.created_by),
+                joinedload(Deal.notes).joinedload(DealNote.author),
+                joinedload(Deal.stage_history).joinedload(DealStageHistory.moved_by),
+            ).filter(Deal.id == deal_id).first()
+            return success_response(data=_format_deal_response(deal), request_id=request_id)
+        
+        # Calcular nova posição (topo da coluna)
+        min_position = db.query(func.min(Deal.position_index)).filter(
+            Deal.stage_id == data.to_stage_id
+        ).scalar()
+        if min_position is not None:
+            new_position = Decimal(str(min_position)) - Decimal("1")
+        else:
+            new_position = Decimal("0")
+        
+        # Verificar conflito de posição (se before_deal_id ou after_deal_id for fornecido)
+        if data.before_deal_id or data.after_deal_id:
+            # Validar que deal de referência existe na stage de destino
+            if data.before_deal_id:
+                ref_deal = db.query(Deal).filter(
+                    Deal.id == data.before_deal_id,
+                    Deal.stage_id == data.to_stage_id
+                ).first()
+                if not ref_deal:
+                    return error_response(
+                        code="CONFLICT",
+                        message=f"Deal de referência (before_deal_id={data.before_deal_id}) não encontrado na stage de destino",
+                        status_code=409,
+                        request_id=request_id
+                    )
+            if data.after_deal_id:
+                ref_deal = db.query(Deal).filter(
+                    Deal.id == data.after_deal_id,
+                    Deal.stage_id == data.to_stage_id
+                ).first()
+                if not ref_deal:
+                    return error_response(
+                        code="CONFLICT",
+                        message=f"Deal de referência (after_deal_id={data.after_deal_id}) não encontrado na stage de destino",
+                        status_code=409,
+                        request_id=request_id
+                    )
+        
+        # Usar transação para garantir atomicidade
+        old_stage_id = deal.stage_id
+        
+        # Registrar histórico
+        history = DealStageHistory(
+            deal_id=deal.id,
+            from_stage_id=old_stage_id,
+            to_stage_id=data.to_stage_id,
+            moved_by_user_id=current_user.id,
+            reason=data.reason or "Movido via drag & drop",
+            extra_metadata='{"source": "kanban_drag"}'
         )
-    
-    # Verificar se stage existe e pertence ao mesmo pipeline
-    new_stage = db.query(PipelineStage).filter(
-        PipelineStage.id == data.to_stage_id,
-        PipelineStage.pipeline_id == deal.pipeline_id
-    ).first()
-    
-    if not new_stage:
-        return error_response(
-            code="STAGE_NOT_FOUND",
-            message="Stage não encontrada ou não pertence ao pipeline deste deal",
-            status_code=404
+        db.add(history)
+        
+        # Atualizar deal
+        deal.stage_id = data.to_stage_id
+        deal.position_index = new_position
+        deal.updated_at = datetime.now()
+        
+        # Auditoria
+        audit = AuditEvent(
+            event_type="DEAL_MOVED",
+            actor_user_id=current_user.id,
+            context_type="DEAL",
+            context_id=str(deal.id),
+            payload=f'{{"deal_id": {deal.id}, "from_stage_id": {old_stage_id}, "to_stage_id": {data.to_stage_id}}}'
         )
-    
-    # Se já está na mesma stage, retornar sem mudanças
-    if deal.stage_id == data.to_stage_id:
+        db.add(audit)
+        
+        db.commit()
+        db.refresh(deal)
+        
+        # Carregar relacionamentos
         deal = db.query(Deal).options(
             joinedload(Deal.client),
             joinedload(Deal.assignees).joinedload(DealAssignee.user),
@@ -831,59 +944,18 @@ def move_deal(
             joinedload(Deal.activities).joinedload(DealActivity.created_by),
             joinedload(Deal.notes).joinedload(DealNote.author),
             joinedload(Deal.stage_history).joinedload(DealStageHistory.moved_by),
+            joinedload(Deal.stage_history).joinedload(DealStageHistory.from_stage),
+            joinedload(Deal.stage_history).joinedload(DealStageHistory.to_stage),
         ).filter(Deal.id == deal_id).first()
-        return success_response(data=_format_deal_response(deal))
-    
-    # Calcular nova posição (topo da coluna)
-    min_position = db.query(func.min(Deal.position_index)).filter(
-        Deal.stage_id == data.to_stage_id
-    ).scalar()
-    if min_position is not None:
-        new_position = Decimal(str(min_position)) - Decimal("1")
-    else:
-        new_position = Decimal("0")
-    
-    # Registrar histórico
-    old_stage_id = deal.stage_id
-    history = DealStageHistory(
-        deal_id=deal.id,
-        from_stage_id=old_stage_id,
-        to_stage_id=data.to_stage_id,
-        moved_by_user_id=current_user.id,
-        reason=data.reason or "Movido via drag & drop",
-        extra_metadata='{"source": "kanban_drag"}'
-    )
-    db.add(history)
-    
-    # Atualizar deal
-    deal.stage_id = data.to_stage_id
-    deal.position_index = new_position
-    deal.updated_at = datetime.now()
-    
-    # Auditoria
-    audit = AuditEvent(
-        event_type="DEAL_MOVED",
-        actor_user_id=current_user.id,
-        context_type="DEAL",
-        context_id=str(deal.id),
-        payload=f'{{"deal_id": {deal.id}, "from_stage_id": {old_stage_id}, "to_stage_id": {data.to_stage_id}}}'
-    )
-    db.add(audit)
-    
-    db.commit()
-    db.refresh(deal)
-    
-    # Carregar relacionamentos
-    deal = db.query(Deal).options(
-        joinedload(Deal.client),
-        joinedload(Deal.assignees).joinedload(DealAssignee.user),
-        joinedload(Deal.tag_links).joinedload(DealTagLink.tag),
-        joinedload(Deal.activities).joinedload(DealActivity.created_by),
-        joinedload(Deal.notes).joinedload(DealNote.author),
-        joinedload(Deal.stage_history).joinedload(DealStageHistory.moved_by),
-        joinedload(Deal.stage_history).joinedload(DealStageHistory.from_stage),
-        joinedload(Deal.stage_history).joinedload(DealStageHistory.to_stage),
-    ).filter(Deal.id == deal_id).first()
-    
-    return success_response(data=_format_deal_response(deal))
+        
+        return success_response(data=_format_deal_response(deal), request_id=request_id)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erro ao mover deal {deal_id}: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="MOVE_ERROR",
+            message=f"Erro ao mover deal: {str(e)}",
+            status_code=500,
+            request_id=request_id
+        )
 

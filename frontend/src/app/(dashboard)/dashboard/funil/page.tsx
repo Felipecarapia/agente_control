@@ -182,23 +182,14 @@ export default function FunilPage() {
       
       const response = await api<any>(url);
       
-      // Verificar se resposta está no formato padronizado
-      const data = response?.ok === true ? response.data : response;
+      // apiClient já extrai data do formato {ok: true, data: {...}}
+      const data = response;
+      const meta = (response as any)?.meta || {};
       
-      if (data && Array.isArray(data.stages) && Array.isArray(data.clients)) {
-        setKanbanData(data);
-        setError(null); // Limpar erro se sucesso
-        if (process.env.NODE_ENV === "development") {
-          console.log("[loadKanban] Dados carregados:", {
-            pipeline: data.pipeline?.name || "Padrão",
-            stages: data.stages.length,
-            clients: data.clients.length,
-          });
-        }
-      } else {
-        // Resposta vazia ou inválida - criar estrutura padrão
+      // Verificar se precisa de setup
+      if (meta.requiresSetup) {
         setKanbanData({
-          pipeline: { id: 0, name: "Funil de Vendas", description: null, is_default: false },
+          pipeline: null,
           stages: [],
           clients: [],
           clients_total: 0,
@@ -206,30 +197,32 @@ export default function FunilPage() {
           clients_page_size: 20
         });
         setError(null);
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[loadKanban] Resposta vazia ou inválida:", data);
-        }
+        setLoading(false);
+        return;
+      }
+      
+      if (data && Array.isArray(data.stages) && Array.isArray(data.clients)) {
+        setKanbanData(data);
+        setError(null);
+      } else {
+        // Resposta vazia ou inválida - criar estrutura padrão
+        setKanbanData({
+          pipeline: null,
+          stages: [],
+          clients: [],
+          clients_total: 0,
+          clients_page: 1,
+          clients_page_size: 20
+        });
+        setError(null);
       }
     } catch (e) {
-      // Log detalhado apenas em dev
-      if (process.env.NODE_ENV === "development") {
-        console.error("[loadKanban] Erro:", {
-          error: e,
-          message: e instanceof Error ? e.message : String(e),
-          url: `/api/v1/deals/kanban`,
-        });
-      }
-      
+      // Silenciar erro - não quebrar UX
       setKanbanData(null);
-      const errorMsg = e instanceof Error 
-        ? e.message 
-        : "Erro ao carregar Kanban. Verifique se o backend está rodando.";
-      
-      setError(errorMsg);
-      console.error("[loadKanban] Erro final:", errorMsg);
+      setError(null);
     } finally {
       clearTimeout(timeoutId);
-      setLoading(false); // SEMPRE garantir que loading seja false
+      setLoading(false);
     }
   }
 
@@ -317,10 +310,22 @@ export default function FunilPage() {
       return;
     }
     
+    // Não disparar chamada se pipelineId ausente
+    if (!kanbanData?.pipeline?.id) {
+      setActiveType(null);
+      return;
+    }
+    
     try {
       // Atualização otimista
       const deal = currentStage.deals.find((d) => d.id === dealId);
-      if (!deal) return;
+      if (!deal) {
+        setActiveType(null);
+        return;
+      }
+      
+      // Salvar estado anterior para rollback
+      const previousKanbanData = { ...kanbanData };
       
       // Remover deal da stage atual
       const updatedStages = kanbanData.stages.map((s) => {
@@ -356,15 +361,26 @@ export default function FunilPage() {
       
       // Recarregar para garantir sincronização
       await loadKanban();
-    } catch (e) {
-      console.error("Erro ao mover deal:", e);
+    } catch (e: any) {
+      // Rollback em caso de erro
+      if (kanbanData) {
+        setKanbanData(previousKanbanData);
+      }
+      
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro desconhecido";
+      
       toast({
         title: "Erro ao mover deal",
-        description: e instanceof Error ? e.message : "Erro desconhecido",
+        description: errorCode === "VALIDATION_ERROR" 
+          ? "Dados inválidos para mover deal"
+          : errorCode === "DEAL_NOT_FOUND"
+          ? "Deal não encontrado"
+          : errorCode === "STAGE_NOT_FOUND"
+          ? "Etapa não encontrada"
+          : errorMsg,
         variant: "destructive",
       });
-      // Reverter em caso de erro
-      await loadKanban();
     } finally {
       setActiveType(null);
     }
@@ -383,27 +399,39 @@ export default function FunilPage() {
     );
   }
 
-  // Renderizar estado de erro
-  if (error && !loading) {
+  // Renderizar empty state se não há pipeline
+  if (!loading && kanbanData && !kanbanData.pipeline) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Funil de Vendas</h1>
-            <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive font-medium">Erro ao carregar dados</p>
-              <p className="text-sm text-muted-foreground mt-2">{error}</p>
-              <button
-                onClick={() => {
-                  setError(null);
-                  loadKanban();
-                }}
-                className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-              >
-                Tentar novamente
-              </button>
-            </div>
+            <p className="text-muted-foreground">Gerencie oportunidades e pipeline de vendas</p>
           </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <Workflow className="h-12 w-12 text-muted-foreground/30 mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Configuração Necessária</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-md">
+            Nenhum pipeline encontrado. Crie um pipeline padrão para visualizar o funil de vendas.
+          </p>
+          <Button
+            onClick={async () => {
+              try {
+                setLoading(true);
+                await api("/api/v1/pipelines/bootstrap", { method: "POST" });
+                await loadKanban();
+              } catch (e) {
+                // Silenciar erro - já será tratado no loadKanban
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Criar Pipeline Padrão
+          </Button>
         </div>
       </motion.div>
     );
@@ -960,9 +988,19 @@ function CreateDealModal({
       });
 
       onSuccess();
-    } catch (e) {
-      console.error("Erro ao criar deal:", e);
-      setError(e instanceof Error ? e.message : "Erro ao criar deal");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao criar deal";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        setError("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "NO_PIPELINE") {
+        setError("Nenhum pipeline encontrado. Um pipeline padrão será criado automaticamente.");
+      } else if (errorCode === "CONFLICT") {
+        setError(errorMsg);
+      } else {
+        setError(`Erro ao criar deal: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }
