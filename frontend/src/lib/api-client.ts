@@ -178,7 +178,9 @@ function createApiError(
      apiError.code === "DATABASE_NOT_FOUND" || 
      status === 404 ||
      // Se o backend retornou ok:true com data:null, não é erro
-     (status === 200 && responseBody?.ok === true && (responseBody?.data === null || responseBody?.data === undefined)));
+     (status === 200 && responseBody?.ok === true && (responseBody?.data === null || responseBody?.data === undefined)) ||
+     // Se o backend retornou erro padronizado mas é 404 para recurso opcional
+     (status === 404 && responseBody?.ok === false && responseBody?.error?.code === "DATABASE_NOT_FOUND"));
   
   // Silenciar erros esperados para recursos opcionais
   if (!isExpectedError) {
