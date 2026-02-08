@@ -56,6 +56,7 @@ export function TasksCalendarView({
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   useEffect(() => {
+    let cancelled = false;
     async function loadTasks() {
       setLoading(true);
       try {
@@ -64,16 +65,25 @@ export function TasksCalendarView({
         const data = await api<Tarefa[]>(
           `/api/v1/tarefas/range?from=${fromDate}&to=${toDate}`
         ).catch(() => []); // Retornar array vazio em caso de erro
-        setTasks(Array.isArray(data) ? data : []);
+        
+        if (!cancelled) {
+          setTasks(Array.isArray(data) ? data : []);
+        }
       } catch (e) {
         // Silenciar erros - usar array vazio
-        setTasks([]);
+        if (!cancelled) {
+          setTasks([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
     loadTasks();
-  }, [currentMonth, calendarStart, calendarEnd]);
+    return () => {
+      cancelled = true;
+  }, [currentMonth]);
 
   function getTasksForDay(day: Date): Tarefa[] {
     return tasks.filter((t) => {
