@@ -58,27 +58,17 @@ export default function PropostasPage() {
     setLoading(true);
     try {
       const [p, c, pr] = await Promise.all([
-        api<any>("/api/v1/propostas").catch(() => ({ ok: true, data: [] })),
-        api<any>("/api/v1/clientes").catch(() => ({ ok: true, data: [] })),
-        api<any>("/api/v1/projetos").catch(() => ({ ok: true, data: [] })),
+        api<Proposta[]>("/api/v1/propostas").catch(() => []),
+        api<Cliente[]>("/api/v1/clientes").catch(() => []),
+        api<Projeto[]>("/api/v1/projetos").catch(() => []),
       ]);
       
-      // Extrair dados do formato padronizado
-      const propostas = p?.ok === true ? (p.data || []) : (Array.isArray(p) ? p : []);
-      const clientes = c?.ok === true ? (c.data || []) : (Array.isArray(c) ? c : []);
-      const projetos = pr?.ok === true ? (pr.data || []) : (Array.isArray(pr) ? pr : []);
-      
-      setList(Array.isArray(propostas) ? propostas : []);
-      setClientes(Array.isArray(clientes) ? clientes : []);
-      setProjetos(Array.isArray(projetos) ? projetos : []);
+      // apiClient já extrai data do formato {ok: true, data: [...]}
+      setList(Array.isArray(p) ? p : []);
+      setClientes(Array.isArray(c) ? c : []);
+      setProjetos(Array.isArray(pr) ? pr : []);
     } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      const errorCode = (e as any)?.code || "UNKNOWN";
-      console.error("Erro ao carregar propostas:", {
-        message: errorMsg,
-        code: errorCode,
-        error: e,
-      });
+      // Silenciar erro - não quebrar UX
       setList([]);
       setClientes([]);
       setProjetos([]);
@@ -97,9 +87,15 @@ export default function PropostasPage() {
       await api(`/api/v1/propostas/${deleteId}`, { method: "DELETE" });
       setDeleteId(null);
       loadList();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao excluir");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir proposta";
+      
+      if (errorCode === "PROPOSAL_NOT_FOUND") {
+        alert("Proposta não encontrada");
+      } else {
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
     }
   }
 
@@ -147,6 +143,20 @@ export default function PropostasPage() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} />
               ))}
+            </div>
+          ) : list.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Nenhuma proposta encontrada</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-md">
+                Comece criando sua primeira proposta comercial.
+              </p>
+              <Button asChild className="gap-2">
+                <Link href="/dashboard/propostas/novo">
+                  <Plus className="h-4 w-4" />
+                  Nova Proposta
+                </Link>
+              </Button>
             </div>
           ) : (
             <>

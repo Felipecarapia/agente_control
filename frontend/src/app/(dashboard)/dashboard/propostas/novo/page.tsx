@@ -33,14 +33,19 @@ export default function NovaPropostaPage() {
 
   useEffect(() => {
     Promise.all([
-      api<Cliente[]>("/api/v1/clientes"),
-      api<Projeto[]>("/api/v1/projetos"),
+      api<Cliente[]>("/api/v1/clientes").catch(() => []),
+      api<Projeto[]>("/api/v1/projetos").catch(() => []),
     ])
       .then(([c, p]) => {
-        setClientes(c);
-        setProjetos(p);
+        // apiClient já extrai data do formato {ok: true, data: [...]}
+        setClientes(Array.isArray(c) ? c : []);
+        setProjetos(Array.isArray(p) ? p : []);
       })
-      .catch(console.error);
+      .catch(() => {
+        // Silenciar erro - não quebrar UX
+        setClientes([]);
+        setProjetos([]);
+      });
   }, []);
 
   const projetosDoCliente = form.cliente_id
@@ -69,9 +74,21 @@ export default function NovaPropostaPage() {
       });
       router.push("/dashboard/propostas");
       router.refresh();
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar");
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar proposta";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "PROPOSAL_DUPLICATE") {
+        alert(`Proposta duplicada: ${errorMsg}`);
+      } else if (errorCode === "CLIENT_NOT_FOUND") {
+        alert("Cliente não encontrado.");
+      } else if (errorCode === "PROJECT_NOT_FOUND") {
+        alert("Projeto não encontrado.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }

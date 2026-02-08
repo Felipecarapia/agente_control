@@ -56,7 +56,10 @@ export default function BuilderPropostaPage() {
 
   function showNotice(type: "success" | "error" | "info", message: string) {
     setNotice({ type, message });
-    window.setTimeout(() => setNotice(null), 2500);
+    // Proteger contra SSR: só usar setTimeout no client
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => setNotice(null), 2500);
+    }
   }
 
   useEffect(() => {
@@ -74,7 +77,10 @@ export default function BuilderPropostaPage() {
   function applyTemplate(tid: TemplateId) {
     const preset = getTemplatePreset(tid);
     if (sections.length > 0 && preset.length > 0) {
-      if (!window.confirm("Aplicar modelo vai substituir o conteúdo atual. Continuar?")) return;
+      // Proteger contra SSR: só usar window.confirm no client
+      if (typeof window !== "undefined" && !window.confirm("Aplicar modelo vai substituir o conteúdo atual. Continuar?")) {
+        return;
+      }
     }
     setTemplateId(tid);
     setSections(preset);
@@ -137,9 +143,15 @@ export default function BuilderPropostaPage() {
       });
       setEditIndex(null);
       showNotice("success", "Página salva.");
-    } catch (err) {
-      console.error(err);
-      showNotice("error", err instanceof Error ? err.message : "Erro ao salvar");
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar página";
+      
+      if (errorCode === "PROPOSAL_NOT_FOUND") {
+        showNotice("error", "Proposta não encontrada.");
+      } else {
+        showNotice("error", errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -155,14 +167,28 @@ export default function BuilderPropostaPage() {
         });
         currentSlug = res.slug;
         setProposta((p) => (p ? { ...p, slug: currentSlug } : null));
-      } catch (err) {
-        console.error(err);
-        showNotice("error", err instanceof Error ? err.message : "Erro ao gerar link");
+      } catch (err: any) {
+        const errorCode = err?.code || "UNKNOWN";
+        const errorMsg = err?.message || "Erro ao gerar link";
+        
+        if (errorCode === "PROPOSAL_NOT_FOUND") {
+          showNotice("error", "Proposta não encontrada.");
+        } else if (errorCode === "SLUG_GENERATION_FAILED") {
+          showNotice("error", "Não foi possível gerar um link único. Tente novamente.");
+        } else {
+          showNotice("error", errorMsg);
+        }
         return;
       }
     }
-    const base = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${base}/p/${currentSlug}`;
+    
+    // Proteger contra SSR: só usar window/navigator no client
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      showNotice("error", "Link gerado, mas não foi possível copiar automaticamente.");
+      return;
+    }
+    
+    const url = `${window.location.origin}/p/${currentSlug}`;
     try {
       await navigator.clipboard.writeText(url);
       setLinkCopied(true);

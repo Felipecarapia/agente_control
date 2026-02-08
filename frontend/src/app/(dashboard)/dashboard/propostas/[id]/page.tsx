@@ -77,12 +77,13 @@ export default function EditarPropostaPage() {
     if (!id || isNaN(id)) return;
     Promise.all([
       api<Proposta>(`/api/v1/propostas/${id}`),
-      api<Cliente[]>("/api/v1/clientes"),
-      api<Projeto[]>("/api/v1/projetos"),
+      api<Cliente[]>("/api/v1/clientes").catch(() => []),
+      api<Projeto[]>("/api/v1/projetos").catch(() => []),
     ])
       .then(([p, c, pr]) => {
-        setClientes(c);
-        setProjetos(pr);
+        // apiClient já extrai data do formato {ok: true, data: {...}}
+        setClientes(Array.isArray(c) ? c : []);
+        setProjetos(Array.isArray(pr) ? pr : []);
         setSlug(p.slug ?? null);
         setForm({
           titulo: p.titulo || "",
@@ -96,8 +97,16 @@ export default function EditarPropostaPage() {
         setLandingSections(
           Array.isArray(p.landing_content) ? p.landing_content : []
         );
+        setLoadErr(null);
       })
-      .catch((e) => setLoadErr(e instanceof Error ? e.message : "Erro ao carregar"));
+      .catch((e: any) => {
+        const errorCode = e?.code || "UNKNOWN";
+        if (errorCode === "PROPOSAL_NOT_FOUND") {
+          setLoadErr("Proposta não encontrada");
+        } else {
+          setLoadErr(e instanceof Error ? e.message : "Erro ao carregar");
+        }
+      });
   }, [id]);
 
   const projetosDoCliente = form.cliente_id
@@ -123,9 +132,23 @@ export default function EditarPropostaPage() {
       });
       router.push("/dashboard/propostas");
       router.refresh();
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar");
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar proposta";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "PROPOSAL_NOT_FOUND") {
+        alert("Proposta não encontrada.");
+      } else if (errorCode === "PROPOSAL_DUPLICATE") {
+        alert(`Proposta duplicada: ${errorMsg}`);
+      } else if (errorCode === "CLIENT_NOT_FOUND") {
+        alert("Cliente não encontrado.");
+      } else if (errorCode === "PROJECT_NOT_FOUND") {
+        alert("Projeto não encontrado.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -141,9 +164,15 @@ export default function EditarPropostaPage() {
       });
       setEditSectionIndex(null);
       alert("Página salva.");
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar");
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar página";
+      
+      if (errorCode === "PROPOSAL_NOT_FOUND") {
+        alert("Proposta não encontrada.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -196,13 +225,28 @@ export default function EditarPropostaPage() {
         });
         currentSlug = res.slug;
         setSlug(currentSlug);
-      } catch (err) {
-        console.error(err);
-        alert(err instanceof Error ? err.message : "Erro ao gerar link");
+      } catch (err: any) {
+        const errorCode = err?.code || "UNKNOWN";
+        const errorMsg = err?.message || "Erro ao gerar link";
+        
+        if (errorCode === "PROPOSAL_NOT_FOUND") {
+          alert("Proposta não encontrada.");
+        } else if (errorCode === "SLUG_GENERATION_FAILED") {
+          alert("Não foi possível gerar um link único. Tente novamente.");
+        } else {
+          alert(`Erro ao gerar link: ${errorMsg}`);
+        }
         return;
       }
     }
-    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/p/${currentSlug}`;
+    
+    // Proteger contra SSR: só usar window/navigator no client
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      alert("Link gerado, mas não foi possível copiar automaticamente.");
+      return;
+    }
+    
+    const url = `${window.location.origin}/p/${currentSlug}`;
     try {
       await navigator.clipboard.writeText(url);
       setLinkCopied(true);
