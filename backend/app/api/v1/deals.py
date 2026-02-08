@@ -569,177 +569,189 @@ def create_deal(
     return success_response(data=_format_deal_response(deal), status_code=201)
 
 
-@router.post("/from-client", response_model=DealResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/from-client", status_code=status.HTTP_201_CREATED)
 def create_deal_from_client(
     data: DealCreateFromClient,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Cria um deal a partir de um cliente arrastado para uma coluna."""
-    # Verificar se cliente existe
-    client = db.query(Cliente).filter(Cliente.id == data.client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
-    # Buscar pipeline padrão ou primeiro pipeline disponível
-    pipeline = None
-    if data.pipeline_id:
-        pipeline = db.query(Pipeline).filter(Pipeline.id == data.pipeline_id).first()
-    
-    if not pipeline:
-        pipeline = db.query(Pipeline).filter(Pipeline.is_default == True).first()
+    try:
+        # Verificar se cliente existe
+        client = db.query(Cliente).filter(Cliente.id == data.client_id).first()
+        if not client:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        
+        # Buscar pipeline padrão ou primeiro pipeline disponível
+        pipeline = None
+        if data.pipeline_id:
+            pipeline = db.query(Pipeline).filter(Pipeline.id == data.pipeline_id).first()
+        
         if not pipeline:
-            pipeline = db.query(Pipeline).first()
-    
-    if not pipeline:
-        # Se não há pipeline, criar um padrão automaticamente
-        from app.core.bootstrap import ensure_default_pipeline
-        ensure_default_pipeline(db)
-        pipeline = db.query(Pipeline).filter(Pipeline.is_default == True).first()
+            pipeline = db.query(Pipeline).filter(Pipeline.is_default == True).first()
+            if not pipeline:
+                pipeline = db.query(Pipeline).first()
+        
         if not pipeline:
+            # Se não há pipeline, criar um padrão automaticamente
+            from app.core.bootstrap import ensure_default_pipeline
+            ensure_default_pipeline(db)
+            pipeline = db.query(Pipeline).filter(Pipeline.is_default == True).first()
+            if not pipeline:
+                return error_response(
+                    code="NO_PIPELINE",
+                    message="Nenhum pipeline encontrado. Um pipeline padrão será criado automaticamente.",
+                    status_code=500
+                )
+        
+        # Verificar se stage existe (pode ser stage padrão ou stage do pipeline)
+        stage = None
+        if data.stage_id:
+            stage = db.query(PipelineStage).filter(
+                PipelineStage.id == data.stage_id,
+                PipelineStage.pipeline_id == pipeline.id
+            ).first()
+        
+        if not stage:
+            # Buscar primeira stage do pipeline
+            stage = db.query(PipelineStage).filter(
+                PipelineStage.pipeline_id == pipeline.id
+            ).order_by(PipelineStage.order_index).first()
+        
+        # Se ainda não encontrou stage, usar a primeira stage disponível
+        if not stage:
+            stage = db.query(PipelineStage).filter(
+                PipelineStage.pipeline_id == pipeline.id
+            ).first()
+        
+        if not stage:
             return error_response(
-                code="NO_PIPELINE",
-                message="Nenhum pipeline encontrado. Um pipeline padrão será criado automaticamente.",
-                status_code=500
+                code="NO_STAGE",
+                message="Nenhuma etapa encontrada no pipeline.",
+                status_code=404
             )
-    
-    # Verificar se stage existe (pode ser stage padrão ou stage do pipeline)
-    stage = None
-    if data.stage_id:
-        stage = db.query(PipelineStage).filter(
-            PipelineStage.id == data.stage_id,
-            PipelineStage.pipeline_id == pipeline.id
+        
+        # Verificar se já existe deal OPEN para este cliente neste pipeline
+        existing_deal = db.query(Deal).filter(
+            Deal.client_id == data.client_id,
+            Deal.pipeline_id == pipeline.id,
+            text("deals.status = 'open'")  # Usar text() para garantir string literal "open"
         ).first()
-    
-    if not stage:
-        # Buscar primeira stage do pipeline
-        stage = db.query(PipelineStage).filter(
-            PipelineStage.pipeline_id == pipeline.id
-        ).order_by(PipelineStage.order_index).first()
-    
-    # Se ainda não encontrou stage, usar a primeira stage disponível
-    if not stage:
-        stage = db.query(PipelineStage).filter(
-            PipelineStage.pipeline_id == pipeline.id
-        ).first()
-    
-    if not stage:
-        return error_response(
-            code="NO_STAGE",
-            message="Nenhuma etapa encontrada no pipeline.",
-            status_code=404
-        )
-    
-    # Verificar se já existe deal OPEN para este cliente neste pipeline
-    existing_deal = db.query(Deal).filter(
-        Deal.client_id == data.client_id,
-        Deal.pipeline_id == pipeline.id,
-        text("deals.status = 'open'")  # Usar text() para garantir string literal "open"
-    ).first()
-    if existing_deal:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cliente já possui um deal aberto neste pipeline (Deal #{existing_deal.id})"
-        )
-    
-    # Calcular position_index (colocar no topo da coluna)
-    min_position = db.query(func.min(Deal.position_index)).filter(
-        Deal.stage_id == stage.id
-    ).scalar()
-    if min_position is not None:
-        position_index = Decimal(str(min_position)) - Decimal("1")
-    else:
-        position_index = Decimal("0")
-    
-    # Criar deal
-    deal = Deal(
-        pipeline_id=pipeline.id,
-        stage_id=stage.id,
-        client_id=data.client_id,
-        title=data.title,
-        value_cents=data.value_cents,
-        currency=data.currency,
-        probability=data.probability,
-        expected_close_date=data.expected_close_date,
-        priority=data.priority,
+        if existing_deal:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cliente já possui um deal aberto neste pipeline (Deal #{existing_deal.id})"
+            )
+        
+        # Calcular position_index (colocar no topo da coluna)
+        min_position = db.query(func.min(Deal.position_index)).filter(
+            Deal.stage_id == stage.id
+        ).scalar()
+        if min_position is not None:
+            position_index = Decimal(str(min_position)) - Decimal("1")
+        else:
+            position_index = Decimal("0")
+        
+        # Criar deal
+        deal = Deal(
+            pipeline_id=pipeline.id,
+            stage_id=stage.id,
+            client_id=data.client_id,
+            title=data.title,
+            value_cents=data.value_cents,
+            currency=data.currency,
+            probability=data.probability,
+            expected_close_date=data.expected_close_date,
+            priority=data.priority,
             status=DealStatus.OPEN.value,  # Usar .value para obter "open" (minúsculas)
-        source=data.source,
-        position_index=position_index,
-        created_by_user_id=current_user.id
-    )
-    db.add(deal)
-    db.flush()
-    
-    # Adicionar assignees (default: usuário atual se não especificado)
-    assigned_ids = data.assigned_user_ids if data.assigned_user_ids else [current_user.id]
-    for user_id in assigned_ids:
-        assignee = DealAssignee(deal_id=deal.id, user_id=user_id, role="collab")
-        db.add(assignee)
-    
-    # Adicionar tags
-    for tag_id in data.tag_ids:
-        tag = db.query(DealTag).filter(DealTag.id == tag_id).first()
-        if tag:
-            tag_link = DealTagLink(deal_id=deal.id, tag_id=tag_id)
-            db.add(tag_link)
-    
-    # Adicionar nota inicial se fornecida
-    if data.initial_note:
-        note = DealNote(
-            deal_id=deal.id,
-            author_user_id=current_user.id,
-            content=data.initial_note
-        )
-        db.add(note)
-    
-    # Criar atividade de follow-up se solicitado
-    if data.create_followup_activity and data.followup_due_at:
-        activity = DealActivity(
-            deal_id=deal.id,
-            type=DealActivityType.CUSTOM,
-            title="Follow-up inicial",
-            due_at=data.followup_due_at,
+            source=data.source,
+            position_index=position_index,
             created_by_user_id=current_user.id
         )
-        db.add(activity)
-    
-    # Registrar histórico
-    history = DealStageHistory(
-        deal_id=deal.id,
-        from_stage_id=None,  # Criado diretamente nesta stage
-        to_stage_id=data.stage_id,
-        moved_by_user_id=current_user.id,
-        reason="Criado a partir de cliente arrastado",
-        extra_metadata='{"source": "client_drag", "client_id": ' + str(data.client_id) + '}'
-    )
-    db.add(history)
-    
-    # Auditoria
-    audit = AuditEvent(
-        event_type="DEAL_CREATED_FROM_CLIENT",
-        actor_user_id=current_user.id,
-        context_type="DEAL",
-        context_id=str(deal.id),
-        payload=f'{{"deal_id": {deal.id}, "client_id": {data.client_id}, "title": "{deal.title}"}}'
-    )
-    db.add(audit)
-    
-    db.commit()
-    db.refresh(deal)
-    
-    # Carregar relacionamentos
-    deal = db.query(Deal).options(
-        joinedload(Deal.client),
-        joinedload(Deal.assignees).joinedload(DealAssignee.user),
-        joinedload(Deal.tag_links).joinedload(DealTagLink.tag),
-        joinedload(Deal.activities).joinedload(DealActivity.created_by),
-        joinedload(Deal.notes).joinedload(DealNote.author),
-        joinedload(Deal.stage_history).joinedload(DealStageHistory.moved_by),
-        joinedload(Deal.stage_history).joinedload(DealStageHistory.from_stage),
-        joinedload(Deal.stage_history).joinedload(DealStageHistory.to_stage),
-    ).filter(Deal.id == deal.id).first()
-    
-    return _format_deal_response(deal)
+        db.add(deal)
+        db.flush()
+        
+        # Adicionar assignees (default: usuário atual se não especificado)
+        assigned_ids = data.assigned_user_ids if data.assigned_user_ids else [current_user.id]
+        for user_id in assigned_ids:
+            assignee = DealAssignee(deal_id=deal.id, user_id=user_id, role="collab")
+            db.add(assignee)
+        
+        # Adicionar tags
+        for tag_id in data.tag_ids:
+            tag = db.query(DealTag).filter(DealTag.id == tag_id).first()
+            if tag:
+                tag_link = DealTagLink(deal_id=deal.id, tag_id=tag_id)
+                db.add(tag_link)
+        
+        # Adicionar nota inicial se fornecida
+        if data.initial_note:
+            note = DealNote(
+                deal_id=deal.id,
+                author_user_id=current_user.id,
+                content=data.initial_note
+            )
+            db.add(note)
+        
+        # Criar atividade de follow-up se solicitado
+        if data.create_followup_activity and data.followup_due_at:
+            activity = DealActivity(
+                deal_id=deal.id,
+                type=DealActivityType.CUSTOM,
+                title="Follow-up inicial",
+                due_at=data.followup_due_at,
+                created_by_user_id=current_user.id
+            )
+            db.add(activity)
+        
+        # Registrar histórico
+        history = DealStageHistory(
+            deal_id=deal.id,
+            from_stage_id=None,  # Criado diretamente nesta stage
+            to_stage_id=stage.id,  # Usar stage.id ao invés de data.stage_id (pode ser None)
+            moved_by_user_id=current_user.id,
+            reason="Criado a partir de cliente arrastado",
+            extra_metadata='{"source": "client_drag", "client_id": ' + str(data.client_id) + '}'
+        )
+        db.add(history)
+        
+        # Auditoria
+        audit = AuditEvent(
+            event_type="DEAL_CREATED_FROM_CLIENT",
+            actor_user_id=current_user.id,
+            context_type="DEAL",
+            context_id=str(deal.id),
+            payload=f'{{"deal_id": {deal.id}, "client_id": {data.client_id}, "title": "{deal.title}"}}'
+        )
+        db.add(audit)
+        
+        db.commit()
+        db.refresh(deal)
+        
+        # Carregar relacionamentos
+        deal = db.query(Deal).options(
+            joinedload(Deal.client),
+            joinedload(Deal.assignees).joinedload(DealAssignee.user),
+            joinedload(Deal.tag_links).joinedload(DealTagLink.tag),
+            joinedload(Deal.activities).joinedload(DealActivity.created_by),
+            joinedload(Deal.notes).joinedload(DealNote.author),
+            joinedload(Deal.stage_history).joinedload(DealStageHistory.moved_by),
+            joinedload(Deal.stage_history).joinedload(DealStageHistory.from_stage),
+            joinedload(Deal.stage_history).joinedload(DealStageHistory.to_stage),
+        ).filter(Deal.id == deal.id).first()
+        
+        return success_response(data=_format_deal_response(deal), status_code=201)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao criar deal from-client: {e}", exc_info=True)
+        return error_response(
+            code="INTERNAL_ERROR",
+            message=f"Erro ao criar deal: {str(e)}",
+            status_code=500
+        )
 
 # Endpoint move_deal para adicionar em deals.py
 # Adicionar após a função create_deal_from_client
