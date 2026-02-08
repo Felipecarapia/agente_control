@@ -26,6 +26,7 @@ class Cliente(Base):
     bairro = Column(String(100), nullable=True)
     cidade = Column(String(100), nullable=True)
     estado = Column(String(2), nullable=True)
+    logo_url = Column(String(1000), nullable=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -34,3 +35,13 @@ class Cliente(Base):
     projetos = relationship("Projeto", back_populates="cliente")
     propostas = relationship("Proposta", back_populates="cliente")
     contratos = relationship("Contrato", back_populates="cliente")
+
+    # Onboarding
+    onboarding = relationship("ClienteOnboarding", back_populates="cliente", uselist=False, cascade="all, delete-orphan")
+    meta_whatsapp = relationship("ClienteMetaWhatsapp", back_populates="cliente", uselist=False, cascade="all, delete-orphan")
+    contatos_operacionais = relationship("ClienteContatoOperacional", back_populates="cliente", cascade="all, delete-orphan")
+
+    # Documentos, Imagens e Cronograma
+    documentos_rag = relationship("ClienteDocumentoRAG", back_populates="cliente", cascade="all, delete-orphan")
+    imagens = relationship("ClienteImagem", back_populates="cliente", cascade="all, delete-orphan")
+    cronograma_etapas = relationship("ClienteCronogramaEtapa", back_populates="cliente", cascade="all, delete-orphan", order_by="ClienteCronogramaEtapa.ordem")

@@ -20,6 +20,7 @@ class ClienteBase(BaseModel):
     bairro: str | None = None
     cidade: str | None = None
     estado: str | None = None
+    logo_url: str | None = None
 
 
 class ClienteCreate(ClienteBase):
@@ -44,6 +45,7 @@ class ClienteUpdate(BaseModel):
     bairro: str | None = None
     cidade: str | None = None
     estado: str | None = None
+    logo_url: str | None = None
 
 
 class ClienteResponse(ClienteBase):

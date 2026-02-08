@@ -9,7 +9,13 @@ from app.models.task_notion import (
 from app.models.proposta import Proposta, ProposalSection, ProposalPricingPlan, ProposalStatusEvent, EmailOutbox
 from app.models.pre_proposta import PreProposta, PrePropostaAnswer, PrePropostaTemplate
 from app.models.contrato import Contrato
+# Tracking (compatibilidade com main)
 from app.models.tracking import ProposalSession, ProposalEvent as ProposalEventLegacy, ProposalAnalyticsSummary
+# Módulos novos da main
+from app.models.onboarding import ClienteOnboarding, ClienteMetaWhatsapp, ClienteContatoOperacional
+from app.models.cliente_docs import ClienteDocumentoRAG, ClienteImagem, ClienteCronogramaEtapa, ClienteCronogramaItem
+from app.models.lead import Lead
+# Módulos novos criados localmente
 from app.models.role import Role, UserRole
 from app.models.permission import Permission, RolePermission
 from app.models.notificacao import Notification, NotificationRecipient, NotificationType, NotificationPriority
@@ -27,6 +33,11 @@ __all__ = [
     "PreProposta", "PrePropostaAnswer", "PrePropostaTemplate",
     "Contrato",
     "ProposalSession", "ProposalEventLegacy", "ProposalAnalyticsSummary",
+    # Módulos novos da main
+    "ClienteOnboarding", "ClienteMetaWhatsapp", "ClienteContatoOperacional",
+    "ClienteDocumentoRAG", "ClienteImagem", "ClienteCronogramaEtapa", "ClienteCronogramaItem",
+    "Lead",
+    # Módulos novos criados localmente
     "Role", "UserRole",
     "Permission", "RolePermission",
     "Notification", "NotificationRecipient", "NotificationType", "NotificationPriority",

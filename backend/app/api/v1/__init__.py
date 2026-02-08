@@ -8,6 +8,12 @@ from app.api.v1.tarefas import router as tarefas_router
 from app.api.v1.propostas import router as propostas_router
 from app.api.v1.contratos import router as contratos_router
 from app.api.v1.tracking import router as tracking_router
+# Módulos novos da main
+from app.api.v1.onboarding import router as onboarding_router
+from app.api.v1.cliente_docs import router as cliente_docs_router
+from app.api.v1.leads import router as leads_router
+from app.api.v1.leads_public import router as leads_public_router
+# Módulos novos criados localmente
 from app.api.v1.notificacoes import router as notificacoes_router
 from app.api.v1.mensagens import router as mensagens_router
 from app.api.v1.stream import router as stream_router
@@ -31,6 +37,12 @@ api_router.include_router(tarefas_router)
 api_router.include_router(propostas_router)
 api_router.include_router(contratos_router)
 api_router.include_router(tracking_router)
+# Módulos novos da main
+api_router.include_router(onboarding_router)
+api_router.include_router(cliente_docs_router)
+api_router.include_router(leads_router)
+api_router.include_router(leads_public_router)
+# Módulos novos criados localmente
 api_router.include_router(notificacoes_router)
 api_router.include_router(mensagens_router)
 api_router.include_router(stream_router)
