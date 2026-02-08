@@ -65,9 +65,21 @@ export default function NovoClientePage() {
       });
       router.push("/dashboard/clientes");
       router.refresh();
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar");
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar cliente";
+      const errorDetails = err?.details;
+      
+      // Tratar erros específicos
+      if (errorCode === "VALIDATION_ERROR" && errorDetails) {
+        // Mostrar erros de validação
+        const validationErrors = errorDetails.map((d: any) => `${d.loc?.join(".")}: ${d.msg}`).join(", ");
+        alert(`Erro de validação: ${validationErrors}`);
+      } else if (errorCode === "CLIENT_DUPLICATE") {
+        alert(`Cliente duplicado: ${errorMsg}`);
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }

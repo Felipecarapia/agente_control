@@ -49,19 +49,12 @@ export default function ClientesPage() {
   async function loadList() {
     setLoading(true);
     try {
-      const response = await api<any>("/api/v1/clientes");
-      // Verificar se resposta está no formato padronizado
-      const data = response?.ok === true ? (response.data || []) : (Array.isArray(response) ? response : []);
-      setList(Array.isArray(data) ? data : []);
+      const response = await api<Cliente[]>("/api/v1/clientes");
+      // apiClient já extrai data do formato {ok: true, data: [...]}
+      setList(Array.isArray(response) ? response : []);
     } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      const errorCode = (e as any)?.code || "UNKNOWN";
-      console.error("Erro ao carregar clientes:", {
-        message: errorMsg,
-        code: errorCode,
-        error: e,
-      });
-      setList([]); // Garantir que lista seja array vazio em caso de erro
+      // Silenciar erro - não quebrar UX
+      setList([]);
     } finally {
       setLoading(false);
     }
@@ -77,9 +70,15 @@ export default function ClientesPage() {
       await api(`/api/v1/clientes/${deleteId}`, { method: "DELETE" });
       setDeleteId(null);
       loadList();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao excluir");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir cliente";
+      
+      if (errorCode === "CLIENT_NOT_FOUND") {
+        alert("Cliente não encontrado");
+      } else {
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
     }
   }
 
