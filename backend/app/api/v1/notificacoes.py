@@ -56,31 +56,35 @@ def list_notifications(
         # Adicionar nome do autor
         items = []
         for recipient in result["items"]:
-            item_dict = {
-                "id": recipient.id,
-                "notification_id": recipient.notification_id,
-                "recipient_user_id": recipient.recipient_user_id,
-                "delivered_at": recipient.delivered_at.isoformat() if recipient.delivered_at else None,
-                "read_at": recipient.read_at.isoformat() if recipient.read_at else None,
-                "archived_at": recipient.archived_at.isoformat() if recipient.archived_at else None,
-                "pinned_at": recipient.pinned_at.isoformat() if recipient.pinned_at else None,
-                "muted": recipient.muted,
-                "notification": {
-                    "id": recipient.notification.id,
-                    "type": recipient.notification.type,
-                    "title": recipient.notification.title,
-                    "body": recipient.notification.body,
-                    "priority": recipient.notification.priority,
-                    "author_user_id": recipient.notification.author_user_id,
-                    "context_type": recipient.notification.context_type,
-                    "context_id": recipient.notification.context_id,
-                    "action_url": recipient.notification.action_url,
-                    "metadata": recipient.notification.extra_data,  # Mapear extra_data para metadata na API
-                    "created_at": recipient.notification.created_at.isoformat() if recipient.notification.created_at else None,
-                },
-                "author_name": recipient.notification.author.nome if recipient.notification.author else None,
-            }
-            items.append(item_dict)
+            try:
+                item_dict = {
+                    "id": recipient.id,
+                    "notification_id": str(recipient.notification_id) if recipient.notification_id else None,
+                    "recipient_user_id": recipient.recipient_user_id,
+                    "delivered_at": recipient.delivered_at.isoformat() if recipient.delivered_at else None,
+                    "read_at": recipient.read_at.isoformat() if recipient.read_at else None,
+                    "archived_at": recipient.archived_at.isoformat() if recipient.archived_at else None,
+                    "pinned_at": recipient.pinned_at.isoformat() if recipient.pinned_at else None,
+                    "muted": recipient.muted,
+                    "notification": {
+                        "id": str(recipient.notification.id) if recipient.notification else None,
+                        "type": recipient.notification.type if recipient.notification else None,
+                        "title": recipient.notification.title if recipient.notification else None,
+                        "body": recipient.notification.body if recipient.notification else None,
+                        "priority": recipient.notification.priority if recipient.notification else None,
+                        "author_user_id": recipient.notification.author_user_id if recipient.notification else None,
+                        "context_type": recipient.notification.context_type if recipient.notification else None,
+                        "context_id": recipient.notification.context_id if recipient.notification else None,
+                        "action_url": recipient.notification.action_url if recipient.notification else None,
+                        "metadata": recipient.notification.extra_data if recipient.notification else None,  # Mapear extra_data para metadata na API
+                        "created_at": recipient.notification.created_at.isoformat() if recipient.notification and recipient.notification.created_at else None,
+                    },
+                    "author_name": recipient.notification.author.nome if recipient.notification and recipient.notification.author else None,
+                }
+                items.append(item_dict)
+            except Exception:
+                # Se houver erro ao processar um item, pular (não quebrar toda a lista)
+                continue
 
         return success_response(
             data={
