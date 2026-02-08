@@ -14,7 +14,7 @@ from app.core.rbac import require_role, ROLE_ADMIN, has_role, has_any_role, ROLE
 from app.models.usuario import Usuario
 from app.models.pipeline import (
     Pipeline, PipelineStage, Deal, DealAssignee, DealTag, DealTagLink,
-    DealActivity, DealNote, DealStageHistory, DealPriority, DealStatus, DealSource
+    DealActivity, DealActivityType, DealNote, DealStageHistory, DealPriority, DealStatus, DealSource
 )
 from app.models.cliente import Cliente
 from app.models.mensagem import AuditEvent
