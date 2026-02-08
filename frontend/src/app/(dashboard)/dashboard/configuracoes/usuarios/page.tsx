@@ -63,6 +63,8 @@ export default function UsuariosPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState({ email: "", nome: "", password: "", ativo: true });
 
+  const [hasPermission, setHasPermission] = useState(true);
+
   async function loadList() {
     setLoading(true);
     try {
@@ -70,20 +72,25 @@ export default function UsuariosPage() {
         api<Usuario[]>("/api/v1/usuarios"),
         api<Role[]>("/api/v1/roles").catch(() => []),
       ]);
-      setList(usersData);
-      setRoles(rolesData);
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      const errorCode = (e as any)?.code || "UNKNOWN";
-      console.error("Erro ao carregar usuários:", {
-        message: errorMsg,
-        code: errorCode,
-        error: e,
-      });
-      if (errorMsg.includes("Failed to fetch") || errorMsg.includes("Network") || errorCode === "NETWORK_ERROR") {
-        console.warn("Backend pode estar offline ou as tabelas não foram criadas");
+      // apiClient já extrai data do formato {ok: true, data: [...]}
+      setList(Array.isArray(usersData) ? usersData : []);
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
+      setHasPermission(true);
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const status = e?.status || 0;
+      
+      // Se for 403, usuário não tem permissão
+      if (status === 403 || errorCode === "FORBIDDEN") {
+        setHasPermission(false);
+        setList([]);
+        setRoles([]);
+      } else {
+        // Outros erros: silenciar e mostrar lista vazia
+        setList([]);
+        setRoles([]);
+        setHasPermission(true);
       }
-      setList([]);
     } finally {
       setLoading(false);
     }
@@ -119,9 +126,19 @@ export default function UsuariosPage() {
       }
       setOpen(false);
       loadList();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao salvar");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao salvar usuário";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "EMAIL_ALREADY_EXISTS") {
+        alert(`Email já cadastrado: ${errorMsg}`);
+      } else if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para criar/editar usuários.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     }
   }
 
@@ -131,9 +148,19 @@ export default function UsuariosPage() {
       await api(`/api/v1/usuarios/${deleteId}`, { method: "DELETE" });
       setDeleteId(null);
       loadList();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao excluir");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir usuário";
+      
+      if (errorCode === "USER_NOT_FOUND") {
+        alert("Usuário não encontrado.");
+      } else if (errorCode === "CANNOT_DELETE_SELF") {
+        alert("Não é possível deletar seu próprio usuário.");
+      } else if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para deletar usuários.");
+      } else {
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
     }
   }
 
@@ -143,8 +170,8 @@ export default function UsuariosPage() {
       const userRolesData = await api<{ user_id: number; roles: Role[] }>(`/api/v1/roles/users/${user.id}`);
       setSelectedUserRoles(new Set(userRolesData.roles.map((r) => r.id)));
       setRolesOpen(true);
-    } catch (e) {
-      console.error("Erro ao carregar roles do usuário:", e);
+    } catch (e: any) {
+      // Silenciar erro - abrir modal mesmo sem roles
       setSelectedUserRoles(new Set());
       setRolesOpen(true);
     }
@@ -191,9 +218,15 @@ export default function UsuariosPage() {
       setRolesOpen(false);
       setSelectedUserId(null);
       loadList();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao salvar cargos");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao salvar cargos";
+      
+      if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para gerenciar cargos.");
+      } else {
+        alert(`Erro ao salvar cargos: ${errorMsg}`);
+      }
     }
   }
 
@@ -209,7 +242,29 @@ export default function UsuariosPage() {
       <Card>
         <CardHeader><CardTitle>Lista</CardTitle></CardHeader>
         <CardContent className="p-0 pt-0">
-          {loading ? <p className="p-4 text-muted-foreground">Carregando...</p> : (
+          {loading ? (
+            <p className="p-4 text-muted-foreground">Carregando...</p>
+          ) : !hasPermission ? (
+            <div className="p-8 text-center">
+              <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Sem permissão</h3>
+              <p className="text-sm text-muted-foreground">
+                Você não tem permissão para visualizar usuários. Entre em contato com um administrador.
+              </p>
+            </div>
+          ) : list.length === 0 ? (
+            <div className="p-8 text-center">
+              <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Nenhum usuário encontrado</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Comece criando seu primeiro usuário.
+              </p>
+              <Button onClick={openCreate} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo usuário
+              </Button>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
