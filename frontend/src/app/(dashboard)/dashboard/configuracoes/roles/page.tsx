@@ -110,26 +110,23 @@ export default function RolesPage() {
         api<Permission[]>("/api/v1/roles/permissions/all").catch(() => []),
       ]);
       
+      // apiClient já extrai data do formato {ok: true, data: [...]}
       setRoles(Array.isArray(rolesData) ? rolesData : []);
       setPermissions(typeof permissionsData === "object" && permissionsData !== null ? (permissionsData as PermissionsByModule) : {});
       setAllPermissionsList(Array.isArray(allPermsData) ? allPermsData : []);
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      const errorCode = (e as any)?.code || "UNKNOWN";
-      console.error("Erro ao carregar dados:", {
-        message: errorMsg,
-        code: errorCode,
-        error: e,
-      });
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const status = e?.status || 0;
       
       // Se for erro de autenticação, redirecionar
-      if (errorCode === "UNAUTHORIZED" || errorMsg.includes("401")) {
+      if (errorCode === "UNAUTHORIZED" || status === 401) {
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }
         return;
       }
       
+      // Silenciar outros erros - não quebrar UX
       setPermissions({});
       setRoles([]);
       setAllPermissionsList([]);
@@ -159,8 +156,8 @@ export default function RolesPage() {
       const perms = roleWithPerms?.permissions || [];
       setSelectedPermissions(new Set(perms.map((p: Permission) => p.id)));
       setPermissionsOpen(true);
-    } catch (e) {
-      console.error("Erro ao carregar permissões:", e);
+    } catch (e: any) {
+      // Silenciar erro - abrir modal mesmo sem permissões
       setSelectedPermissions(new Set());
       setPermissionsOpen(true);
     }
@@ -181,14 +178,28 @@ export default function RolesPage() {
       }
       setOpen(false);
       loadData();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao salvar");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao salvar role";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "ROLE_DUPLICATE") {
+        alert(`Role duplicada: ${errorMsg}`);
+      } else if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para criar/editar roles.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     }
   }
 
   async function savePermissions() {
     if (!selectedRoleId) return;
+    
+    // Snapshot para rollback
+    const previousPermissions = new Set(selectedPermissions);
+    
     try {
       await api(`/api/v1/roles/${selectedRoleId}/permissions`, {
         method: "PUT",
@@ -196,33 +207,43 @@ export default function RolesPage() {
       });
       setPermissionsOpen(false);
       loadData();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao salvar permissões");
+    } catch (e: any) {
+      // Rollback: restaurar permissões anteriores
+      setSelectedPermissions(previousPermissions);
+      
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao salvar permissões";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique as permissões selecionadas.");
+      } else if (errorCode === "ROLE_NOT_FOUND") {
+        alert("Role não encontrada.");
+      } else if (errorCode === "PERMISSIONS_NOT_FOUND") {
+        alert(`Algumas permissões não foram encontradas: ${errorMsg}`);
+      } else if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para gerenciar permissões.");
+      } else {
+        alert(`Erro ao salvar permissões: ${errorMsg}`);
+      }
     }
   }
 
   async function removeRole() {
     if (!deleteId) return;
     try {
-      console.log(`[DELETE] Tentando excluir role ID: ${deleteId}`);
       await api(`/api/v1/roles/${deleteId}`, { method: "DELETE" });
-      console.log(`[DELETE] Role ${deleteId} excluída com sucesso`);
       setDeleteId(null);
       await loadData();
-    } catch (e) {
-      console.error("[DELETE] Erro ao excluir role:", e);
-      const errorMsg = e instanceof Error ? e.message : "Erro ao excluir role";
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir role";
       
-      if (errorMsg.includes("Failed to fetch") || errorMsg.includes("Erro de conexão")) {
-        alert(`Erro de conexão ao excluir role.\n\nVerifique:\n1. Se o backend está rodando (http://localhost:8000)\n2. Se você está autenticado (faça login novamente)\n3. Abra o console (F12) para mais detalhes`);
-      } else if (errorMsg.includes("401") || errorMsg.includes("Não autorizado")) {
-        alert("Sessão expirada. Redirecionando para login...");
-        window.location.href = "/login";
-      } else if (errorMsg.includes("403")) {
-        alert(`Sem permissão: Você não tem permissão para excluir roles. Apenas administradores podem fazer isso.`);
+      if (errorCode === "ROLE_NOT_FOUND") {
+        alert("Role não encontrada.");
+      } else if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para excluir roles.");
       } else {
-        alert(`Erro ao excluir role: ${errorMsg}`);
+        alert(`Erro ao excluir: ${errorMsg}`);
       }
     }
   }
@@ -289,9 +310,19 @@ export default function RolesPage() {
       }
       setPermissionOpen(false);
       loadData();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao salvar permissão");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao salvar permissão";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "PERMISSION_DUPLICATE") {
+        alert(`Permissão duplicada: ${errorMsg}`);
+      } else if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para criar/editar permissões.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     }
   }
 
@@ -301,9 +332,17 @@ export default function RolesPage() {
       await api(`/api/v1/roles/permissions/${permissionDeleteId}`, { method: "DELETE" });
       setPermissionDeleteId(null);
       loadData();
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Erro ao excluir permissão");
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir permissão";
+      
+      if (errorCode === "PERMISSION_NOT_FOUND") {
+        alert("Permissão não encontrada.");
+      } else if (errorCode === "FORBIDDEN" || e?.status === 403) {
+        alert("Você não tem permissão para excluir permissões.");
+      } else {
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
     }
   }
 

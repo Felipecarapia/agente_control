@@ -10,6 +10,7 @@ from app.models.pipeline import Pipeline, PipelineStage
 from app.models.task_notion import TaskDatabase, TaskProperty, TaskView
 from app.models.usuario import Usuario
 from app.models.role import Role
+from app.models.permission import Permission, RolePermission
 from app.core.rbac import (
     ROLE_ADMIN, ROLE_PROJECT_MANAGER, ROLE_TRAFFIC_MANAGER,
     ROLE_MARKETING_MANAGER, ROLE_MARKETING, ROLE_DEVELOPMENT
@@ -193,6 +194,73 @@ def ensure_default_roles(db):
         return False
 
 
+def ensure_default_permissions(db):
+    """
+    Garante que permissões mínimas existam (IDEMPOTENTE).
+    Cria permissões básicas para cada módulo (create, read, update, delete).
+    """
+    try:
+        # Permissões mínimas por módulo
+        modules = ["clientes", "projetos", "tarefas", "propostas", "contratos", "usuarios", "roles", "notificacoes", "mensagens"]
+        actions = ["create", "read", "update", "delete"]
+        
+        created_count = 0
+        for module in modules:
+            for action in actions:
+                # Verificar se já existe
+                existing = db.query(Permission).filter(
+                    Permission.module == module,
+                    Permission.action == action
+                ).first()
+                
+                if not existing:
+                    # Criar permissão
+                    name = f"{action.capitalize()} {module.capitalize()}"
+                    description = f"Permite {action} em {module}"
+                    permission = Permission(
+                        module=module,
+                        action=action,
+                        name=name,
+                        description=description
+                    )
+                    db.add(permission)
+                    created_count += 1
+        
+        if created_count > 0:
+            db.commit()
+            logger.info(f"✅ {created_count} permissão(ões) padrão criada(s)")
+        
+        # Atribuir todas as permissões à role ADMIN (idempotente)
+        admin_role = db.query(Role).filter(Role.key == ROLE_ADMIN).first()
+        if admin_role:
+            all_permissions = db.query(Permission).all()
+            assigned_count = 0
+            for perm in all_permissions:
+                # Verificar se já está atribuída
+                existing_rp = db.query(RolePermission).filter(
+                    RolePermission.role_id == admin_role.id,
+                    RolePermission.permission_id == perm.id
+                ).first()
+                if not existing_rp:
+                    role_perm = RolePermission(role_id=admin_role.id, permission_id=perm.id)
+                    db.add(role_perm)
+                    assigned_count += 1
+            
+            if assigned_count > 0:
+                db.commit()
+                logger.info(f"✅ {assigned_count} permissão(ões) atribuída(s) à role ADMIN")
+        
+        return created_count > 0
+    except (ProgrammingError, OperationalError) as e:
+        logger.warning(f"⚠️  Não foi possível criar permissões padrão (tabelas podem não existir): {e}")
+        db.rollback()
+        return False
+    except Exception as e:
+        logger.error(f"Erro ao criar permissões padrão: {e}", exc_info=True)
+        db.rollback()
+        return False
+
+
 def ensure_default_contract_statuses(db):
     """
     Garante que status padrão de contratos existam (IDEMPOTENTE).
@@ -213,8 +281,9 @@ def bootstrap():
     """
     db = SessionLocal()
     try:
-        # Ordem importante: roles primeiro (outros podem depender)
+        # Ordem importante: roles primeiro, depois permissões (outros podem depender)
         ensure_default_roles(db)
+        ensure_default_permissions(db)  # Permissões dependem de roles
         ensure_default_pipeline(db)
         ensure_default_task_database(db)
         ensure_default_contract_statuses(db)

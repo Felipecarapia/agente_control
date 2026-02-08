@@ -1,12 +1,15 @@
-from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from typing import Annotated, Optional
+import logging
+from pydantic import ValidationError
+
+from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import ProgrammingError, OperationalError
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.rbac import require_role, ROLE_ADMIN, has_role
-from app.core.response import success_response, error_response
+from app.core.response import success_response, error_response, serialize_data
 from app.models.usuario import Usuario
 from app.models.role import Role, UserRole
 from app.models.permission import Permission, RolePermission
@@ -15,6 +18,7 @@ from app.schemas.permission import (
     PermissionResponse, PermissionCreate, UpdateRolePermissionsRequest
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/roles", tags=["roles"])
 
 
@@ -22,175 +26,243 @@ router = APIRouter(prefix="/roles", tags=["roles"])
 
 @router.get("")
 def list_roles(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Lista todas as roles disponíveis."""
+    """
+    Lista todas as roles disponíveis.
+    Retorna sempre 200 com lista vazia se não houver roles (nunca retorna 500).
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
         roles = db.query(Role).order_by(Role.name).all()
-        # Converter para dict para evitar problemas de serialização
-        roles_data = [
-            {
-                "id": r.id,
-                "key": r.key,
-                "name": r.name,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in roles
-        ]
-        return success_response(data=roles_data if roles_data else [])
+        # Usar serialize_data para serialização correta (datas)
+        roles_data = [serialize_data(r) for r in roles]
+        return success_response(data=roles_data if roles_data else [], request_id=request_id)
     except (ProgrammingError, OperationalError) as e:
         # Tabela não existe ainda
-        return success_response(data=[])
+        logger.warning(f"Tabela de roles não existe: {e}", extra={"request_id": request_id})
+        return success_response(data=[], request_id=request_id)
     except Exception as e:
-        # Outro erro - logar e retornar lista vazia
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao listar roles: {e}", exc_info=True)
-        return success_response(data=[])
+        logger.error(f"Erro ao listar roles: {e}", exc_info=True, extra={"request_id": request_id})
+        # Em caso de erro, retornar lista vazia ao invés de quebrar
+        return success_response(data=[], request_id=request_id)
 
 
 @router.get("/{role_id}")
 def get_role(
+    request: Request,
     role_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Obtém uma role com suas permissões."""
-    role = db.query(Role).filter(Role.id == role_id).first()
-    if not role:
+    """
+    Obtém uma role com suas permissões.
+    Retorna 404 padronizado se role não encontrada.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
+    # Validar ID
+    if role_id <= 0:
         return error_response(
-            code="ROLE_NOT_FOUND",
-            message="Role não encontrada",
-            status_code=404
+            code="INVALID_ID",
+            message="ID da role deve ser maior que 0",
+            status_code=400,
+            request_id=request_id
         )
     
-    # Carregar permissões
-    role_permissions = db.query(RolePermission).filter(
-        RolePermission.role_id == role_id
-    ).all()
-    
-    # Converter permissões para dict
-    permissions_data = []
-    for rp in role_permissions:
-        if rp.permission:
-            permissions_data.append({
-                "id": rp.permission.id,
-                "module": rp.permission.module,
-                "action": rp.permission.action,
-                "name": rp.permission.name,
-                "description": rp.permission.description,
-                "created_at": rp.permission.created_at.isoformat() if rp.permission.created_at else None,
-            })
-    
-    return success_response(data={
-        "id": role.id,
-        "key": role.key,
-        "name": role.name,
-        "created_at": role.created_at.isoformat() if role.created_at else None,
-        "permissions": permissions_data,
-    })
+    try:
+        # Carregar role com permissões usando selectinload para evitar N+1
+        role = db.query(Role).options(
+            selectinload(Role.role_permissions).joinedload(RolePermission.permission)
+        ).filter(Role.id == role_id).first()
+        
+        if not role:
+            return error_response(
+                code="ROLE_NOT_FOUND",
+                message=f"Role com ID {role_id} não encontrada",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Extrair permissões dos relacionamentos carregados
+        permissions_data = []
+        for rp in role.role_permissions:
+            if rp.permission:
+                permissions_data.append(serialize_data(rp.permission))
+        
+        # Serializar role
+        role_dict = serialize_data(role)
+        role_dict["permissions"] = permissions_data
+        
+        return success_response(data=role_dict, request_id=request_id)
+    except Exception as e:
+        logger.error(f"Erro ao buscar role {role_id}: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="INTERNAL_ERROR",
+            message="Erro ao buscar role",
+            status_code=500,
+            request_id=request_id
+        )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_role(
+    request: Request,
     data: RoleCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
-    """Cria uma nova role (apenas ADMIN)."""
-    # Verificar se key já existe
-    existing = db.query(Role).filter(Role.key == data.key.upper()).first()
-    if existing:
-        return error_response(
-            code="ROLE_EXISTS",
-            message=f"Role com key '{data.key}' já existe",
-            status_code=400
-        )
+    """
+    Cria uma nova role (apenas ADMIN).
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 409 se key já existe (duplicado).
+    """
+    request_id = getattr(request.state, "request_id", None)
     
     try:
-        role = Role(key=data.key.upper(), name=data.name)
+        # Validação Pydantic já é feita automaticamente pelo FastAPI
+        # Verificar duplicado: mesmo key
+        key_upper = data.key.upper()
+        existing = db.query(Role).filter(Role.key == key_upper).first()
+        if existing:
+            return error_response(
+                code="ROLE_DUPLICATE",
+                message=f"Role com key '{key_upper}' já existe",
+                details={"existing_role_id": existing.id, "field": "key"},
+                status_code=409,
+                request_id=request_id
+            )
+        
+        # Criar role
+        role = Role(key=key_upper, name=data.name)
         db.add(role)
         db.commit()
         db.refresh(role)
         
-        # Converter para dict
-        role_dict = {
-            "id": role.id,
-            "key": role.key,
-            "name": role.name,
-            "created_at": role.created_at.isoformat() if role.created_at else None,
-        }
+        # Serializar usando serialize_data
+        role_dict = serialize_data(role)
         
-        return success_response(data=role_dict, status_code=201)
+        return success_response(data=role_dict, status_code=status.HTTP_201_CREATED, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao criar role: {e}", exc_info=True)
+        logger.error(f"Erro ao criar role: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
             code="CREATE_ERROR",
             message=f"Erro ao criar role: {str(e)}",
-            status_code=500
+            status_code=500,
+            request_id=request_id
         )
 
 
 @router.patch("/{role_id}")
 def update_role(
+    request: Request,
     role_id: int,
     data: RoleUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
-    """Atualiza uma role (apenas ADMIN)."""
-    role = db.query(Role).filter(Role.id == role_id).first()
-    if not role:
+    """
+    Atualiza uma role (apenas ADMIN).
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 404 se role não encontrada.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
+    # Validar ID
+    if role_id <= 0:
         return error_response(
-            code="ROLE_NOT_FOUND",
-            message="Role não encontrada",
-            status_code=404
+            code="INVALID_ID",
+            message="ID da role deve ser maior que 0",
+            status_code=400,
+            request_id=request_id
         )
     
     try:
+        role = db.query(Role).filter(Role.id == role_id).first()
+        if not role:
+            return error_response(
+                code="ROLE_NOT_FOUND",
+                message=f"Role com ID {role_id} não encontrada",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Atualizar nome se fornecido
         if data.name is not None:
             role.name = data.name
         
         db.commit()
         db.refresh(role)
         
-        # Converter para dict
-        role_dict = {
-            "id": role.id,
-            "key": role.key,
-            "name": role.name,
-            "created_at": role.created_at.isoformat() if role.created_at else None,
-        }
+        # Serializar usando serialize_data
+        role_dict = serialize_data(role)
         
-        return success_response(data=role_dict)
+        return success_response(data=role_dict, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao atualizar role: {e}", exc_info=True)
+        logger.error(f"Erro ao atualizar role {role_id}: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
             code="UPDATE_ERROR",
             message=f"Erro ao atualizar role: {str(e)}",
-            status_code=400
+            status_code=500,
+            request_id=request_id
         )
 
 
-@router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{role_id}")
 def delete_role(
+    request: Request,
     role_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
-    """Deleta uma role (apenas ADMIN)."""
-    role = db.query(Role).filter(Role.id == role_id).first()
-    if not role:
-        raise HTTPException(status_code=404, detail="Role não encontrada")
+    """
+    Deleta uma role (apenas ADMIN).
+    Retorna 404 padronizado se role não encontrada.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
+    # Validar ID
+    if role_id <= 0:
+        return error_response(
+            code="INVALID_ID",
+            message="ID da role deve ser maior que 0",
+            status_code=400,
+            request_id=request_id
+        )
     
     try:
+        role = db.query(Role).filter(Role.id == role_id).first()
+        if not role:
+            return error_response(
+                code="ROLE_NOT_FOUND",
+                message=f"Role com ID {role_id} não encontrada",
+                status_code=404,
+                request_id=request_id
+            )
+        
         # Remover todas as associações de usuários com esta role primeiro
         db.query(UserRole).filter(UserRole.role_id == role_id).delete()
         
@@ -200,14 +272,16 @@ def delete_role(
         # Agora pode deletar a role
         db.delete(role)
         db.commit()
+        
+        return success_response(data={"deleted": True, "role_id": role_id}, request_id=request_id)
     except Exception as e:
         db.rollback()
-        import traceback
-        error_detail = str(e)
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao excluir role: {error_detail}"
+        logger.error(f"Erro ao deletar role {role_id}: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="DELETE_ERROR",
+            message=f"Erro ao deletar role: {str(e)}",
+            status_code=500,
+            request_id=request_id
         )
 
 
@@ -215,88 +289,93 @@ def delete_role(
 
 @router.get("/permissions/all")
 def list_all_permissions(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Lista todas as permissões disponíveis, agrupadas por módulo."""
+    """
+    Lista todas as permissões disponíveis.
+    Retorna sempre 200 com lista vazia se não houver permissões (nunca retorna 500).
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
         permissions = db.query(Permission).order_by(Permission.module, Permission.action).all()
-        # Converter para dict para evitar problemas de serialização
-        permissions_data = [
-            {
-                "id": p.id,
-                "module": p.module,
-                "action": p.action,
-                "name": p.name,
-                "description": p.description,
-                "created_at": p.created_at.isoformat() if p.created_at else None,
-            }
-            for p in permissions
-        ]
-        return success_response(data=permissions_data if permissions_data else [])
+        # Usar serialize_data para serialização correta (datas)
+        permissions_data = [serialize_data(p) for p in permissions]
+        return success_response(data=permissions_data if permissions_data else [], request_id=request_id)
     except (ProgrammingError, OperationalError) as e:
         # Tabela não existe ainda
-        return success_response(data=[])
+        logger.warning(f"Tabela de permissões não existe: {e}", extra={'request_id': request_id})
+        return success_response(data=[], request_id=request_id)
     except Exception as e:
-        # Outro erro - logar e retornar lista vazia
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao listar permissões: {e}", exc_info=True)
-        return success_response(data=[])
+        logger.error(f"Erro ao listar permissões: {e}", exc_info=True, extra={"request_id": request_id})
+        # Em caso de erro, retornar lista vazia ao invés de quebrar
+        return success_response(data=[], request_id=request_id)
 
 
 @router.get("/permissions/by-module")
 def list_permissions_by_module(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Lista permissões agrupadas por módulo."""
+    """
+    Lista permissões agrupadas por módulo.
+    Retorna sempre 200 com dict vazio se não houver permissões (nunca retorna 500).
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
         permissions = db.query(Permission).order_by(Permission.module, Permission.action).all()
         grouped = {}
         for perm in permissions:
             if perm.module not in grouped:
                 grouped[perm.module] = []
-            grouped[perm.module].append({
-                "id": perm.id,
-                "module": perm.module,
-                "action": perm.action,
-                "name": perm.name,
-                "description": perm.description,
-                "created_at": perm.created_at.isoformat() if perm.created_at else None,
-            })
-        return success_response(data=grouped)
+            # Usar serialize_data para serialização correta (datas)
+            grouped[perm.module].append(serialize_data(perm))
+        return success_response(data=grouped if grouped else {}, request_id=request_id)
     except (ProgrammingError, OperationalError) as e:
         # Tabela não existe ainda
-        return success_response(data={})
+        logger.warning(f"Tabela de permissões não existe: {e}", extra={"request_id": request_id})
+        return success_response(data={}, request_id=request_id)
     except Exception as e:
-        # Outro erro - logar e retornar dict vazio
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao listar permissões por módulo: {e}", exc_info=True)
-        return success_response(data={})
+        logger.error(f"Erro ao listar permissões por módulo: {e}", exc_info=True, extra={"request_id": request_id})
+        # Em caso de erro, retornar dict vazio ao invés de quebrar
+        return success_response(data={}, request_id=request_id)
 
 
 @router.post("/permissions", status_code=status.HTTP_201_CREATED)
 def create_permission(
+    request: Request,
     data: PermissionCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
-    """Cria uma nova permissão (apenas ADMIN)."""
-    # Verificar se já existe
-    existing = db.query(Permission).filter(
-        Permission.module == data.module,
-        Permission.action == data.action
-    ).first()
-    if existing:
-        return error_response(
-            code="PERMISSION_EXISTS",
-            message=f"Permissão {data.module}.{data.action} já existe",
-            status_code=400
-        )
+    """
+    Cria uma nova permissão (apenas ADMIN).
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 409 se module.action já existe (duplicado).
+    """
+    request_id = getattr(request.state, "request_id", None)
     
     try:
+        # Validação Pydantic já é feita automaticamente pelo FastAPI
+        # Verificar duplicado: mesmo module + action
+        existing = db.query(Permission).filter(
+            Permission.module == data.module,
+            Permission.action == data.action
+        ).first()
+        if existing:
+            return error_response(
+                code="PERMISSION_DUPLICATE",
+                message=f"Permissão '{data.module}.{data.action}' já existe",
+                details={"existing_permission_id": existing.id, "field": "module.action"},
+                status_code=409,
+                request_id=request_id
+            )
+        
+        # Criar permissão
         permission = Permission(
             module=data.module,
             action=data.action,
@@ -307,59 +386,82 @@ def create_permission(
         db.commit()
         db.refresh(permission)
         
-        # Converter para dict
-        permission_dict = {
-            "id": permission.id,
-            "module": permission.module,
-            "action": permission.action,
-            "name": permission.name,
-            "description": permission.description,
-            "created_at": permission.created_at.isoformat() if permission.created_at else None,
-        }
+        # Serializar usando serialize_data
+        permission_dict = serialize_data(permission)
         
-        return success_response(data=permission_dict, status_code=201)
+        return success_response(data=permission_dict, status_code=status.HTTP_201_CREATED, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao criar permissão: {e}", exc_info=True)
+        logger.error(f"Erro ao criar permissão: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
             code="CREATE_ERROR",
             message=f"Erro ao criar permissão: {str(e)}",
-            status_code=400
+            status_code=500,
+            request_id=request_id
         )
 
 
 @router.patch("/permissions/{permission_id}")
 def update_permission(
+    request: Request,
     permission_id: int,
     data: PermissionCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
-    """Atualiza uma permissão (apenas ADMIN)."""
-    permission = db.query(Permission).filter(Permission.id == permission_id).first()
-    if not permission:
-        return error_response(
-            code="PERMISSION_NOT_FOUND",
-            message="Permissão não encontrada",
-            status_code=404
-        )
+    """
+    Atualiza uma permissão (apenas ADMIN).
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 404 se permissão não encontrada.
+    Retorna 409 se module.action duplicado.
+    """
+    request_id = getattr(request.state, "request_id", None)
     
-    # Verificar se module/action já existe em outra permissão
-    existing = db.query(Permission).filter(
-        Permission.module == data.module,
-        Permission.action == data.action,
-        Permission.id != permission_id
-    ).first()
-    if existing:
+    # Validar ID
+    if permission_id <= 0:
         return error_response(
-            code="PERMISSION_EXISTS",
-            message=f"Permissão {data.module}.{data.action} já existe",
-            status_code=400
+            code="INVALID_ID",
+            message="ID da permissão deve ser maior que 0",
+            status_code=400,
+            request_id=request_id
         )
     
     try:
+        permission = db.query(Permission).filter(Permission.id == permission_id).first()
+        if not permission:
+            return error_response(
+                code="PERMISSION_NOT_FOUND",
+                message=f"Permissão com ID {permission_id} não encontrada",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Verificar duplicado se module/action está sendo atualizado
+        if data.module != permission.module or data.action != permission.action:
+            existing = db.query(Permission).filter(
+                Permission.module == data.module,
+                Permission.action == data.action,
+                Permission.id != permission_id
+            ).first()
+            if existing:
+                return error_response(
+                    code="PERMISSION_DUPLICATE",
+                    message=f"Permissão '{data.module}.{data.action}' já existe",
+                    details={"existing_permission_id": existing.id, "field": "module.action"},
+                    status_code=409,
+                    request_id=request_id
+                )
+        
+        # Atualizar campos
         permission.module = data.module
         permission.action = data.action
         permission.name = data.name
@@ -368,70 +470,128 @@ def update_permission(
         db.commit()
         db.refresh(permission)
         
-        # Converter para dict
-        permission_dict = {
-            "id": permission.id,
-            "module": permission.module,
-            "action": permission.action,
-            "name": permission.name,
-            "description": permission.description,
-            "created_at": permission.created_at.isoformat() if permission.created_at else None,
-        }
+        # Serializar usando serialize_data
+        permission_dict = serialize_data(permission)
         
-        return success_response(data=permission_dict)
+        return success_response(data=permission_dict, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao atualizar permissão: {e}", exc_info=True)
+        logger.error(f"Erro ao atualizar permissão {permission_id}: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
             code="UPDATE_ERROR",
             message=f"Erro ao atualizar permissão: {str(e)}",
-            status_code=400
+            status_code=500,
+            request_id=request_id
         )
 
 
-@router.delete("/permissions/{permission_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/permissions/{permission_id}")
 def delete_permission(
+    request: Request,
     permission_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
-    """Deleta uma permissão (apenas ADMIN)."""
-    permission = db.query(Permission).filter(Permission.id == permission_id).first()
-    if not permission:
-        raise HTTPException(status_code=404, detail="Permissão não encontrada")
+    """
+    Deleta uma permissão (apenas ADMIN).
+    Retorna 404 padronizado se permissão não encontrada.
+    """
+    request_id = getattr(request.state, "request_id", None)
     
-    db.delete(permission)
-    db.commit()
+    # Validar ID
+    if permission_id <= 0:
+        return error_response(
+            code="INVALID_ID",
+            message="ID da permissão deve ser maior que 0",
+            status_code=400,
+            request_id=request_id
+        )
+    
+    try:
+        permission = db.query(Permission).filter(Permission.id == permission_id).first()
+        if not permission:
+            return error_response(
+                code="PERMISSION_NOT_FOUND",
+                message=f"Permissão com ID {permission_id} não encontrada",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        db.delete(permission)
+        db.commit()
+        
+        return success_response(data={"deleted": True, "permission_id": permission_id}, request_id=request_id)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erro ao deletar permissão {permission_id}: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="DELETE_ERROR",
+            message=f"Erro ao deletar permissão: {str(e)}",
+            status_code=500,
+            request_id=request_id
+        )
 
 
 @router.put("/{role_id}/permissions")
 def update_role_permissions(
+    request: Request,
     role_id: int,
     data: UpdateRolePermissionsRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
-    """Atualiza permissões de uma role (apenas ADMIN)."""
-    role = db.query(Role).filter(Role.id == role_id).first()
-    if not role:
-        return error_response(
-            code="ROLE_NOT_FOUND",
-            message="Role não encontrada",
-            status_code=404
-        )
+    """
+    Atualiza permissões de uma role (apenas ADMIN).
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 404 se role não encontrada.
+    Retorna 400 se alguma permissão não encontrada.
+    Usa transação para garantir atomicidade (rollback se falhar).
+    """
+    request_id = getattr(request.state, "request_id", None)
     
-    # Verificar se todas as permissões existem
-    permissions = db.query(Permission).filter(Permission.id.in_(data.permission_ids)).all()
-    if len(permissions) != len(data.permission_ids):
+    # Validar ID
+    if role_id <= 0:
         return error_response(
-            code="PERMISSIONS_NOT_FOUND",
-            message="Uma ou mais permissões não foram encontradas",
-            status_code=400
+            code="INVALID_ID",
+            message="ID da role deve ser maior que 0",
+            status_code=400,
+            request_id=request_id
         )
     
     try:
+        role = db.query(Role).filter(Role.id == role_id).first()
+        if not role:
+            return error_response(
+                code="ROLE_NOT_FOUND",
+                message=f"Role com ID {role_id} não encontrada",
+                status_code=404,
+                request_id=request_id
+            )
+        
+        # Verificar se todas as permissões existem
+        if data.permission_ids:
+            permissions = db.query(Permission).filter(Permission.id.in_(data.permission_ids)).all()
+            found_ids = {p.id for p in permissions}
+            missing_ids = set(data.permission_ids) - found_ids
+            if missing_ids:
+                return error_response(
+                    code="PERMISSIONS_NOT_FOUND",
+                    message=f"Permissões não encontradas: {list(missing_ids)}",
+                    details={"missing_permission_ids": list(missing_ids)},
+                    status_code=400,
+                    request_id=request_id
+                )
+        
+        # Usar transação para garantir atomicidade
         # Remover permissões antigas
         db.query(RolePermission).filter(RolePermission.role_id == role_id).delete()
         
@@ -442,39 +602,39 @@ def update_role_permissions(
         
         db.commit()
         
-        # Retornar role com permissões atualizadas (convertidas para dict)
-        role_permissions = db.query(RolePermission).filter(
-            RolePermission.role_id == role_id
-        ).all()
+        # Recarregar role com permissões usando selectinload
+        role = db.query(Role).options(
+            selectinload(Role.role_permissions).joinedload(RolePermission.permission)
+        ).filter(Role.id == role_id).first()
         
+        # Extrair permissões dos relacionamentos carregados
         permissions_data = []
-        for rp in role_permissions:
+        for rp in role.role_permissions:
             if rp.permission:
-                permissions_data.append({
-                    "id": rp.permission.id,
-                    "module": rp.permission.module,
-                    "action": rp.permission.action,
-                    "name": rp.permission.name,
-                    "description": rp.permission.description,
-                    "created_at": rp.permission.created_at.isoformat() if rp.permission.created_at else None,
-                })
+                permissions_data.append(serialize_data(rp.permission))
         
-        return success_response(data={
-            "id": role.id,
-            "key": role.key,
-            "name": role.name,
-            "created_at": role.created_at.isoformat() if role.created_at else None,
-            "permissions": permissions_data,
-        })
+        # Serializar role
+        role_dict = serialize_data(role)
+        role_dict["permissions"] = permissions_data
+        
+        return success_response(data=role_dict, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao atualizar permissões: {e}", exc_info=True)
+        logger.error(f"Erro ao atualizar permissões da role {role_id}: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
             code="UPDATE_ERROR",
             message=f"Erro ao atualizar permissões: {str(e)}",
-            status_code=400
+            status_code=500,
+            request_id=request_id
         )
 
 
