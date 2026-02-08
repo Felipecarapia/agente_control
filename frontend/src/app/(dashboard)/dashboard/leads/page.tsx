@@ -92,10 +92,12 @@ export default function LeadsPage() {
       if (filterStatus) params.set("status", filterStatus);
       if (search) params.set("search", search);
       const qs = params.toString() ? `?${params.toString()}` : "";
-      const data = await api<Lead[]>(`/api/v1/leads${qs}`);
-      setLeads(data);
+      const response = await api<Lead[]>(`/api/v1/leads${qs}`);
+      // apiClient já extrai data do formato {ok: true, data: [...]}
+      setLeads(Array.isArray(response) ? response : []);
     } catch (err) {
-      console.error(err);
+      // Silenciar erro - não quebrar UX
+      setLeads([]);
     } finally {
       setLoading(false);
     }
@@ -103,9 +105,13 @@ export default function LeadsPage() {
 
   async function fetchStats() {
     try {
-      const data = await api<Stats>("/api/v1/leads/stats/overview");
-      setStats(data);
-    } catch { /* ok */ }
+      const response = await api<Stats>("/api/v1/leads/stats/overview");
+      // apiClient já extrai data do formato {ok: true, data: {...}}
+      setStats(response || { total: 0, novos: 0, quentes: 0, ganhos: 0, perdidos: 0 });
+    } catch {
+      // Silenciar erro - usar valores padrão
+      setStats({ total: 0, novos: 0, quentes: 0, ganhos: 0, perdidos: 0 });
+    }
   }
 
   function handleSearch(e: React.FormEvent) {

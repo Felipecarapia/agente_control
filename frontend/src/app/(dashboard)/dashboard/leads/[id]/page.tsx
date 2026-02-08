@@ -164,8 +164,23 @@ export default function EditarLeadPage() {
       }
       router.push("/dashboard/leads");
       router.refresh();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar lead";
+      const errorDetails = err?.details;
+      
+      // Tratar erros específicos
+      if (errorCode === "VALIDATION_ERROR" && errorDetails) {
+        // Mostrar erros de validação
+        const validationErrors = errorDetails.map((d: any) => `${d.loc?.join(".")}: ${d.msg}`).join(", ");
+        alert(`Erro de validação: ${validationErrors}`);
+      } else if (errorCode === "LEAD_DUPLICATE") {
+        alert(`Lead duplicado: ${errorMsg}`);
+      } else if (errorCode === "LEAD_NOT_FOUND") {
+        alert("Lead não encontrado");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -177,8 +192,15 @@ export default function EditarLeadPage() {
       await api(`/api/v1/leads/${id}`, { method: "DELETE" });
       router.push("/dashboard/leads");
       router.refresh();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao deletar lead";
+      
+      if (errorCode === "LEAD_NOT_FOUND") {
+        alert("Lead não encontrado");
+      } else {
+        alert(`Erro ao deletar: ${errorMsg}`);
+      }
     }
   }
 
