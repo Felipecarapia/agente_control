@@ -230,8 +230,18 @@ export default function ProjetosPage() {
                     </Card>
                   ))
                 ) : (
-                  <div className="col-span-full text-center py-8 text-muted-foreground">
-                    Nenhum projeto encontrado
+                  <div className="col-span-full flex flex-col items-center justify-center py-16 px-4 text-center">
+                    <FolderKanban className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Nenhum projeto encontrado</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md">
+                      Comece criando seu primeiro projeto.
+                    </p>
+                    <Button asChild className="gap-2">
+                      <Link href="/dashboard/projetos/novo">
+                        <Plus className="h-4 w-4" />
+                        Novo Projeto
+                      </Link>
+                    </Button>
                   </div>
                 )}
               </div>
