@@ -169,21 +169,12 @@ function createApiError(
     apiError.details = responseBody.error.details;
   }
   
-  // Log detalhado do erro (apenas se não for um erro esperado/tratável)
-  // Não logar erros para recursos opcionais (como task-notion/databases/default)
+  // NUNCA logar erros para recursos opcionais (task-notion/databases/default)
+  // Este é um recurso opcional que pode não existir - não é um erro
   const isTaskNotionDefault = url.includes("/task-notion/databases/default");
-  const isExpectedError = 
-    isTaskNotionDefault && 
-    (apiError.code === "NOT_FOUND" || 
-     apiError.code === "DATABASE_NOT_FOUND" || 
-     status === 404 ||
-     // Se o backend retornou ok:true com data:null, não é erro
-     (status === 200 && responseBody?.ok === true && (responseBody?.data === null || responseBody?.data === undefined)) ||
-     // Se o backend retornou erro padronizado mas é 404 para recurso opcional
-     (status === 404 && responseBody?.ok === false && responseBody?.error?.code === "DATABASE_NOT_FOUND"));
   
-  // Silenciar erros esperados para recursos opcionais
-  if (!isExpectedError) {
+  // Silenciar TODOS os erros para recursos opcionais
+  if (!isTaskNotionDefault) {
     console.error(`[API Error] ${method} ${url}`, {
       code: apiError.code,
       message: apiError.message,
@@ -264,9 +255,8 @@ export async function apiClient<T = any>(
         return responseBody.data as T;
       } else if (responseBody?.ok === false) {
         // Erro padronizado: { ok: false, error: ... }
-        // Mas se for task-notion/databases/default, tratar como recurso opcional
+        // Se for task-notion/databases/default, SEMPRE retornar null (recurso opcional)
         if (isTaskNotionDefault) {
-          // Retornar null silenciosamente para recursos opcionais
           return null as T;
         }
         const error = createApiError(
