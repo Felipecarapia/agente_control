@@ -117,9 +117,21 @@ export default function EditarProjetoPage() {
       });
       router.push("/dashboard/projetos");
       router.refresh();
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar");
+    } catch (err: any) {
+      const errorCode = err?.code || "UNKNOWN";
+      const errorMsg = err?.message || "Erro ao salvar projeto";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "PROJECT_NOT_FOUND") {
+        alert("Projeto não encontrado.");
+      } else if (errorCode === "PROJECT_DUPLICATE") {
+        alert(`Projeto duplicado: ${errorMsg}`);
+      } else if (errorCode === "CLIENT_NOT_FOUND") {
+        alert("Cliente não encontrado.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     } finally {
       setLoading(false);
     }
