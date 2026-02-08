@@ -132,18 +132,22 @@ export default function DashboardLayout({
           // Tentar endpoint novo primeiro
           try {
             const data = await api<UserInfo>("/api/v1/profile/me");
-            setUserInfo(data);
+            if (data) {
+              setUserInfo(data);
+            }
           } catch (e) {
             // Se falhar, tentar endpoint antigo como fallback
             try {
               const data = await api<UserInfo>("/api/v1/auth/me");
-              setUserInfo(data);
+              if (data) {
+                setUserInfo(data);
+              }
             } catch (e2) {
-              // Silenciar erros
+              // Silenciar erros - usuário pode não ter perfil completo ainda
             }
           }
         } catch (e) {
-          // Silenciar erros de timeout
+          // Silenciar erros de timeout/rede
         } finally {
           setLoadingUser(false);
         }

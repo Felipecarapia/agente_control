@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.response import success_response, error_response
 # Removida restrição de permissão - qualquer usuário autenticado pode criar notificação
 from app.models.usuario import Usuario
 from app.models.notificacao import NotificationType, NotificationPriority
@@ -21,8 +22,9 @@ from app.services.notificacao_service import (
 router = APIRouter(prefix="/notifications", tags=["notificacoes"])
 
 
-@router.get("", response_model=dict)
+@router.get("")
 def list_notifications(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     unread_only: bool = Query(False),
@@ -35,64 +37,95 @@ def list_notifications(
     page_size: int = Query(20, ge=1, le=100),
 ):
     """Lista notificações do usuário autenticado."""
-    result = get_user_notifications(
-        db=db,
-        user_id=current_user.id,
-        unread_only=unread_only,
-        notification_type=type,
-        priority=priority,
-        context_type=context_type,
-        context_id=context_id,
-        search=search,
-        page=page,
-        page_size=page_size,
-    )
+    request_id = getattr(request.state, "request_id", None)
+    
+    try:
+        result = get_user_notifications(
+            db=db,
+            user_id=current_user.id,
+            unread_only=unread_only,
+            notification_type=type,
+            priority=priority,
+            context_type=context_type,
+            context_id=context_id,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
 
-    # Adicionar nome do autor
-    items = []
-    for recipient in result["items"]:
-        item_dict = {
-            "id": recipient.id,
-            "notification_id": recipient.notification_id,
-            "recipient_user_id": recipient.recipient_user_id,
-            "delivered_at": recipient.delivered_at,
-            "read_at": recipient.read_at,
-            "archived_at": recipient.archived_at,
-            "pinned_at": recipient.pinned_at,
-            "muted": recipient.muted,
-            "notification": {
-                "id": recipient.notification.id,
-                "type": recipient.notification.type,
-                "title": recipient.notification.title,
-                "body": recipient.notification.body,
-                "priority": recipient.notification.priority,
-                "author_user_id": recipient.notification.author_user_id,
-                "context_type": recipient.notification.context_type,
-                "context_id": recipient.notification.context_id,
-                "action_url": recipient.notification.action_url,
-                "metadata": recipient.notification.extra_data,  # Mapear extra_data para metadata na API
-                "created_at": recipient.notification.created_at,
+        # Adicionar nome do autor
+        items = []
+        for recipient in result["items"]:
+            item_dict = {
+                "id": recipient.id,
+                "notification_id": recipient.notification_id,
+                "recipient_user_id": recipient.recipient_user_id,
+                "delivered_at": recipient.delivered_at.isoformat() if recipient.delivered_at else None,
+                "read_at": recipient.read_at.isoformat() if recipient.read_at else None,
+                "archived_at": recipient.archived_at.isoformat() if recipient.archived_at else None,
+                "pinned_at": recipient.pinned_at.isoformat() if recipient.pinned_at else None,
+                "muted": recipient.muted,
+                "notification": {
+                    "id": recipient.notification.id,
+                    "type": recipient.notification.type,
+                    "title": recipient.notification.title,
+                    "body": recipient.notification.body,
+                    "priority": recipient.notification.priority,
+                    "author_user_id": recipient.notification.author_user_id,
+                    "context_type": recipient.notification.context_type,
+                    "context_id": recipient.notification.context_id,
+                    "action_url": recipient.notification.action_url,
+                    "metadata": recipient.notification.extra_data,  # Mapear extra_data para metadata na API
+                    "created_at": recipient.notification.created_at.isoformat() if recipient.notification.created_at else None,
+                },
+                "author_name": recipient.notification.author.nome if recipient.notification.author else None,
+            }
+            items.append(item_dict)
+
+        return success_response(
+            data={
+                "items": items,
+                "total": result["total"],
+                "page": result["page"],
+                "page_size": result["page_size"],
             },
-            "author_name": recipient.notification.author.nome if recipient.notification.author else None,
-        }
-        items.append(item_dict)
+            request_id=request_id
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao listar notificações: {e}", exc_info=True, extra={"request_id": request_id})
+        # Se tabela não existir ou houver erro, retornar lista vazia (não quebrar)
+        return success_response(
+            data={
+                "items": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+            },
+            meta={"requiresSetup": True, "message": "Sistema de notificações não configurado"},
+            request_id=request_id
+        )
 
-    return {
-        "items": items,
-        "total": result["total"],
-        "page": result["page"],
-        "page_size": result["page_size"],
-    }
 
-
-@router.get("/unread-count", response_model=UnreadCountResponse)
+@router.get("/unread-count")
 def get_unread_count_endpoint(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Retorna contagem de notificações não lidas."""
-    count = get_unread_count(db, current_user.id)
-    return {"count": count}
+    request_id = getattr(request.state, "request_id", None)
+    
+    try:
+        count = get_unread_count(db, current_user.id)
+        return success_response(data={"count": count}, request_id=request_id)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao buscar contagem de não lidas: {e}", exc_info=True, extra={"request_id": request_id})
+        # Se tabela não existir ou houver erro, retornar 0 (não quebrar)
+        return success_response(data={"count": 0}, request_id=request_id)
 
 
 @router.post("/read", status_code=status.HTTP_204_NO_CONTENT)

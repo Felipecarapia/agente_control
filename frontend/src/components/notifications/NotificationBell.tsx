@@ -75,7 +75,8 @@ export function NotificationBell() {
   async function loadUnreadCount() {
     try {
       const data = await api<{ count: number }>("/api/v1/notifications/unread-count");
-      setUnreadCount(data.count);
+      // apiClient já extrai data do formato {ok: true, data: {...}}
+      setUnreadCount(data?.count ?? 0);
     } catch (e) {
       // Silenciosamente falha se a tabela ainda não existir ou se houver erro de autenticação
       // Não quebra a aplicação
@@ -92,7 +93,8 @@ export function NotificationBell() {
         page: number;
         page_size: number;
       }>("/api/v1/notifications?page=1&page_size=10&unread_only=false");
-      setNotifications(data.items);
+      // apiClient já extrai data do formato {ok: true, data: {...}}
+      setNotifications(Array.isArray(data?.items) ? data.items : []);
     } catch (e) {
       // Silenciosamente falha se a tabela ainda não existir ou se houver erro de autenticação
       // Não quebra a aplicação
@@ -115,7 +117,7 @@ export function NotificationBell() {
       );
       loadUnreadCount();
     } catch (e) {
-      console.error("Erro ao marcar como lida:", e);
+      // Silenciar erro - não quebrar UX
     }
   }
 
@@ -135,7 +137,7 @@ export function NotificationBell() {
       );
       loadUnreadCount();
     } catch (e) {
-      console.error("Erro ao marcar todas como lidas:", e);
+      // Silenciar erro - não quebrar UX
     }
   }
 
@@ -222,9 +224,6 @@ export function NotificationBell() {
             ) : notifications.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 <p>Nenhuma notificação</p>
-                <p className="text-xs mt-1 opacity-70">
-                  Execute a migration para ativar o sistema de notificações
-                </p>
               </div>
             ) : (
               <div className="divide-y divide-border">

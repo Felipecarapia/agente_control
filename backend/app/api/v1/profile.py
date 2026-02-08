@@ -3,12 +3,13 @@ import uuid
 import shutil
 from pathlib import Path
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
 from sqlalchemy.orm import Session
 # PIL importado apenas quando necessário (lazy import)
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.response import success_response, error_response
 from app.models.usuario import Usuario
 from app.models.mensagem import AuditEvent
 from app.schemas.profile import ProfileUpdate, ProfileResponse, AvatarUploadResponse, NotificationPrefs
@@ -101,36 +102,53 @@ def process_avatar(file: UploadFile) -> str:
         )
 
 
-@router.get("/me", response_model=ProfileResponse)
+@router.get("/me")
 def get_profile(
+    request: Request,
     current_user: Annotated[Usuario, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Retorna perfil completo do usuário atual."""
-    # Buscar roles
-    from app.models.role import UserRole, Role
-    roles = []
-    try:
-        user_roles = db.query(UserRole).join(Role).filter(UserRole.user_id == current_user.id).all()
-        for ur in user_roles:
-            if ur.role:
-                roles.append({"id": ur.role.id, "key": ur.role.key, "name": ur.role.name})
-    except Exception:
-        roles = []
+    request_id = getattr(request.state, "request_id", None)
     
-    return ProfileResponse(
-        id=current_user.id,
-        email=current_user.email,
-        nome=current_user.nome,
-        avatar_url=current_user.avatar_url,
-        bio=current_user.bio,
-        phone=current_user.phone,
-        presence_status=current_user.presence_status,
-        notification_prefs=current_user.notification_prefs,
-        roles=roles,
-        created_at=current_user.created_at,
-        updated_at=current_user.updated_at,
-    )
+    try:
+        # Buscar roles
+        from app.models.role import UserRole, Role
+        roles = []
+        try:
+            user_roles = db.query(UserRole).join(Role).filter(UserRole.user_id == current_user.id).all()
+            for ur in user_roles:
+                if ur.role:
+                    roles.append({"id": ur.role.id, "key": ur.role.key, "name": ur.role.name})
+        except Exception:
+            # Se tabela de roles não existir, retornar sem roles (não quebrar)
+            roles = []
+        
+        profile_data = {
+            "id": current_user.id,
+            "email": current_user.email,
+            "nome": current_user.nome,
+            "avatar_url": current_user.avatar_url,
+            "bio": current_user.bio,
+            "phone": current_user.phone,
+            "presence_status": current_user.presence_status,
+            "notification_prefs": current_user.notification_prefs,
+            "roles": roles,
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None,
+        }
+        
+        return success_response(data=profile_data, request_id=request_id)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao buscar perfil: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="INTERNAL_ERROR",
+            message="Erro ao buscar perfil do usuário",
+            status_code=500,
+            request_id=request_id
+        )
 
 
 @router.patch("/me", response_model=ProfileResponse)

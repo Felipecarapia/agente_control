@@ -72,56 +72,69 @@ def get_user_notifications(
     page_size: int = 20,
 ):
     """Lista notificações do usuário com filtros."""
-    query = db.query(NotificationRecipient).join(Notification).filter(
-        NotificationRecipient.recipient_user_id == user_id,
-        NotificationRecipient.archived_at.is_(None),
-    )
-
-    if unread_only:
-        query = query.filter(NotificationRecipient.read_at.is_(None))
-
-    if notification_type:
-        query = query.filter(Notification.type == notification_type)
-
-    if priority:
-        query = query.filter(Notification.priority == priority)
-
-    if context_type:
-        query = query.filter(Notification.context_type == context_type)
-
-    if context_id:
-        query = query.filter(Notification.context_id == context_id)
-
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            or_(
-                Notification.title.ilike(search_term),
-                Notification.body.ilike(search_term),
-            )
+    try:
+        query = db.query(NotificationRecipient).join(Notification).filter(
+            NotificationRecipient.recipient_user_id == user_id,
+            NotificationRecipient.archived_at.is_(None),
         )
 
-    total = query.count()
-    items = query.order_by(
-        NotificationRecipient.pinned_at.desc().nulls_last(),
-        Notification.created_at.desc()
-    ).offset((page - 1) * page_size).limit(page_size).all()
+        if unread_only:
+            query = query.filter(NotificationRecipient.read_at.is_(None))
 
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-    }
+        if notification_type:
+            query = query.filter(Notification.type == notification_type)
+
+        if priority:
+            query = query.filter(Notification.priority == priority)
+
+        if context_type:
+            query = query.filter(Notification.context_type == context_type)
+
+        if context_id:
+            query = query.filter(Notification.context_id == context_id)
+
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Notification.title.ilike(search_term),
+                    Notification.body.ilike(search_term),
+                )
+            )
+
+        total = query.count()
+        items = query.order_by(
+            NotificationRecipient.pinned_at.desc().nulls_last(),
+            Notification.created_at.desc()
+        ).offset((page - 1) * page_size).limit(page_size).all()
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+    except Exception:
+        # Se tabela não existir ou houver erro, retornar estrutura vazia (não quebrar)
+        return {
+            "items": [],
+            "total": 0,
+            "page": page,
+            "page_size": page_size,
+        }
 
 
 def get_unread_count(db: Session, user_id: int) -> int:
     """Conta notificações não lidas do usuário."""
-    return db.query(NotificationRecipient).filter(
-        NotificationRecipient.recipient_user_id == user_id,
-        NotificationRecipient.read_at.is_(None),
-        NotificationRecipient.archived_at.is_(None),
-    ).count()
+    try:
+        return db.query(NotificationRecipient).filter(
+            NotificationRecipient.recipient_user_id == user_id,
+            NotificationRecipient.read_at.is_(None),
+            NotificationRecipient.archived_at.is_(None),
+        ).count()
+    except Exception:
+        # Se tabela não existir, retornar 0 (não quebrar)
+        return 0
 
 
 def mark_as_read(db: Session, recipient_ids: list[int], user_id: int):

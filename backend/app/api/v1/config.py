@@ -25,6 +25,7 @@ class EmpresaConfigResponse(BaseModel):
 
 @router.get("/empresa")
 def get_empresa_config(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ):
     """
@@ -32,14 +33,19 @@ def get_empresa_config(
     Endpoint PÚBLICO (sem autenticação) para permitir uso na página de login.
     Por enquanto retorna valores padrão, mas pode ser estendido para buscar do banco.
     """
+    request_id = getattr(request.state, "request_id", None)
+    
     # TODO: Buscar do banco quando tabela de configurações for criada
     # Por enquanto, retornar valores padrão
-    return success_response(data={
-        "logo_url": "https://i.imgur.com/e9Gntop.png",
-        "company_name": "Sistemaxi CRM",
-        "primary_color": None,
-        "secondary_color": None
-    })
+    return success_response(
+        data={
+            "logo_url": "https://i.imgur.com/e9Gntop.png",
+            "company_name": "Sistemaxi CRM",
+            "primary_color": None,
+            "secondary_color": None
+        },
+        request_id=request_id
+    )
 
 
 @router.patch("/empresa", response_model=EmpresaConfigResponse)
