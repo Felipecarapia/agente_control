@@ -761,7 +761,8 @@ function DealDetail({ dealId }: { dealId: number }) {
       const data = await api(`/api/v1/deals/${dealId}`);
       setDeal(data);
     } catch (e) {
-      console.error("Erro ao carregar deal:", e);
+      // Silenciar erro - não quebrar UX
+      setDeal(null);
     } finally {
       setLoading(false);
     }
