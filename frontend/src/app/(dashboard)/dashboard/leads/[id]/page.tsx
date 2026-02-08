@@ -99,9 +99,13 @@ export default function EditarLeadPage() {
 
   useEffect(() => {
     if (isNew) return;
-    setLoading(true);
-    api<Record<string, unknown>>(`/api/v1/leads/${id}`)
-      .then((data) => {
+    
+    async function loadLead() {
+      setLoading(true);
+      setLoadErr(null);
+      try {
+        const data = await api<Record<string, unknown>>(`/api/v1/leads/${id}`);
+        // apiClient já extrai data do formato {ok: true, data: {...}}
         setForm({
           nome: (data.nome as string) || "",
           email: (data.email as string) || "",
@@ -132,9 +136,21 @@ export default function EditarLeadPage() {
           motivo_perda: (data.motivo_perda as string) || "",
           observacoes: (data.observacoes as string) || "",
         });
-      })
-      .catch((e) => setLoadErr(e instanceof Error ? e.message : "Erro ao carregar"))
-      .finally(() => setLoading(false));
+      } catch (err: any) {
+        const errorCode = err?.code || "UNKNOWN";
+        const errorMsg = err?.message || "Erro ao carregar lead";
+        
+        if (errorCode === "LEAD_NOT_FOUND") {
+          setLoadErr("Lead não encontrado");
+        } else {
+          setLoadErr(errorMsg);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadLead();
   }, [id, isNew]);
 
   async function submit(e: React.FormEvent) {
