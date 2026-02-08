@@ -279,6 +279,13 @@ export async function apiClient<T = any>(
       }
     } else {
       // Status HTTP de erro
+      // Mas se for task-notion/databases/default e for 404, não é erro (recurso opcional)
+      const isTaskNotionDefault = url.includes("/task-notion/databases/default");
+      if (isTaskNotionDefault && response.status === 404) {
+        // Retornar null silenciosamente para recursos opcionais que não existem
+        return null as T;
+      }
+      
       const error = createApiError(
         new Error(responseBody?.error?.message || responseBody?.detail || response.statusText),
         url,
