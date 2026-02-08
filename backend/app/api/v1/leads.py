@@ -50,11 +50,9 @@ def list_leads(
                 (Lead.telefone.ilike(pattern))
             )
         leads = q.order_by(desc(Lead.created_at)).all()
-        # Converter para dict para serialização
-        leads_data = [lead.__dict__ for lead in leads]
-        # Remover _sa_instance_state
-        for lead_dict in leads_data:
-            lead_dict.pop("_sa_instance_state", None)
+        # Converter para dict usando serialize_data
+        from app.core.response import serialize_data
+        leads_data = [serialize_data(lead) for lead in leads]
         return success_response(data=leads_data if leads_data else [], request_id=request_id)
     except Exception as e:
         logger.error(f"Erro ao listar leads: {str(e)}", exc_info=True, extra={"request_id": request_id})
@@ -124,8 +122,9 @@ def get_lead(
                 status_code=404,
                 request_id=request_id
             )
-        # Converter para dict
-        lead_dict = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+        # Converter para dict usando serialize_data
+        from app.core.response import serialize_data
+        lead_dict = serialize_data(obj)
         return success_response(data=lead_dict, request_id=request_id)
     except Exception as e:
         logger.error(f"Erro ao buscar lead {lead_id}: {str(e)}", exc_info=True, extra={"request_id": request_id})
@@ -244,8 +243,9 @@ def update_lead(
         db.commit()
         db.refresh(obj)
         
-        # Converter para dict
-        lead_dict = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+        # Converter para dict usando serialize_data
+        from app.core.response import serialize_data
+        lead_dict = serialize_data(obj)
         return success_response(data=lead_dict, request_id=request_id)
     except ValidationError as e:
         # Validação Pydantic falhou
