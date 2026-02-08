@@ -136,7 +136,6 @@ function NotificationToastItem({
 export function NotificationToastManager() {
   const [notifications, setNotifications] = useState<NotificationToastData[]>([]);
   const [lastNotificationId, setLastNotificationId] = useState<number | null>(null);
-  const pollingEnabledRef = useState(true)[0];
 
   useEffect(() => {
     // Polling leve a cada 20s para verificar novas notificações
