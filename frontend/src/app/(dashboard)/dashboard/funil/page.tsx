@@ -175,11 +175,6 @@ export default function FunilPage() {
       
       const url = `/api/v1/deals/kanban?${params.toString()}`;
       
-      // Log apenas em dev
-      if (process.env.NODE_ENV === "development") {
-        console.log("[loadKanban] Fazendo requisição para:", url);
-      }
-      
       const response = await api<any>(url);
       
       // apiClient já extrai data do formato {ok: true, data: {...}}
