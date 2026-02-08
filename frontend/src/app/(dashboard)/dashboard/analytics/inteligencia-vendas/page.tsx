@@ -466,12 +466,33 @@ export default function InteligenciaVendasPage() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Configuração Necessária</h3>
               <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                {setupMessage || "Nenhum pipeline encontrado. Selecione um pipeline ou crie um pipeline padrão para visualizar o funil."}
+                {setupMessage || "Nenhum pipeline encontrado. Crie um pipeline padrão para visualizar o funil de vendas."}
               </p>
               {pipelines.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Vá em Configurações → Pipelines para criar um pipeline.
-                </p>
+                <Button
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const result = await api<{ pipelineId: number; created: boolean; pipelineName: string }>(
+                        "/api/v1/pipelines/bootstrap",
+                        { method: "POST" }
+                      );
+                      // Recarregar pipelines e dados
+                      await loadPipelinesAndUsers();
+                      setTimeout(() => {
+                        loadData();
+                      }, 500);
+                    } catch (e) {
+                      // Silenciar erro - já será tratado no loadData
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="mt-4"
+                >
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  Criar Pipeline Padrão
+                </Button>
               )}
             </div>
           ) : data.sankey_nodes.length === 0 && data.sankey_links.length === 0 ? (
