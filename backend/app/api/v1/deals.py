@@ -2,7 +2,7 @@ import logging
 from typing import Annotated, Optional
 from decimal import Decimal
 from datetime import date, datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_, text
 
@@ -479,29 +479,47 @@ def get_deal(
     return success_response(data=_format_deal_response(deal))
 
 
-@router.post("", response_model=DealResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_deal(
     data: DealCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Cria um novo deal."""
+    request_id = getattr(request.state, "request_id", None)
+    
     # Verificar se pipeline e stage existem
     pipeline = db.query(Pipeline).filter(Pipeline.id == data.pipeline_id).first()
     if not pipeline:
-        raise HTTPException(status_code=404, detail="Pipeline não encontrado")
+        return error_response(
+            code="NOT_FOUND",
+            message="Pipeline não encontrado",
+            status_code=404,
+            request_id=request_id
+        )
     
     stage = db.query(PipelineStage).filter(
         PipelineStage.id == data.stage_id,
         PipelineStage.pipeline_id == data.pipeline_id
     ).first()
     if not stage:
-        raise HTTPException(status_code=404, detail="Stage não encontrada ou não pertence ao pipeline")
+        return error_response(
+            code="NOT_FOUND",
+            message="Stage não encontrada ou não pertence ao pipeline",
+            status_code=404,
+            request_id=request_id
+        )
     
     # Verificar se cliente existe
     client = db.query(Cliente).filter(Cliente.id == data.client_id).first()
     if not client:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        return error_response(
+            code="NOT_FOUND",
+            message="Cliente não encontrado",
+            status_code=404,
+            request_id=request_id
+        )
     
     # Calcular position_index (colocar no final da coluna)
     max_position = db.query(func.max(Deal.position_index)).filter(
@@ -638,9 +656,11 @@ def create_deal_from_client(
             text("deals.status = 'open'")  # Usar text() para garantir string literal "open"
         ).first()
         if existing_deal:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cliente já possui um deal aberto neste pipeline (Deal #{existing_deal.id})"
+            return error_response(
+                code="CONFLICT",
+                message=f"Cliente já possui um deal aberto neste pipeline (Deal #{existing_deal.id})",
+                status_code=409,
+                request_id=request_id
             )
         
         # Calcular position_index (colocar no topo da coluna)

@@ -24,7 +24,7 @@ if os.getenv("DEBUG", "").lower() == "true":
 
 from app.api.v1 import api_router
 from app.core.error_handler import global_exception_handler
-from app.core.middleware import RequestIDMiddleware
+from app.core.middleware import RequestIDMiddleware, ContentTypeValidationMiddleware
 from app.core.bootstrap import bootstrap
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
@@ -45,6 +45,9 @@ async def startup_event():
 
 # Adicionar middleware de request_id (deve ser o primeiro)
 app.add_middleware(RequestIDMiddleware)
+
+# Adicionar middleware de validação de Content-Type (após request_id)
+app.add_middleware(ContentTypeValidationMiddleware)
 
 # Adicionar handler global de exceções
 app.add_exception_handler(Exception, global_exception_handler)
