@@ -140,25 +140,10 @@ export default function TarefasPage() {
 
   async function loadTaskDatabase() {
     try {
-      const [db, props] = await Promise.all([
-        api<any>("/api/v1/task-notion/databases/default").catch((e) => {
-          // Se for 404 ou NOT_FOUND, é esperado (não há database padrão ainda)
-          const code = (e as any)?.code;
-          if (code === "NOT_FOUND" || code === "DATABASE_NOT_FOUND") {
-            return null; // Retornar null silenciosamente
-          }
-          // Outros erros, re-lançar para ser tratado no catch externo
-          throw e;
-        }),
-        api<any[]>("/api/v1/task-notion/databases/default/properties").catch((e) => {
-          // Se for 404 ou NOT_FOUND, é esperado
-          const code = (e as any)?.code;
-          if (code === "NOT_FOUND" || code === "DATABASE_NOT_FOUND") {
-            return []; // Retornar array vazio silenciosamente
-          }
-          throw e;
-        }),
-      ]);
+      // Tentar carregar database padrão - se não existir, retorna null silenciosamente
+      const db = await api<any>("/api/v1/task-notion/databases/default").catch(() => null);
+      const props = await api<any[]>("/api/v1/task-notion/databases/default/properties").catch(() => []);
+      
       // Se db for null, não há database padrão (normal se não foi criado ainda)
       if (db) {
         setTaskDatabase(db);
@@ -167,13 +152,7 @@ export default function TarefasPage() {
       }
       setTaskProperties(Array.isArray(props) ? props : []);
     } catch (e) {
-      // Apenas tratar erros inesperados (não 404)
-      const code = (e as any)?.code;
-      if (code !== "NOT_FOUND" && code !== "DATABASE_NOT_FOUND") {
-        // Apenas logar se não for erro esperado
-        console.warn("Erro inesperado ao carregar task database:", e);
-      }
-      // Sempre usar valores padrão
+      // Silenciar todos os erros - é esperado que não exista database padrão
       setTaskDatabase(null);
       setTaskProperties([]);
     }
