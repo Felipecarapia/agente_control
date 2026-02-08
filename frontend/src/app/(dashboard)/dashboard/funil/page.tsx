@@ -999,14 +999,15 @@ function CreateDealModal({
             <div>
               <label className="text-sm font-medium">Valor Estimado (R$)</label>
               <Input
-                type="number"
-                step="0.01"
-                value={form.value_cents ? (form.value_cents / 100).toFixed(2) : ""}
+                type="text"
+                value={form.value_cents ? (form.value_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}
                 onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  setForm((f) => ({ ...f, value_cents: isNaN(val) ? null : val * 100 }));
+                  // Remover tudo exceto números e vírgula/ponto
+                  const cleaned = e.target.value.replace(/[^\d,.-]/g, "").replace(",", ".");
+                  const val = parseFloat(cleaned);
+                  setForm((f) => ({ ...f, value_cents: isNaN(val) ? null : Math.round(val * 100) }));
                 }}
-                placeholder="0.00"
+                placeholder="0,00"
               />
             </div>
             <div>
