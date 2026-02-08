@@ -1,6 +1,6 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.api.deps import get_current_user
@@ -382,8 +382,8 @@ def get_tarefas_kanban(
 def get_tarefas_range(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
-    from_date: str | None = None,
-    to_date: str | None = None,
+    from_date: Optional[str] = Query(None, alias="from", description="Data inicial (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, alias="to", description="Data final (YYYY-MM-DD)"),
 ):
     """Retorna tarefas dentro de um intervalo de datas (para calendário e agenda)."""
     try:
