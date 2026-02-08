@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Check, CheckCheck, Archive, Pin, PinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { retryWithBackoff } from "@/lib/retry";
 import Link from "next/link";
 
 type NotificationItem = {
@@ -39,6 +40,7 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pollingEnabledRef = useRef(true);
 
   useEffect(() => {
     // Delay inicial para não bloquear render
@@ -48,9 +50,17 @@ export function NotificationBell() {
     }, 200);
 
     // Polling a cada 30s (fallback se SSE não funcionar)
+    // Com retry e backoff, e para em 401/403
     const interval = setInterval(() => {
-      loadUnreadCount().catch(() => {
-        // Silenciar erros de timeout no polling
+      if (!pollingEnabledRef.current) {
+        return; // Parar polling se desabilitado (401/403)
+      }
+      loadUnreadCount().catch((e) => {
+        // Se for 401/403, parar polling permanentemente
+        if (e?.status === 401 || e?.status === 403 || e?.code === "UNAUTHORIZED" || e?.code === "FORBIDDEN") {
+          pollingEnabledRef.current = false;
+        }
+        // Silenciar outros erros no polling
       });
     }, 30000);
 
@@ -74,10 +84,16 @@ export function NotificationBell() {
 
   async function loadUnreadCount() {
     try {
-      const data = await api<{ count: number }>("/api/v1/notifications/unread-count");
+      const data = await retryWithBackoff(async () => {
+        return await api<{ count: number }>("/api/v1/notifications/unread-count");
+      });
       // apiClient já extrai data do formato {ok: true, data: {...}}
       setUnreadCount(data?.count ?? 0);
-    } catch (e) {
+    } catch (e: any) {
+      // Se for 401/403, parar polling
+      if (e?.status === 401 || e?.status === 403 || e?.code === "UNAUTHORIZED" || e?.code === "FORBIDDEN") {
+        pollingEnabledRef.current = false;
+      }
       // Silenciosamente falha se a tabela ainda não existir ou se houver erro de autenticação
       // Não quebra a aplicação
       setUnreadCount(0);

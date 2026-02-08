@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { retryWithBackoff } from "@/lib/retry";
 
 type NotificationItem = {
   id: number;
@@ -77,10 +78,12 @@ export default function NotificacoesPage() {
 
   async function loadUnreadCount() {
     try {
-      const data = await api<{ count: number }>("/api/v1/notifications/unread-count");
-      setUnreadCount(data.count);
+      const data = await retryWithBackoff(async () => {
+        return await api<{ count: number }>("/api/v1/notifications/unread-count");
+      });
+      setUnreadCount(data?.count ?? 0);
     } catch (e) {
-      // Silenciosamente falha se a tabela ainda não existir
+      // Silenciosamente falha se a tabela ainda não existir ou se houver erro de autenticação
       setUnreadCount(0);
     }
   }
@@ -95,15 +98,17 @@ export default function NotificacoesPage() {
       });
       if (search) params.append("search", search);
 
-      const data = await api<{
-        items: NotificationItem[];
-        total: number;
-        page: number;
-        page_size: number;
-      }>(`/api/v1/notifications?${params}`);
+      const data = await retryWithBackoff(async () => {
+        return await api<{
+          items: NotificationItem[];
+          total: number;
+          page: number;
+          page_size: number;
+        }>(`/api/v1/notifications?${params}`);
+      });
       
       // Filtrar por tab
-      let filtered = data.items;
+      let filtered = Array.isArray(data?.items) ? data.items : [];
       if (activeTab === "fixadas") {
         filtered = filtered.filter((n) => n.pinned_at);
       } else if (activeTab === "arquivadas") {
@@ -114,7 +119,7 @@ export default function NotificacoesPage() {
 
       setNotifications(filtered);
     } catch (e) {
-      // Silenciosamente falha se a tabela ainda não existir
+      // Silenciosamente falha se a tabela ainda não existir ou se houver erro de autenticação
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -134,7 +139,7 @@ export default function NotificacoesPage() {
       );
       loadUnreadCount();
     } catch (e) {
-      console.error("Erro ao marcar como lida:", e);
+      // Silenciar erro - não quebrar UX
     }
   }
 
@@ -152,7 +157,7 @@ export default function NotificacoesPage() {
       loadNotifications();
       loadUnreadCount();
     } catch (e) {
-      console.error("Erro ao marcar todas como lidas:", e);
+      // Silenciar erro - não quebrar UX
     }
   }
 
@@ -170,7 +175,7 @@ export default function NotificacoesPage() {
         )
       );
     } catch (e) {
-      console.error("Erro ao fixar/desfixar:", e);
+      // Silenciar erro - não quebrar UX
     }
   }
 
@@ -182,7 +187,7 @@ export default function NotificacoesPage() {
       });
       loadNotifications();
     } catch (e) {
-      console.error("Erro ao arquivar:", e);
+      // Silenciar erro - não quebrar UX
     }
   }
 

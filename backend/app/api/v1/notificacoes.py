@@ -132,42 +132,110 @@ def get_unread_count_endpoint(
         return success_response(data={"count": 0}, request_id=request_id)
 
 
-@router.post("/read", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/read")
 def mark_read(
+    request: Request,
     data: NotificationBulkAction,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Marca notificações como lidas."""
-    if data.recipient_ids:
-        mark_as_read(db, data.recipient_ids, current_user.id)
-    elif data.notification_ids:
-        mark_notifications_as_read(db, data.notification_ids, current_user.id)
-    else:
-        raise HTTPException(status_code=400, detail="Forneça recipient_ids ou notification_ids")
+    request_id = getattr(request.state, "request_id", None)
+    
+    if not data.recipient_ids and not data.notification_ids:
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Forneça recipient_ids ou notification_ids",
+            status_code=400,
+            request_id=request_id
+        )
+    
+    try:
+        if data.recipient_ids:
+            mark_as_read(db, data.recipient_ids, current_user.id)
+        elif data.notification_ids:
+            mark_notifications_as_read(db, data.notification_ids, current_user.id)
+        
+        return success_response(
+            data={"message": "Notificações marcadas como lidas"},
+            status_code=200,
+            request_id=request_id
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao marcar notificações como lidas: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="INTERNAL_ERROR",
+            message="Erro ao marcar notificações como lidas",
+            status_code=500,
+            request_id=request_id
+        )
 
 
-@router.post("/archive", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/archive")
 def archive(
+    request: Request,
     data: NotificationBulkAction,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Arquiva notificações."""
+    request_id = getattr(request.state, "request_id", None)
+    
     if not data.recipient_ids:
-        raise HTTPException(status_code=400, detail="Forneça recipient_ids")
-    archive_notifications(db, data.recipient_ids, current_user.id)
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Forneça recipient_ids",
+            status_code=400,
+            request_id=request_id
+        )
+    
+    try:
+        archive_notifications(db, data.recipient_ids, current_user.id)
+        return success_response(
+            data={"message": "Notificações arquivadas"},
+            status_code=200,
+            request_id=request_id
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao arquivar notificações: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="INTERNAL_ERROR",
+            message="Erro ao arquivar notificações",
+            status_code=500,
+            request_id=request_id
+        )
 
 
-@router.post("/pin/{recipient_id}", response_model=dict)
+@router.post("/pin/{recipient_id}")
 def pin_notification(
+    request: Request,
     recipient_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Alterna fixação de notificação."""
-    pinned = toggle_pin(db, recipient_id, current_user.id)
-    return {"pinned": pinned}
+    request_id = getattr(request.state, "request_id", None)
+    
+    try:
+        pinned = toggle_pin(db, recipient_id, current_user.id)
+        return success_response(
+            data={"pinned": pinned},
+            request_id=request_id
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao fixar/desfixar notificação: {e}", exc_info=True, extra={"request_id": request_id})
+        return error_response(
+            code="INTERNAL_ERROR",
+            message="Erro ao fixar/desfixar notificação",
+            status_code=500,
+            request_id=request_id
+        )
 
 
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
