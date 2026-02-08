@@ -115,8 +115,8 @@ class DealCreate(DealBase):
 class DealCreateFromClient(BaseModel):
     """Schema para criar deal a partir de cliente arrastado"""
     client_id: int
-    pipeline_id: int
-    stage_id: int
+    pipeline_id: Optional[int] = None
+    stage_id: Optional[int] = None
     title: str
     value_cents: Optional[int] = None
     currency: str = "BRL"

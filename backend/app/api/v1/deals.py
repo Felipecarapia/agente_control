@@ -19,7 +19,7 @@ from app.models.pipeline import (
 from app.models.cliente import Cliente
 from app.models.mensagem import AuditEvent
 from app.schemas.pipeline import (
-    DealCreate, DealUpdate, DealResponse, DealMoveRequest, DealKanbanResponse,
+    DealCreate, DealCreateFromClient, DealUpdate, DealResponse, DealMoveRequest, DealKanbanResponse,
     StageWithDealsResponse, PipelineKanbanResponse, ClientListItem,
     PipelineResponse, PipelineStageResponse,
     DealActivityCreate, DealActivityUpdate, DealActivityResponse,
@@ -571,7 +571,7 @@ def create_deal(
 
 @router.post("/from-client", response_model=DealResponse, status_code=status.HTTP_201_CREATED)
 def create_deal_from_client(
-    data: DealCreate,
+    data: DealCreateFromClient,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -616,6 +616,12 @@ def create_deal_from_client(
         stage = db.query(PipelineStage).filter(
             PipelineStage.pipeline_id == pipeline.id
         ).order_by(PipelineStage.order_index).first()
+    
+    # Se ainda não encontrou stage, usar a primeira stage disponível
+    if not stage:
+        stage = db.query(PipelineStage).filter(
+            PipelineStage.pipeline_id == pipeline.id
+        ).first()
     
     if not stage:
         return error_response(

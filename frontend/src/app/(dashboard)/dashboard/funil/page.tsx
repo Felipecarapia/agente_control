@@ -929,7 +929,8 @@ function CreateDealModal({
     setError(null);
 
     try {
-      const valueCents = form.value_cents ? Math.round(form.value_cents * 100) : null;
+      // form.value_cents já está em centavos, não precisa multiplicar por 100
+      const valueCents = form.value_cents;
       const expectedCloseDate = form.expected_close_date
         ? new Date(form.expected_close_date).toISOString().split("T")[0]
         : null;
@@ -1002,12 +1003,20 @@ function CreateDealModal({
                 type="text"
                 value={form.value_cents ? (form.value_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}
                 onChange={(e) => {
-                  // Remover tudo exceto números e vírgula/ponto
-                  const cleaned = e.target.value.replace(/[^\d,.-]/g, "").replace(",", ".");
-                  const val = parseFloat(cleaned);
-                  setForm((f) => ({ ...f, value_cents: isNaN(val) ? null : Math.round(val * 100) }));
+                  // Remove tudo exceto números
+                  const numbersOnly = e.target.value.replace(/\D/g, "");
+                  
+                  if (numbersOnly === "") {
+                    setForm((f) => ({ ...f, value_cents: null }));
+                    return;
+                  }
+                  
+                  // Trata como centavos: cada dígito digitado é um centavo
+                  // Ex: digita "1000" = 10,00 | digita "10000" = 100,00
+                  const cents = parseInt(numbersOnly, 10);
+                  setForm((f) => ({ ...f, value_cents: cents }));
                 }}
-                placeholder="0,00"
+                placeholder=""
               />
             </div>
             <div>
