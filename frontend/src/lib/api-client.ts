@@ -252,6 +252,9 @@ export async function apiClient<T = any>(
       }
     }
     
+    // Verificar se é recurso opcional antes de processar resposta
+    const isTaskNotionDefault = url.includes("/task-notion/databases/default");
+    
     // Verificar se é resposta de sucesso
     if (response.ok) {
       // Verificar formato padronizado
@@ -261,9 +264,8 @@ export async function apiClient<T = any>(
         return responseBody.data as T;
       } else if (responseBody?.ok === false) {
         // Erro padronizado: { ok: false, error: ... }
-        // Mas se for task-notion/databases/default e data for null, não é erro
-        const isTaskNotionDefault = url.includes("/task-notion/databases/default");
-        if (isTaskNotionDefault && (responseBody?.data === null || responseBody?.data === undefined)) {
+        // Mas se for task-notion/databases/default, tratar como recurso opcional
+        if (isTaskNotionDefault) {
           // Retornar null silenciosamente para recursos opcionais
           return null as T;
         }
@@ -282,8 +284,7 @@ export async function apiClient<T = any>(
     } else {
       // Status HTTP de erro
       // Mas se for task-notion/databases/default e for 404, não é erro (recurso opcional)
-      const isTaskNotionDefault = url.includes("/task-notion/databases/default");
-      if (isTaskNotionDefault && response.status === 404) {
+      if (isTaskNotionDefault && (response.status === 404 || responseBody?.error?.code === "DATABASE_NOT_FOUND")) {
         // Retornar null silenciosamente para recursos opcionais que não existem
         return null as T;
       }
