@@ -9,15 +9,15 @@ router = APIRouter(prefix="/health", tags=["health"])
 
 @router.get("")
 def health_check(
-    db: Session = Depends(get_db),
-    request: Request = None
+    request: Request,
+    db: Session = Depends(get_db)
 ):
     """
     Health check endpoint que testa a conexão com o banco de dados.
-    Retorna { ok: true, data: { db: true } } se tudo estiver OK.
+    Retorna { ok: true, data: { app: true, db: true } } se tudo estiver OK.
     Se DB falhar, retorna { ok: false, error: { code: "DB_DOWN", ... } }
     """
-    request_id = getattr(request.state, "request_id", None) if request else None
+    request_id = getattr(request.state, "request_id", None)
     
     try:
         # Testar conexão com o banco de verdade
@@ -26,7 +26,7 @@ def health_check(
         
         return success_response(
             data={
-                "status": "ok",
+                "app": True,
                 "db": True,
                 "timestamp": datetime.now().isoformat(),
                 "service": "Sistemaxi CRM API"
@@ -34,12 +34,17 @@ def health_check(
             request_id=request_id
         )
     except Exception as e:
-        # Se o banco estiver offline, retornar erro mas com status 200 para não quebrar health checks
+        # Se o banco estiver offline, retornar erro padronizado
+        # Status 503 (Service Unavailable) é mais apropriado para health checks
         return error_response(
             code="DB_DOWN",
-            message=f"Banco de dados offline: {str(e)}",
-            status_code=200,  # Status 200 para health checks não quebrarem
-            details={"error_type": type(e).__name__, "error_message": str(e)},
+            message=f"Banco de dados offline",
+            status_code=503,
+            details={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "db_available": False
+            },
             request_id=request_id
         )
 

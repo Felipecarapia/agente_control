@@ -1,6 +1,7 @@
 """
 Bootstrap automático que roda no startup da aplicação.
-Garante que dados mínimos existam (pipeline padrão, task database, etc).
+Garante que dados mínimos existam (pipeline padrão, task database, roles, permissions, etc).
+IDEMPOTENTE: pode ser executado múltiplas vezes sem duplicar dados.
 """
 import logging
 from sqlalchemy.exc import ProgrammingError, OperationalError
@@ -8,6 +9,11 @@ from app.core.database import SessionLocal
 from app.models.pipeline import Pipeline, PipelineStage
 from app.models.task_notion import TaskDatabase, TaskProperty, TaskView
 from app.models.usuario import Usuario
+from app.models.role import Role
+from app.core.rbac import (
+    ROLE_ADMIN, ROLE_PROJECT_MANAGER, ROLE_TRAFFIC_MANAGER,
+    ROLE_MARKETING_MANAGER, ROLE_MARKETING, ROLE_DEVELOPMENT
+)
 
 logger = logging.getLogger(__name__)
 
@@ -150,15 +156,57 @@ def ensure_default_task_database(db):
     return False
 
 
+def ensure_default_roles(db):
+    """
+    Garante que roles padrão existam (IDEMPOTENTE).
+    """
+    try:
+        roles_data = [
+            (ROLE_ADMIN, "Administrador"),
+            (ROLE_PROJECT_MANAGER, "Gestor de Projetos"),
+            (ROLE_TRAFFIC_MANAGER, "Gestor de Tráfego"),
+            (ROLE_MARKETING_MANAGER, "Gestor de Marketing"),
+            (ROLE_MARKETING, "Marketing"),
+            (ROLE_DEVELOPMENT, "Desenvolvimento"),
+        ]
+        
+        created_count = 0
+        for role_key, role_name in roles_data:
+            existing_role = db.query(Role).filter(Role.key == role_key).first()
+            if not existing_role:
+                role = Role(key=role_key, name=role_name)
+                db.add(role)
+                created_count += 1
+        
+        if created_count > 0:
+            db.commit()
+            logger.info(f"✅ {created_count} role(s) padrão criado(s)")
+        
+        return created_count > 0
+    except (ProgrammingError, OperationalError) as e:
+        logger.warning(f"⚠️  Não foi possível criar roles padrão (tabelas podem não existir): {e}")
+        db.rollback()
+        return False
+    except Exception as e:
+        logger.error(f"Erro ao criar roles padrão: {e}", exc_info=True)
+        db.rollback()
+        return False
+
+
 def bootstrap():
     """
     Executa bootstrap automático.
-    Garante que dados mínimos existam no sistema.
+    Garante que dados mínimos existam no sistema (IDEMPOTENTE).
     """
     db = SessionLocal()
     try:
+        # Ordem importante: roles primeiro (outros podem depender)
+        ensure_default_roles(db)
         ensure_default_pipeline(db)
         ensure_default_task_database(db)
+        logger.info("✅ Bootstrap concluído com sucesso")
+    except Exception as e:
+        logger.error(f"❌ Erro durante bootstrap: {e}", exc_info=True)
     finally:
         db.close()
 

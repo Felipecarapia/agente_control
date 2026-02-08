@@ -34,7 +34,21 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     
     if isinstance(exc, HTTPException):
         status_code = exc.status_code
-        error_code = f"HTTP_{status_code}"
+        # Mapear códigos HTTP para códigos de erro mais específicos
+        if status_code == 401:
+            error_code = "UNAUTHORIZED"
+        elif status_code == 403:
+            error_code = "FORBIDDEN"
+        elif status_code == 404:
+            error_code = "NOT_FOUND"
+        elif status_code == 405:
+            error_code = "METHOD_NOT_ALLOWED"
+        elif status_code == 409:
+            error_code = "CONFLICT"
+        elif status_code == 422:
+            error_code = "VALIDATION_ERROR"
+        else:
+            error_code = f"HTTP_{status_code}"
         message = str(exc.detail) if exc.detail else "Erro na requisição"
     elif isinstance(exc, RequestValidationError):
         status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -91,9 +105,16 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     
     if request_id:
         response_data["error"]["request_id"] = request_id
+        response_data["requestId"] = request_id  # Também no nível raiz para compatibilidade
     
-    return JSONResponse(
+    response = JSONResponse(
         status_code=status_code,
         content=response_data
     )
+    
+    # Garantir que requestId está no header também
+    if request_id:
+        response.headers["X-Request-ID"] = request_id
+    
+    return response
 

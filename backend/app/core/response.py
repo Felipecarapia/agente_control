@@ -4,6 +4,7 @@ Helper para padronizar respostas da API.
 import json
 from decimal import Decimal
 from typing import Any, Optional
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -97,17 +98,36 @@ def serialize_data(data: Any) -> Any:
             return str(data)
 
 
+def get_request_id_from_request(request: Optional[Request] = None) -> Optional[str]:
+    """Helper para obter request_id de um Request object."""
+    if request:
+        return getattr(request.state, "request_id", None)
+    return None
+
+
 def success_response(
     data: Any,
     status_code: int = 200,
     meta: Optional[dict] = None,
-    request_id: Optional[str] = None
+    request_id: Optional[str] = None,
+    request: Optional[Request] = None
 ) -> JSONResponse:
     """
     Retorna resposta padronizada de sucesso.
     
     Formato: { ok: true, data: ..., meta?: ..., requestId?: ... }
+    
+    Args:
+        data: Dados a serem retornados
+        status_code: Código HTTP (padrão: 200)
+        meta: Metadados opcionais
+        request_id: ID da requisição (opcional, pode ser obtido de request)
+        request: Objeto Request do FastAPI (opcional, usado para obter request_id)
     """
+    # Obter request_id do request se não fornecido
+    if not request_id and request:
+        request_id = get_request_id_from_request(request)
+    
     # Serializar dados para garantir compatibilidade JSON
     try:
         serialized_data = serialize_data(data)
@@ -131,10 +151,16 @@ def success_response(
     if request_id:
         response_data["requestId"] = request_id
     
-    return JSONResponse(
+    response = JSONResponse(
         status_code=status_code,
         content=response_data
     )
+    
+    # Garantir que requestId está no header também
+    if request_id:
+        response.headers["X-Request-ID"] = request_id
+    
+    return response
 
 
 def error_response(
@@ -142,13 +168,26 @@ def error_response(
     message: str,
     status_code: int = 400,
     details: Optional[Any] = None,
-    request_id: Optional[str] = None
+    request_id: Optional[str] = None,
+    request: Optional[Request] = None
 ) -> JSONResponse:
     """
     Retorna resposta padronizada de erro.
     
     Formato: { ok: false, error: { code, message, details?, request_id? } }
+    
+    Args:
+        code: Código do erro (ex: "NOT_FOUND", "VALIDATION_ERROR")
+        message: Mensagem de erro amigável
+        status_code: Código HTTP (padrão: 400)
+        details: Detalhes adicionais do erro (opcional)
+        request_id: ID da requisição (opcional, pode ser obtido de request)
+        request: Objeto Request do FastAPI (opcional, usado para obter request_id)
     """
+    # Obter request_id do request se não fornecido
+    if not request_id and request:
+        request_id = get_request_id_from_request(request)
+    
     error_data = {
         "code": code,
         "message": message
@@ -165,8 +204,17 @@ def error_response(
         "error": error_data
     }
     
-    return JSONResponse(
+    if request_id:
+        response_data["requestId"] = request_id  # Também no nível raiz para compatibilidade
+    
+    response = JSONResponse(
         status_code=status_code,
         content=response_data
     )
+    
+    # Garantir que requestId está no header também
+    if request_id:
+        response.headers["X-Request-ID"] = request_id
+    
+    return response
 
