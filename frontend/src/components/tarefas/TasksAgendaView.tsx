@@ -36,6 +36,7 @@ export function TasksAgendaView({
   const weekEnd = addDays(currentWeekStart, 6);
 
   useEffect(() => {
+    let cancelled = false;
     async function loadTasks() {
       setLoading(true);
       try {
@@ -44,16 +45,26 @@ export function TasksAgendaView({
         const data = await api<Tarefa[]>(
           `/api/v1/tarefas/range?from=${fromDate}&to=${toDate}`
         ).catch(() => []); // Retornar array vazio em caso de erro
-        setTasks(Array.isArray(data) ? data : []);
+        
+        if (!cancelled) {
+          setTasks(Array.isArray(data) ? data : []);
+        }
       } catch (e) {
         // Silenciar erros - usar array vazio
-        setTasks([]);
+        if (!cancelled) {
+          setTasks([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
     loadTasks();
-  }, [currentWeekStart, weekEnd]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentWeekStart]);
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
 

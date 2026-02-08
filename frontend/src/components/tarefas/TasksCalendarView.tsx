@@ -83,6 +83,7 @@ export function TasksCalendarView({
     loadTasks();
     return () => {
       cancelled = true;
+    };
   }, [currentMonth]);
 
   function getTasksForDay(day: Date): Tarefa[] {
