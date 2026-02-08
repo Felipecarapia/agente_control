@@ -273,9 +273,8 @@ export async function apiClient<T = any>(
       }
     } else {
       // Status HTTP de erro
-      // Mas se for task-notion/databases/default e for 404, não é erro (recurso opcional)
-      if (isTaskNotionDefault && (response.status === 404 || responseBody?.error?.code === "DATABASE_NOT_FOUND")) {
-        // Retornar null silenciosamente para recursos opcionais que não existem
+      // Se for task-notion/databases/default, SEMPRE retornar null (recurso opcional)
+      if (isTaskNotionDefault) {
         return null as T;
       }
       
