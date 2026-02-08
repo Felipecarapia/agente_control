@@ -2,7 +2,9 @@ import logging
 from typing import Annotated, Optional
 from decimal import Decimal
 from datetime import date, datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import ValidationError
+
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_, text
 
@@ -27,6 +29,7 @@ from app.schemas.pipeline import (
     DealBulkActionRequest
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/deals", tags=["deals"])
 
 
@@ -600,16 +603,29 @@ def create_deal(
 
 @router.post("/from-client", status_code=status.HTTP_201_CREATED)
 def create_deal_from_client(
+    request: Request,
     data: DealCreateFromClient,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Cria um deal a partir de um cliente arrastado para uma coluna."""
+    """
+    Cria um deal a partir de um cliente arrastado para uma coluna.
+    Valida payload com Pydantic -> 400 com details se inválido.
+    Retorna 404 se cliente não encontrado.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
+        # Validação Pydantic já é feita automaticamente pelo FastAPI
         # Verificar se cliente existe
         client = db.query(Cliente).filter(Cliente.id == data.client_id).first()
         if not client:
-            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+            return error_response(
+                code="CLIENT_NOT_FOUND",
+                message=f"Cliente com ID {data.client_id} não encontrado",
+                status_code=404,
+                request_id=request_id
+            )
         
         # Buscar pipeline padrão ou primeiro pipeline disponível
         pipeline = None
@@ -657,7 +673,8 @@ def create_deal_from_client(
             return error_response(
                 code="NO_STAGE",
                 message="Nenhuma etapa encontrada no pipeline.",
-                status_code=404
+                status_code=404,
+                request_id=request_id
             )
         
         # Verificar se já existe deal OPEN para este cliente neste pipeline
@@ -771,17 +788,24 @@ def create_deal_from_client(
             joinedload(Deal.stage_history).joinedload(DealStageHistory.to_stage),
         ).filter(Deal.id == deal.id).first()
         
-        return success_response(data=_format_deal_response(deal), status_code=201)
-    except HTTPException:
-        raise
+        return success_response(data=_format_deal_response(deal), status_code=status.HTTP_201_CREATED, request_id=request_id)
+    except ValidationError as e:
+        # Validação Pydantic falhou
+        return error_response(
+            code="VALIDATION_ERROR",
+            message="Dados inválidos",
+            details=e.errors(),
+            status_code=400,
+            request_id=request_id
+        )
     except Exception as e:
         db.rollback()
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erro ao criar deal from-client: {e}", exc_info=True)
+        logger.error(f"Erro ao criar deal from-client: {e}", exc_info=True, extra={"request_id": request_id})
         return error_response(
-            code="INTERNAL_ERROR",
+            code="CREATE_ERROR",
             message=f"Erro ao criar deal: {str(e)}",
-            status_code=500
+            status_code=500,
+            request_id=request_id
         )
 
 # Endpoint move_deal para adicionar em deals.py
