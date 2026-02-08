@@ -184,6 +184,11 @@ def get_inteligencia_vendas(
     
     request_id = getattr(request.state, "request_id", None)
     
+    # Período anterior para comparação (calcular antes de usar)
+    period_days = (end_date - start_date).days
+    previous_end = start_date - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=period_days)
+    
     # Validar datas
     if not end_date:
         end_date = date.today()
@@ -241,11 +246,6 @@ def get_inteligencia_vendas(
                 },
                 request_id=request_id
             )
-    
-    # Período anterior para comparação
-    period_days = (end_date - start_date).days
-    previous_end = start_date - timedelta(days=1)
-    previous_start = previous_end - timedelta(days=period_days)
     
     try:
         # ============== 1. FUNIL VISUAL (Sankey) ==============

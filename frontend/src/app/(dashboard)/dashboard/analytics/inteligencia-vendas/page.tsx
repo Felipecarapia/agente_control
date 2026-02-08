@@ -197,11 +197,9 @@ export default function InteligenciaVendasPage() {
         `/api/v1/analytics/inteligencia-vendas?${params.toString()}`
       );
       
-      console.log("Response inteligencia-vendas:", response);
-      
-      // Extrair dados do formato padronizado
-      const responseData = response?.ok === true ? response.data : response;
-      const meta = response?.meta || {};
+      // apiClient já extrai data do formato {ok: true, data: {...}}
+      const responseData = response;
+      const meta = (response as any)?.meta || {};
       
       // Verificar se precisa de setup
       if (meta.requiresSetup) {
@@ -226,10 +224,8 @@ export default function InteligenciaVendasPage() {
       }
       
       if (responseData && typeof responseData === 'object' && 'sankey_nodes' in responseData) {
-        console.log("Dados recebidos:", responseData);
         setData(responseData as InteligenciaVendasData);
       } else {
-        console.warn("Dados inválidos ou formato inesperado:", responseData);
         // Dados inválidos - criar estrutura vazia
         setData({
           sankey_nodes: [],
