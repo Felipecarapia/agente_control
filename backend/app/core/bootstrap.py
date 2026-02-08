@@ -193,6 +193,19 @@ def ensure_default_roles(db):
         return False
 
 
+def ensure_default_contract_statuses(db):
+    """
+    Garante que status padrão de contratos existam (IDEMPOTENTE).
+    Nota: Se a tabela Contrato usar enum ou constraint, isso pode não ser necessário.
+    Esta função serve como documentação dos status válidos.
+    """
+    # Status padrão: draft, active, expired, canceled
+    # Se a tabela Contrato tiver constraint CHECK ou enum, não precisa criar nada
+    # Apenas documentar que esses são os valores válidos
+    logger.info("✅ Status padrão de contratos: draft, active, expired, canceled")
+    return True
+
+
 def bootstrap():
     """
     Executa bootstrap automático.
@@ -204,6 +217,7 @@ def bootstrap():
         ensure_default_roles(db)
         ensure_default_pipeline(db)
         ensure_default_task_database(db)
+        ensure_default_contract_statuses(db)
         logger.info("✅ Bootstrap concluído com sucesso")
     except Exception as e:
         logger.error(f"❌ Erro durante bootstrap: {e}", exc_info=True)

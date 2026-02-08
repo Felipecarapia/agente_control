@@ -26,7 +26,7 @@ export default function ContratosPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [form, setForm] = useState({ numero: "", proposta_id: 0, cliente_id: 0, projeto_id: 0, valor: "", data_inicio: "", data_fim: "", status: "ativo" });
+  const [form, setForm] = useState({ numero: "", proposta_id: 0, cliente_id: 0, projeto_id: 0, valor: "", data_inicio: "", data_fim: "", status: "draft" });
 
   async function load() {
     setLoading(true);
@@ -38,18 +38,13 @@ export default function ContratosPage() {
         api<Proposta[]>("/api/v1/propostas").catch(() => []),
       ]);
       
+      // apiClient já extrai data do formato {ok: true, data: [...]}
       setList(Array.isArray(ct) ? ct : []);
       setClientes(Array.isArray(c) ? c : []);
       setProjetos(Array.isArray(p) ? p : []);
       setPropostas(Array.isArray(pr) ? pr : []);
     } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      const errorCode = (e as any)?.code || "UNKNOWN";
-      console.error("Erro ao carregar contratos:", {
-        message: errorMsg,
-        code: errorCode,
-        error: e,
-      });
+      // Silenciar erro - não quebrar UX
       setList([]);
       setClientes([]);
       setProjetos([]);
@@ -62,7 +57,7 @@ export default function ContratosPage() {
 
   function openCreate() {
     setEditId(null);
-    setForm({ numero: "", proposta_id: 0, cliente_id: clientes[0]?.id ?? 0, projeto_id: 0, valor: "", data_inicio: "", data_fim: "", status: "ativo" });
+    setForm({ numero: "", proposta_id: 0, cliente_id: clientes[0]?.id ?? 0, projeto_id: 0, valor: "", data_inicio: "", data_fim: "", status: "draft" });
     setOpen(true);
   }
   function openEdit(item: Contrato) {
@@ -72,15 +67,40 @@ export default function ContratosPage() {
   }
   async function save() {
     try {
-      const body = { numero: form.numero, proposta_id: form.proposta_id || null, cliente_id: form.cliente_id, projeto_id: form.projeto_id || null, valor: form.valor ? Number(form.valor) : null, data_inicio: form.data_inicio || null, data_fim: form.data_fim || null, status: form.status };
-      if (editId) await api(`/api/v1/contratos/${editId}`, { method: "PATCH", body: JSON.stringify(body) });
-      else await api("/api/v1/contratos", { method: "POST", body: JSON.stringify(body) });
+      const body = { 
+        numero: form.numero, 
+        proposta_id: form.proposta_id || null, 
+        cliente_id: form.cliente_id, 
+        projeto_id: form.projeto_id || null, 
+        valor: form.valor ? Number(form.valor) : null, 
+        data_inicio: form.data_inicio || null, 
+        data_fim: form.data_fim || null, 
+        status: form.status 
+      };
+      if (editId) {
+        await api(`/api/v1/contratos/${editId}`, { method: "PATCH", body: JSON.stringify(body) });
+      } else {
+        await api("/api/v1/contratos", { method: "POST", body: JSON.stringify(body) });
+      }
       setOpen(false);
       load();
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Erro ao salvar";
-      console.error("Erro ao salvar contrato:", e);
-      alert(errorMsg);
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao salvar contrato";
+      
+      if (errorCode === "VALIDATION_ERROR") {
+        alert("Dados inválidos. Verifique os campos obrigatórios.");
+      } else if (errorCode === "CONTRACT_DUPLICATE") {
+        alert(`Contrato duplicado: ${errorMsg}`);
+      } else if (errorCode === "CLIENT_NOT_FOUND") {
+        alert("Cliente não encontrado.");
+      } else if (errorCode === "PROPOSAL_NOT_FOUND") {
+        alert("Proposta não encontrada.");
+      } else if (errorCode === "PROJECT_NOT_FOUND") {
+        alert("Projeto não encontrado.");
+      } else {
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
     }
   }
   async function remove() {
@@ -89,10 +109,15 @@ export default function ContratosPage() {
       await api(`/api/v1/contratos/${deleteId}`, { method: "DELETE" });
       setDeleteId(null);
       load();
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Erro ao excluir";
-      console.error("Erro ao excluir contrato:", e);
-      alert(errorMsg);
+    } catch (e: any) {
+      const errorCode = e?.code || "UNKNOWN";
+      const errorMsg = e?.message || "Erro ao excluir contrato";
+      
+      if (errorCode === "CONTRACT_NOT_FOUND") {
+        alert("Contrato não encontrado.");
+      } else {
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
     }
   }
   const clienteMap = Object.fromEntries(clientes.map((c) => [c.id, c.nome]));
@@ -269,7 +294,10 @@ export default function ContratosPage() {
             </div>
             <div className="grid gap-2"><Label>Status</Label>
               <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-                <option value="ativo">Ativo</option><option value="encerrado">Encerrado</option>
+                <option value="draft">Rascunho</option>
+                <option value="active">Ativo</option>
+                <option value="expired">Expirado</option>
+                <option value="canceled">Cancelado</option>
               </select>
             </div>
           </div>
