@@ -21,6 +21,11 @@ import {
   Bell,
   Shield,
   TrendingUp,
+  ChevronUp,
+  Sparkles,
+  PanelLeftClose,
+  PanelLeft,
+  Target,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationToastManager } from "@/components/notifications/NotificationToast";

@@ -111,7 +111,7 @@ export default function RolesPage() {
       ]);
       
       setRoles(Array.isArray(rolesData) ? rolesData : []);
-      setPermissions(typeof permissionsData === "object" && permissionsData !== null ? permissionsData : {});
+      setPermissions(typeof permissionsData === "object" && permissionsData !== null ? (permissionsData as PermissionsByModule) : {});
       setAllPermissionsList(Array.isArray(allPermsData) ? allPermsData : []);
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e);

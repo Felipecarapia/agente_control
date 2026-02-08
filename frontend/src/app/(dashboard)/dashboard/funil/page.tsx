@@ -919,7 +919,7 @@ function CreateDealModal({
   }, [client, open]);
 
   async function handleSubmit() {
-    if (!client || !pipelineId || !stageId) return;
+    if (!client || !stageId) return;
     if (!form.title.trim()) {
       setError("Título é obrigatório");
       return;
