@@ -308,6 +308,12 @@ export async function apiClient<T = any>(
       throw error;
     }
   } catch (error: any) {
+    // Se for recurso opcional (task-notion/databases/default), retornar null silenciosamente
+    const isTaskNotionDefault = url.includes("/task-notion/databases/default");
+    if (isTaskNotionDefault) {
+      return null as T;
+    }
+    
     // Se for AbortError (timeout), criar erro específico
     if (error?.name === "AbortError" || error?.message?.includes("aborted")) {
       const timeoutError = createApiError(error, url, method, 0);
