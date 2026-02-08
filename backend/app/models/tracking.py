@@ -93,7 +93,7 @@ class ProposalEvent(Base):
 
     # Relacionamentos
     session = relationship("ProposalSession", back_populates="events")
-    proposta = relationship("Proposta", back_populates="tracking_events")
+    proposta = relationship("Proposta")
 
 
 class ProposalAnalyticsSummary(Base):

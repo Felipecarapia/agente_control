@@ -16,8 +16,12 @@ try:
     engine = create_engine(
         settings.database_url,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=10,
+        pool_size=3,  # Reduzido para startup mais rápido
+        max_overflow=5,  # Reduzido
+        connect_args={
+            "connect_timeout": 5,  # Timeout de conexão de 5s
+        },
+        echo=False,  # Desabilitar SQL logging no startup
     )
     logger.info("Database engine created successfully")
 except Exception as e:

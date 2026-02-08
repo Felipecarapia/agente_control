@@ -1,0 +1,62 @@
+================================================================================
+MAPEAMENTO DE ENDPOINTS - BACKEND vs FRONTEND
+================================================================================
+
+📊 ESTATÍSTICAS
+  Backend: 120 endpoints
+  Frontend: 0 chamadas
+  Paths únicos backend: 90
+  Paths únicos frontend: 0
+
+⚠️  ENDPOINTS CHAMADOS PELO FRONTEND MAS NÃO ENCONTRADOS NO BACKEND (0)
+--------------------------------------------------------------------------------
+  ✅ Nenhum problema encontrado!
+
+ℹ️  ENDPOINTS DEFINIDOS NO BACKEND MAS NÃO USADOS NO FRONTEND (90)
+--------------------------------------------------------------------------------
+  /api/v1/usuarios/{usuario_id}
+    → Definido em: api/v1/usuarios.py (GET)
+    → Definido em: api/v1/usuarios.py (PATCH)
+  /api/v1/auth/login
+    → Definido em: api/v1/auth.py (POST)
+  /api/v1/auth/me
+    → Definido em: api/v1/auth.py (GET)
+  /api/v1/auth/register
+    → Definido em: api/v1/auth.py (POST)
+  /api/v1/pre-propostas/{pre_proposta_id}
+    → Definido em: api/v1/pre_propostas.py (GET)
+    → Definido em: api/v1/pre_propostas.py (PATCH)
+  /api/v1/pre-propostas/{pre_proposta_id}/answers
+    → Definido em: api/v1/pre_propostas.py (PUT)
+  /api/v1/pre-propostas/{pre_proposta_id}/submit
+    → Definido em: api/v1/pre_propostas.py (POST)
+  /api/v1/pre-propostas/{pre_proposta_id}/convert-to-proposal
+    → Definido em: api/v1/pre_propostas.py (POST)
+  /api/v1/notifications/unread-count
+    → Definido em: api/v1/notificacoes.py (GET)
+  /api/v1/notifications/read
+    → Definido em: api/v1/notificacoes.py (POST)
+  /api/v1/notifications/archive
+    → Definido em: api/v1/notificacoes.py (POST)
+  /api/v1/notifications/pin/{recipient_id}
+    → Definido em: api/v1/notificacoes.py (POST)
+  /api/v1/propostas/public/{slug}
+    → Definido em: api/v1/propostas.py (GET)
+  /api/v1/propostas/{proposta_id}/gerar-slug
+    → Definido em: api/v1/propostas.py (POST)
+  /api/v1/propostas/{proposta_id}/upload
+    → Definido em: api/v1/propostas.py (POST)
+  /api/v1/propostas/{proposta_id}
+    → Definido em: api/v1/propostas.py (GET)
+    → Definido em: api/v1/propostas.py (PATCH)
+  /api/v1/deals/kanban
+    → Definido em: api/v1/deals.py (GET)
+  /api/v1/deals/{deal_id}
+    → Definido em: api/v1/deals.py (GET)
+  /api/v1/deals/from-client
+    → Definido em: api/v1/deals.py (POST)
+  /api/v1/roles/{role_id}
+    → Definido em: api/v1/roles.py (GET)
+    → Definido em: api/v1/roles.py (PATCH)
+
+================================================================================

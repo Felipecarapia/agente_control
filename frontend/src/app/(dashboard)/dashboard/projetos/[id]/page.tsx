@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, FolderKanban, DollarSign, ListTodo } from "lucide-react";
+import { ArrowLeft, FolderKanban, DollarSign, ListTodo, Bell } from "lucide-react";
+import { CobrarModal } from "@/components/projetos/CobrarModal";
 
 const TIPOS = [
   { value: "desenvolvimento_software", label: "Desenvolvimento de software" },
@@ -57,6 +58,7 @@ export default function EditarProjetoPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [cobrarOpen, setCobrarOpen] = useState(false);
 
   useEffect(() => {
     if (!id || isNaN(id)) return;
@@ -129,17 +131,30 @@ export default function EditarProjetoPage() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/projetos">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Projeto: {form.nome || "..."}</h1>
-          <p className="text-muted-foreground">Edite dados e financeiro do projeto</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/dashboard/projetos">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Projeto: {form.nome || "..."}</h1>
+            <p className="text-muted-foreground">Edite dados e financeiro do projeto</p>
+          </div>
         </div>
+        <Button onClick={() => setCobrarOpen(true)}>
+          <Bell className="h-4 w-4 mr-2" />
+          Cobrar
+        </Button>
       </div>
+
+      <CobrarModal
+        open={cobrarOpen}
+        onOpenChange={setCobrarOpen}
+        projectId={id}
+        projectName={form.nome || "Projeto"}
+      />
 
       <Tabs defaultValue="dados" className="w-full">
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">

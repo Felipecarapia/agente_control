@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.response import success_response, error_response
 from app.core.storage import get_storage_service
 from app.models.proposta import Proposta
 from app.models.usuario import Usuario
@@ -17,12 +18,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/propostas", tags=["propostas"])
 
 
-@router.get("", response_model=list[PropostaResponse])
+@router.get("")
 def list_propostas(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    return db.query(Proposta).all()
+    """
+    Lista todas as propostas.
+    Retorna lista vazia se não houver propostas (nunca retorna 500).
+    """
+    try:
+        propostas = db.query(Proposta).all()
+        # Converter para schema Pydantic para serialização correta
+        from app.schemas.proposta import PropostaResponse
+        propostas_data = [PropostaResponse.model_validate(p) for p in propostas]
+        return success_response(data=propostas_data)
+    except Exception as e:
+        # Em caso de erro, retornar lista vazia ao invés de quebrar
+        logger.error(f"Erro ao listar propostas: {e}", exc_info=True)
+        return success_response(data=[])
 
 
 @router.get("/public/{slug}", response_model=PropostaPublicResponse)
@@ -53,15 +67,23 @@ def gerar_slug_proposta(
 ):
     obj = db.query(Proposta).filter(Proposta.id == proposta_id).first()
     if not obj:
-        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+        return error_response(
+            code="PROPOSAL_NOT_FOUND",
+            message="Proposta não encontrada",
+            status_code=404
+        )
     for _ in range(10):
         slug = secrets.token_urlsafe(8).replace("-", "").replace("_", "")[:12]
         if not db.query(Proposta).filter(Proposta.slug == slug).first():
             obj.slug = slug
             db.commit()
             db.refresh(obj)
-            return {"slug": slug}
-    raise HTTPException(status_code=500, detail="Não foi possível gerar slug único")
+            return success_response(data={"slug": slug})
+    return error_response(
+        code="SLUG_GENERATION_FAILED",
+        message="Não foi possível gerar slug único",
+        status_code=500
+    )
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
@@ -122,9 +144,13 @@ def upload_proposta_file(
         logger.info(f"[UPLOAD] Sucesso! URL: {url}")
     except Exception as e:
         logger.error(f"[UPLOAD] Erro: {type(e).__name__}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Erro no upload: {str(e)}")
+        return error_response(
+            code="UPLOAD_ERROR",
+            message=f"Erro no upload: {str(e)}",
+            status_code=500
+        )
     
-    return {"url": url}
+    return success_response(data={"url": url})
 
 
 @router.get("/{proposta_id}", response_model=PropostaResponse)
@@ -135,8 +161,12 @@ def get_proposta(
 ):
     obj = db.query(Proposta).filter(Proposta.id == proposta_id).first()
     if not obj:
-        raise HTTPException(status_code=404, detail="Proposta não encontrada")
-    return obj
+        return error_response(
+            code="PROPOSAL_NOT_FOUND",
+            message="Proposta não encontrada",
+            status_code=404
+        )
+    return success_response(data=obj)
 
 
 @router.post("", response_model=PropostaResponse, status_code=status.HTTP_201_CREATED)
@@ -149,7 +179,7 @@ def create_proposta(
     db.add(obj)
     db.commit()
     db.refresh(obj)
-    return obj
+    return success_response(data=obj, status_code=201)
 
 
 @router.patch("/{proposta_id}", response_model=PropostaResponse)
@@ -161,12 +191,16 @@ def update_proposta(
 ):
     obj = db.query(Proposta).filter(Proposta.id == proposta_id).first()
     if not obj:
-        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+        return error_response(
+            code="PROPOSAL_NOT_FOUND",
+            message="Proposta não encontrada",
+            status_code=404
+        )
     for k, v in data.model_dump(exclude_unset=True).items():
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
-    return obj
+    return success_response(data=obj)
 
 
 @router.delete("/{proposta_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -177,6 +211,10 @@ def delete_proposta(
 ):
     obj = db.query(Proposta).filter(Proposta.id == proposta_id).first()
     if not obj:
-        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+        return error_response(
+            code="PROPOSAL_NOT_FOUND",
+            message="Proposta não encontrada",
+            status_code=404
+        )
     db.delete(obj)
     db.commit()

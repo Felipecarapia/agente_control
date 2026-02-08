@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.response import success_response, error_response
+from app.core.validators import IDValidator
 from app.models.cliente import Cliente
 from app.models.usuario import Usuario
 from app.schemas.cliente import ClienteCreate, ClienteUpdate, ClienteResponse
@@ -12,12 +14,27 @@ from app.schemas.cliente import ClienteCreate, ClienteUpdate, ClienteResponse
 router = APIRouter(prefix="/clientes", tags=["clientes"])
 
 
-@router.get("", response_model=list[ClienteResponse])
+@router.get("")
 def list_clientes(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    return db.query(Cliente).all()
+    """
+    Lista todos os clientes.
+    Retorna lista vazia se não houver clientes (nunca retorna 500).
+    """
+    try:
+        clientes = db.query(Cliente).all()
+        # Converter para schema Pydantic para serialização correta
+        from app.schemas.cliente import ClienteResponse
+        clientes_data = [ClienteResponse.model_validate(c) for c in clientes]
+        return success_response(data=clientes_data)
+    except Exception as e:
+        # Em caso de erro, retornar lista vazia ao invés de quebrar
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao listar clientes: {e}", exc_info=True)
+        return success_response(data=[])
 
 
 @router.get("/{cliente_id}", response_model=ClienteResponse)
@@ -26,10 +43,22 @@ def get_cliente(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
+    # Validar ID
+    if cliente_id <= 0:
+        return error_response(
+            code="INVALID_ID",
+            message="ID do cliente deve ser maior que 0",
+            status_code=400
+        )
+    
     obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not obj:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    return obj
+        return error_response(
+            code="CLIENT_NOT_FOUND",
+            message="Cliente não encontrado",
+            status_code=404
+        )
+    return success_response(data=obj)
 
 
 @router.post("", response_model=ClienteResponse, status_code=status.HTTP_201_CREATED)
@@ -42,7 +71,7 @@ def create_cliente(
     db.add(obj)
     db.commit()
     db.refresh(obj)
-    return obj
+    return success_response(data=obj, status_code=201)
 
 
 @router.patch("/{cliente_id}", response_model=ClienteResponse)
@@ -59,7 +88,7 @@ def update_cliente(
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
-    return obj
+    return success_response(data=obj)
 
 
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -19,10 +19,10 @@ export default function DashboardPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6"
+      className="space-y-4 lg:space-y-6"
     >
       <p className="text-muted-foreground text-sm">Visão geral do CRM. Use o menu para acessar os módulos.</p>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((m) => {
           const Icon = m.icon;
           return (

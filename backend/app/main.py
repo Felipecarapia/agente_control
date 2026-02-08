@@ -3,23 +3,53 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
-# Configura logging ANTES de tudo
+# Configura logging ANTES de tudo (apenas WARNING para startup mais rápido)
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,  # Reduzido de INFO para WARNING
     format="%(levelname)s:     %(name)s - %(message)s",
 )
 
 logger = logging.getLogger(__name__)
 
 # Log das variáveis de ambiente importantes (sem expor secrets)
-logger.info(f"Starting application...")
-logger.info(f"DATABASE_URL configured: {'Yes' if os.getenv('DATABASE_URL') else 'No'}")
-logger.info(f"PORT: {os.getenv('PORT', 'not set')}")
+# Apenas em modo debug
+if os.getenv("DEBUG", "").lower() == "true":
+    logger.setLevel(logging.INFO)
+    logger.info(f"Starting application...")
+    logger.info(f"DATABASE_URL configured: {'Yes' if os.getenv('DATABASE_URL') else 'No'}")
+    logger.info(f"PORT: {os.getenv('PORT', 'not set')}")
 
 from app.api.v1 import api_router
+from app.core.error_handler import global_exception_handler
+from app.core.middleware import RequestIDMiddleware
+from app.core.bootstrap import bootstrap
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
 
 app = FastAPI(title="Sistemaxi CRM", version="0.1.0")
+
+# Executar bootstrap automático no startup
+@app.on_event("startup")
+async def startup_event():
+    """Executa bootstrap automático ao iniciar a aplicação."""
+    logger.info("Executando bootstrap automático...")
+    try:
+        bootstrap()
+        logger.info("✅ Bootstrap concluído")
+    except Exception as e:
+        logger.warning(f"⚠️  Erro no bootstrap (pode ser normal se tabelas não existem ainda): {e}")
+
+# Adicionar middleware de request_id (deve ser o primeiro)
+app.add_middleware(RequestIDMiddleware)
+
+# Adicionar handler global de exceções
+app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(RequestValidationError, global_exception_handler)
+app.add_exception_handler(SQLAlchemyError, global_exception_handler)
 
 # CORS - configuração para desenvolvimento e produção
 origins = [
@@ -44,6 +74,11 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
+# Servir arquivos estáticos (avatars)
+upload_dir = Path("uploads")
+upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 @app.get("/")
 def root():
@@ -58,5 +93,7 @@ def root():
 
 @app.get("/health")
 def health():
-    """Health check endpoint."""
+    """Health check endpoint básico (sem DB)."""
     return {"status": "ok"}
+
+# Health check com DB está em /api/v1/health

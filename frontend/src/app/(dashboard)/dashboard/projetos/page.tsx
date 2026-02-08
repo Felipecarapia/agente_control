@@ -24,7 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FolderKanban, User, DollarSign, Calendar, Tag, Bell } from "lucide-react";
+import { CobrarModal } from "@/components/projetos/CobrarModal";
+import { CardSkeleton } from "@/components/ui/card-skeleton";
 
 const TIPO_LABEL: Record<string, string> = {
   desenvolvimento_software: "Desenvolvimento de software",
@@ -54,18 +56,32 @@ export default function ProjetosPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [cobrarProjectId, setCobrarProjectId] = useState<number | null>(null);
 
   async function loadList() {
     setLoading(true);
     try {
       const [p, c] = await Promise.all([
-        api<Projeto[]>("/api/v1/projetos"),
-        api<Cliente[]>("/api/v1/clientes"),
+        api<any>("/api/v1/projetos").catch(() => ({ ok: true, data: [] })),
+        api<any>("/api/v1/clientes").catch(() => ({ ok: true, data: [] })),
       ]);
-      setList(p);
-      setClientes(c);
+      
+      // Extrair dados do formato padronizado
+      const projetos = p?.ok === true ? (p.data || []) : (Array.isArray(p) ? p : []);
+      const clientes = c?.ok === true ? (c.data || []) : (Array.isArray(c) ? c : []);
+      
+      setList(Array.isArray(projetos) ? projetos : []);
+      setClientes(Array.isArray(clientes) ? clientes : []);
     } catch (e) {
-      console.error(e);
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      const errorCode = (e as any)?.code || "UNKNOWN";
+      console.error("Erro ao carregar projetos:", {
+        message: errorMsg,
+        code: errorCode,
+        error: e,
+      });
+      setList([]);
+      setClientes([]);
     } finally {
       setLoading(false);
     }
@@ -87,7 +103,9 @@ export default function ProjetosPage() {
     }
   }
 
-  const clienteMap = Object.fromEntries(clientes.map((c) => [c.id, c.nome]));
+  const clienteMap = Object.fromEntries(
+    Array.isArray(clientes) ? clientes.map((c) => [c.id, c.nome]) : []
+  );
 
   function formatMoeda(val: string | number | null, moeda: string) {
     if (val == null || val === "") return "-";
@@ -100,63 +118,178 @@ export default function ProjetosPage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 lg:space-y-6">
       <div className="flex items-center justify-end">
-        <Button asChild>
+        <Button asChild size="sm" className="lg:size-default">
           <Link href="/dashboard/projetos/novo">
             <Plus className="h-4 w-4" />
-            Novo projeto
+            <span className="hidden sm:inline">Novo projeto</span>
+            <span className="sm:hidden">Novo</span>
           </Link>
         </Button>
       </div>
 
       <Card className="shadow-sm border-border/80">
-        <CardHeader>
-          <CardTitle>Lista</CardTitle>
+        <CardHeader className="p-4 lg:p-6">
+          <CardTitle className="text-base lg:text-lg">Lista</CardTitle>
         </CardHeader>
         <CardContent className="p-0 pt-0">
           {loading ? (
-            <p className="p-4 text-muted-foreground">Carregando...</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Valor orçado</TableHead>
-                  <TableHead className="text-right">Valor realizado</TableHead>
-                  <TableHead className="w-[100px]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.id}</TableCell>
-                    <TableCell>{TIPO_LABEL[p.tipo] ?? p.tipo}</TableCell>
-                    <TableCell>{p.nome}</TableCell>
-                    <TableCell>{clienteMap[p.cliente_id] ?? "-"}</TableCell>
-                    <TableCell>{p.status}</TableCell>
-                    <TableCell className="text-right">{formatMoeda(p.valor_orcado, p.moeda)}</TableCell>
-                    <TableCell className="text-right">{formatMoeda(p.valor_realizado, p.moeda)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link href={`/dashboard/projetos/${p.id}`}>
-                            <Pencil className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteId(p.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              {/* Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+                {Array.isArray(list) && list.length > 0 ? (
+                  list.map((p) => (
+                    <Card key={p.id} className="border border-border/60 shadow-md hover:shadow-lg transition-shadow bg-card">
+                      <CardContent className="p-4">
+                        {/* Header */}
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary flex-shrink-0">
+                              <FolderKanban className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm leading-tight truncate text-foreground">{p.nome}</h3>
+                              <p className="text-xs text-muted-foreground">#{p.id}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground truncate max-w-full">
+                              {TIPO_LABEL[p.tipo] ?? p.tipo}
+                            </span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                              {p.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="border-t border-border/50 my-3" />
+
+                        {/* Info Compact */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <p className="text-xs text-foreground truncate flex-1">{clienteMap[p.cliente_id] ?? "-"}</p>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Orçado</span>
+                              </div>
+                              <span className="text-xs font-semibold text-foreground">{formatMoeda(p.valor_orcado, p.moeda)}</span>
+                            </div>
+                            {p.valor_realizado && (
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">Realizado</span>
+                                </div>
+                                <span className="text-xs font-semibold text-foreground">{formatMoeda(p.valor_realizado, p.moeda)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="border-t border-border/50 mt-3 pt-3 flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 h-8 px-2" 
+                            asChild
+                          >
+                            <Link href={`/dashboard/projetos/${p.id}`} className="flex items-center justify-center">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 px-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" 
+                            onClick={() => setCobrarProjectId(p.id)}
+                            title="Cobrar membros"
+                          >
+                            <Bell className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 px-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" 
+                            onClick={() => setDeleteId(p.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Nenhum projeto encontrado
+                  </div>
+                )}
+              </div>
+
+              {/* Tabela para desktop - oculta */}
+              <div className="hidden overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Valor orçado</TableHead>
+                      <TableHead className="text-right">Valor realizado</TableHead>
+                      <TableHead className="w-[100px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.isArray(list) && list.length > 0 ? (
+                      list.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell>{p.id}</TableCell>
+                          <TableCell>{TIPO_LABEL[p.tipo] ?? p.tipo}</TableCell>
+                          <TableCell>{p.nome}</TableCell>
+                          <TableCell>{clienteMap[p.cliente_id] ?? "-"}</TableCell>
+                          <TableCell>{p.status}</TableCell>
+                          <TableCell className="text-right">{formatMoeda(p.valor_orcado, p.moeda)}</TableCell>
+                          <TableCell className="text-right">{formatMoeda(p.valor_realizado, p.moeda)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="icon" asChild>
+                                <Link href={`/dashboard/projetos/${p.id}`}>
+                                  <Pencil className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteId(p.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground">
+                          Nenhum projeto encontrado
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -175,6 +308,17 @@ export default function ProjetosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {cobrarProjectId && (
+        <CobrarModal
+          open={!!cobrarProjectId}
+          onOpenChange={(open) => {
+            if (!open) setCobrarProjectId(null);
+          }}
+          projectId={cobrarProjectId}
+          projectName={list.find((p) => p.id === cobrarProjectId)?.nome || "Projeto"}
+        />
+      )}
     </motion.div>
   );
 }
