@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { retryWithBackoff } from "@/lib/retry";
 
 interface NotificationToastData {
   id: string;
@@ -135,32 +136,42 @@ function NotificationToastItem({
 export function NotificationToastManager() {
   const [notifications, setNotifications] = useState<NotificationToastData[]>([]);
   const [lastNotificationId, setLastNotificationId] = useState<number | null>(null);
+  const pollingEnabledRef = useState(true)[0];
 
   useEffect(() => {
     // Polling leve a cada 20s para verificar novas notificações
     // Delay inicial para não bloquear render
     let isMounted = true;
+    let pollingEnabled = true;
     
     const interval = setInterval(async () => {
-      if (!isMounted) return;
+      if (!isMounted || !pollingEnabled) return;
       
       try {
-        // Verificar contagem de não lidas
-        const unreadCount = await api<{ count: number }>(
-          "/api/v1/notifications/unread-count"
-        );
+        // Verificar contagem de não lidas (com retry e backoff)
+        const unreadCount = await retryWithBackoff(async () => {
+          return await api<{ count: number }>(
+            "/api/v1/notifications/unread-count"
+          );
+        });
 
         if (!isMounted) return;
 
-        if (unreadCount.count > 0) {
-          // Buscar última notificação não lida
-          const recent = await api<any[]>(
-            "/api/v1/notifications?unread_only=true&page=1&page_size=1"
-          );
+        if (unreadCount?.count > 0) {
+          // Buscar última notificação não lida (com retry e backoff)
+          const recentData = await retryWithBackoff(async () => {
+            return await api<{
+              items: any[];
+              total: number;
+              page: number;
+              page_size: number;
+            }>("/api/v1/notifications?unread_only=true&page=1&page_size=1");
+          });
 
           if (!isMounted) return;
 
-          if (recent && recent.length > 0) {
+          const recent = Array.isArray(recentData?.items) ? recentData.items : [];
+          if (recent.length > 0) {
             const notif = recent[0];
             
             // Verificar se já mostramos esta notificação
@@ -173,21 +184,22 @@ export function NotificationToastManager() {
                 {
                   id: notificationId,
                   type: "notification",
-                  title: notif.title || "Nova notificação",
-                  body: notif.body || "",
-                  authorAvatar: notif.author_avatar,
+                  title: notif.notification?.title || "Nova notificação",
+                  body: notif.notification?.body || "",
+                  authorAvatar: notif.author_name ? null : null, // TODO: adicionar avatar se disponível
                   authorName: notif.author_name,
-                  actionUrl: notif.action_url,
+                  actionUrl: notif.notification?.action_url,
                 },
               ]);
             }
           }
         }
-      } catch (err) {
-        // Silenciar erros de timeout/polling para não poluir console
-        if (err instanceof Error && !err.message.includes("Tempo de espera")) {
-          console.error("Erro ao verificar notificações:", err);
+      } catch (err: any) {
+        // Se for 401/403, parar polling permanentemente
+        if (err?.status === 401 || err?.status === 403 || err?.code === "UNAUTHORIZED" || err?.code === "FORBIDDEN") {
+          pollingEnabled = false;
         }
+        // Silenciar outros erros de timeout/polling para não poluir console
       }
     }, 20000); // 20 segundos
 
