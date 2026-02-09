@@ -1,4 +1,7 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+import uuid
+
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -9,8 +12,8 @@ class ClienteOnboarding(Base):
     """Informações de onboarding do cliente (landing page, materiais, resultado)."""
     __tablename__ = "cliente_onboarding"
 
-    id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False, unique=True)
 
     # Informações para landing page
     quem_somos = Column(Text, nullable=True)
@@ -38,8 +41,8 @@ class ClienteMetaWhatsapp(Base):
     """Configuração Meta WhatsApp Oficial do cliente."""
     __tablename__ = "cliente_meta_whatsapp"
 
-    id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False, unique=True)
 
     nome_aplicativo = Column(String(255), nullable=True)
     numero_oficial = Column(String(50), nullable=True)
@@ -56,8 +59,8 @@ class ClienteContatoOperacional(Base):
     """Contatos operacionais do cliente."""
     __tablename__ = "cliente_contatos_operacionais"
 
-    id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
 
     nome = Column(String(255), nullable=False)
     cargo = Column(String(255), nullable=True)

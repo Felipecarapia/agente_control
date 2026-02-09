@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,7 +23,7 @@ def list_projetos(
 
 @router.get("/{projeto_id}", response_model=ProjetoResponse)
 def get_projeto(
-    projeto_id: int,
+    projeto_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -47,7 +48,7 @@ def create_projeto(
 
 @router.patch("/{projeto_id}", response_model=ProjetoResponse)
 def update_projeto(
-    projeto_id: int,
+    projeto_id: uuid.UUID,
     data: ProjetoUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -64,7 +65,7 @@ def update_projeto(
 
 @router.delete("/{projeto_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_projeto(
-    projeto_id: int,
+    projeto_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

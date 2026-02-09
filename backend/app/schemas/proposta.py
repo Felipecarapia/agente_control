@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -9,8 +10,8 @@ class PropostaBase(BaseModel):
     titulo: str
     descricao: str | None = None
     valor: Decimal | None = None
-    cliente_id: int
-    projeto_id: int | None = None
+    cliente_id: uuid.UUID
+    projeto_id: uuid.UUID | None = None
     status: str = "rascunho"
     validade_ate: date | None = None
 
@@ -23,16 +24,16 @@ class PropostaUpdate(BaseModel):
     titulo: str | None = None
     descricao: str | None = None
     valor: Decimal | None = None
-    cliente_id: int | None = None
-    projeto_id: int | None = None
+    cliente_id: uuid.UUID | None = None
+    projeto_id: uuid.UUID | None = None
     status: str | None = None
     validade_ate: date | None = None
     landing_content: list[dict[str, Any]] | None = None
 
 
 class PropostaResponse(PropostaBase):
-    id: int
-    usuario_id: int | None = None
+    id: uuid.UUID
+    usuario_id: uuid.UUID | None = None
     slug: str | None = None
     landing_content: list[dict[str, Any]] | None = None
     created_at: datetime | None = None
@@ -43,7 +44,7 @@ class PropostaResponse(PropostaBase):
 
 
 class PropostaPublicResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     titulo: str
     descricao: str | None = None
     valor: Decimal | None = None

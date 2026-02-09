@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -27,8 +28,8 @@ class LeadBase(BaseModel):
     interesse: str | None = None
     necessidade: str | None = None
     orcamento_estimado: float | None = None
-    responsavel_id: int | None = None
-    cliente_id: int | None = None
+    responsavel_id: uuid.UUID | None = None
+    cliente_id: uuid.UUID | None = None
     proxima_acao: str | None = None
     proxima_acao_data: datetime | None = None
     motivo_perda: str | None = None
@@ -65,8 +66,8 @@ class LeadUpdate(BaseModel):
     interesse: str | None = None
     necessidade: str | None = None
     orcamento_estimado: float | None = None
-    responsavel_id: int | None = None
-    cliente_id: int | None = None
+    responsavel_id: uuid.UUID | None = None
+    cliente_id: uuid.UUID | None = None
     proxima_acao: str | None = None
     proxima_acao_data: datetime | None = None
     motivo_perda: str | None = None
@@ -76,8 +77,8 @@ class LeadUpdate(BaseModel):
 
 
 class LeadResponse(LeadBase):
-    id: int
-    criado_por_id: int | None = None
+    id: uuid.UUID
+    criado_por_id: uuid.UUID | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     convertido_em: datetime | None = None

@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/tarefas", tags=["tarefas"])
 def list_tarefas(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
-    projeto_id: int | None = None,
+    projeto_id: uuid.UUID | None = None,
 ):
     q = db.query(Tarefa)
     if projeto_id is not None:
@@ -26,7 +27,7 @@ def list_tarefas(
 
 @router.get("/{tarefa_id}", response_model=TarefaResponse)
 def get_tarefa(
-    tarefa_id: int,
+    tarefa_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -51,7 +52,7 @@ def create_tarefa(
 
 @router.patch("/{tarefa_id}", response_model=TarefaResponse)
 def update_tarefa(
-    tarefa_id: int,
+    tarefa_id: uuid.UUID,
     data: TarefaUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -68,7 +69,7 @@ def update_tarefa(
 
 @router.delete("/{tarefa_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tarefa(
-    tarefa_id: int,
+    tarefa_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

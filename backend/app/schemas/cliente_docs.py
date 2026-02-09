@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -5,8 +6,8 @@ from pydantic import BaseModel
 # =================== Documento RAG ===================
 
 class DocumentoRAGResponse(BaseModel):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     nome_original: str
     url: str
     content_type: str | None = None
@@ -20,8 +21,8 @@ class DocumentoRAGResponse(BaseModel):
 # =================== Imagem ===================
 
 class ImagemResponse(BaseModel):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     nome_original: str
     url: str
     content_type: str | None = None
@@ -58,8 +59,8 @@ class CronogramaItemUpdate(BaseModel):
 
 
 class CronogramaItemResponse(CronogramaItemBase):
-    id: int
-    etapa_id: int
+    id: uuid.UUID
+    etapa_id: uuid.UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -86,8 +87,8 @@ class CronogramaEtapaUpdate(BaseModel):
 
 
 class CronogramaEtapaResponse(CronogramaEtapaBase):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     itens: list[CronogramaItemResponse] = []
     created_at: datetime | None = None
     updated_at: datetime | None = None

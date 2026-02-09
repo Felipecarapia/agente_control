@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -29,7 +30,7 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     user_id = payload["sub"]
-    user = db.query(Usuario).filter(Usuario.id == int(user_id)).first()
+    user = db.query(Usuario).filter(Usuario.id == uuid.UUID(user_id)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

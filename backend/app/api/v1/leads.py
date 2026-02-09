@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -62,7 +63,7 @@ def leads_stats(
 
 @router.get("/{lead_id}", response_model=LeadResponse)
 def get_lead(
-    lead_id: int,
+    lead_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -89,7 +90,7 @@ def create_lead(
 
 @router.patch("/{lead_id}", response_model=LeadResponse)
 def update_lead(
-    lead_id: int,
+    lead_id: uuid.UUID,
     data: LeadUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -106,7 +107,7 @@ def update_lead(
 
 @router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_lead(
-    lead_id: int,
+    lead_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

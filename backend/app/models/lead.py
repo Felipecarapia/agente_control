@@ -1,4 +1,7 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Float
+import uuid
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -9,7 +12,7 @@ class Lead(Base):
     """Cadastro de leads."""
     __tablename__ = "leads"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
     # Dados básicos
     nome = Column(String(255), nullable=False)
@@ -46,8 +49,8 @@ class Lead(Base):
     orcamento_estimado = Column(Float, nullable=True)
 
     # Atribuição
-    responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True)  # se converteu
+    responsavel_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=True)  # se converteu
 
     # Próxima ação
     proxima_acao = Column(String(500), nullable=True)
@@ -60,7 +63,7 @@ class Lead(Base):
     observacoes = Column(Text, nullable=True)
 
     # Metadados
-    criado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    criado_por_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     convertido_em = Column(DateTime(timezone=True), nullable=True)

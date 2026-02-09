@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,7 +30,7 @@ router = APIRouter(prefix="/clientes/{cliente_id}/onboarding", tags=["onboarding
 
 # ─── helpers ────────────────────────────────────────────────────────
 
-def _get_cliente(db: Session, cliente_id: int) -> Cliente:
+def _get_cliente(db: Session, cliente_id: uuid.UUID) -> Cliente:
     obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not obj:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
@@ -42,7 +43,7 @@ def _get_cliente(db: Session, cliente_id: int) -> Cliente:
 
 @router.get("/info", response_model=OnboardingResponse | None)
 def get_onboarding(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -53,7 +54,7 @@ def get_onboarding(
 
 @router.put("/info", response_model=OnboardingResponse)
 def upsert_onboarding(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     data: OnboardingCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -77,7 +78,7 @@ def upsert_onboarding(
 
 @router.get("/whatsapp", response_model=MetaWhatsappResponse | None)
 def get_whatsapp(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -88,7 +89,7 @@ def get_whatsapp(
 
 @router.put("/whatsapp", response_model=MetaWhatsappResponse)
 def upsert_whatsapp(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     data: MetaWhatsappCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -112,7 +113,7 @@ def upsert_whatsapp(
 
 @router.get("/contatos", response_model=list[ContatoOperacionalResponse])
 def list_contatos(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -124,7 +125,7 @@ def list_contatos(
 
 @router.post("/contatos", response_model=ContatoOperacionalResponse, status_code=status.HTTP_201_CREATED)
 def create_contato(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     data: ContatoOperacionalCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -139,8 +140,8 @@ def create_contato(
 
 @router.patch("/contatos/{contato_id}", response_model=ContatoOperacionalResponse)
 def update_contato(
-    cliente_id: int,
-    contato_id: int,
+    cliente_id: uuid.UUID,
+    contato_id: uuid.UUID,
     data: ContatoOperacionalUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -161,8 +162,8 @@ def update_contato(
 
 @router.delete("/contatos/{contato_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_contato(
-    cliente_id: int,
-    contato_id: int,
+    cliente_id: uuid.UUID,
+    contato_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

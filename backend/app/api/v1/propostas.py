@@ -1,5 +1,6 @@
 import logging
 import secrets
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -47,7 +48,7 @@ def get_proposta_public(
 
 @router.post("/{proposta_id}/gerar-slug")
 def gerar_slug_proposta(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -69,7 +70,7 @@ MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
 
 @router.post("/{proposta_id}/upload")
 def upload_proposta_file(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     file: Annotated[UploadFile, File()],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -129,7 +130,7 @@ def upload_proposta_file(
 
 @router.get("/{proposta_id}", response_model=PropostaResponse)
 def get_proposta(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -154,7 +155,7 @@ def create_proposta(
 
 @router.patch("/{proposta_id}", response_model=PropostaResponse)
 def update_proposta(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     data: PropostaUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -171,7 +172,7 @@ def update_proposta(
 
 @router.delete("/{proposta_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_proposta(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

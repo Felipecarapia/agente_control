@@ -3,6 +3,7 @@ Endpoint público para inserção de leads via sistemas externos.
 Protegido por API Key no header: X-API-Key
 """
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -77,7 +78,7 @@ class LeadPublicCreate(BaseModel):
 
 class LeadPublicResponse(BaseModel):
     """Resposta após criação do lead."""
-    id: int
+    id: uuid.UUID
     nome: str
     email: Optional[str] = None
     telefone: Optional[str] = None

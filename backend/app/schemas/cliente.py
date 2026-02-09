@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -49,8 +50,8 @@ class ClienteUpdate(BaseModel):
 
 
 class ClienteResponse(ClienteBase):
-    id: int
-    usuario_id: int | None = None
+    id: uuid.UUID
+    usuario_id: uuid.UUID | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

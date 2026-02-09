@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,7 +23,7 @@ def list_contratos(
 
 @router.get("/{contrato_id}", response_model=ContratoResponse)
 def get_contrato(
-    contrato_id: int,
+    contrato_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -47,7 +48,7 @@ def create_contrato(
 
 @router.patch("/{contrato_id}", response_model=ContratoResponse)
 def update_contrato(
-    contrato_id: int,
+    contrato_id: uuid.UUID,
     data: ContratoUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -64,7 +65,7 @@ def update_contrato(
 
 @router.delete("/{contrato_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_contrato(
-    contrato_id: int,
+    contrato_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

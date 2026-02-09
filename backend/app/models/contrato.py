@@ -1,4 +1,7 @@
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String
+import uuid
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Numeric, String
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -8,11 +11,11 @@ from app.core.database import Base
 class Contrato(Base):
     __tablename__ = "contratos"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     numero = Column(String(100), nullable=False)
-    proposta_id = Column(Integer, ForeignKey("propostas.id"), nullable=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
-    projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=True)
+    proposta_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id"), nullable=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=False)
+    projeto_id = Column(UUID(as_uuid=True), ForeignKey("projetos.id"), nullable=True)
     valor = Column(Numeric(15, 2), nullable=True)
     data_inicio = Column(Date, nullable=True)
     data_fim = Column(Date, nullable=True)

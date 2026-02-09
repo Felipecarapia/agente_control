@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,7 +23,7 @@ def list_usuarios(
 
 @router.get("/{usuario_id}", response_model=UsuarioResponse)
 def get_usuario(
-    usuario_id: int,
+    usuario_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -54,7 +55,7 @@ def create_usuario(
 
 @router.patch("/{usuario_id}", response_model=UsuarioResponse)
 def update_usuario(
-    usuario_id: int,
+    usuario_id: uuid.UUID,
     data: UsuarioUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -74,7 +75,7 @@ def update_usuario(
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_usuario(
-    usuario_id: int,
+    usuario_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel
@@ -7,7 +8,7 @@ class ProjetoBase(BaseModel):
     tipo: str = "desenvolvimento_software"
     nome: str
     descricao: str | None = None
-    cliente_id: int
+    cliente_id: uuid.UUID
     status: str = "ativo"
     data_inicio: date | None = None
     data_fim: date | None = None
@@ -25,7 +26,7 @@ class ProjetoUpdate(BaseModel):
     tipo: str | None = None
     nome: str | None = None
     descricao: str | None = None
-    cliente_id: int | None = None
+    cliente_id: uuid.UUID | None = None
     status: str | None = None
     data_inicio: date | None = None
     data_fim: date | None = None
@@ -36,8 +37,8 @@ class ProjetoUpdate(BaseModel):
 
 
 class ProjetoResponse(ProjetoBase):
-    id: int
-    usuario_id: int | None = None
+    id: uuid.UUID
+    usuario_id: uuid.UUID | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

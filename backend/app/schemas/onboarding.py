@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -26,8 +27,8 @@ class OnboardingUpdate(OnboardingBase):
 
 
 class OnboardingResponse(OnboardingBase):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -53,8 +54,8 @@ class MetaWhatsappUpdate(MetaWhatsappBase):
 
 
 class MetaWhatsappResponse(MetaWhatsappBase):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -85,8 +86,8 @@ class ContatoOperacionalUpdate(BaseModel):
 
 
 class ContatoOperacionalResponse(ContatoOperacionalBase):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

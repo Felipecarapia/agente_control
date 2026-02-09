@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
@@ -26,7 +27,7 @@ def list_clientes(
 
 @router.get("/{cliente_id}", response_model=ClienteResponse)
 def get_cliente(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -51,7 +52,7 @@ def create_cliente(
 
 @router.patch("/{cliente_id}", response_model=ClienteResponse)
 def update_cliente(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     data: ClienteUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -68,7 +69,7 @@ def update_cliente(
 
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_cliente(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -81,7 +82,7 @@ def delete_cliente(
 
 @router.post("/{cliente_id}/upload-logo", response_model=ClienteResponse)
 async def upload_logo(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     file: UploadFile = File(...),

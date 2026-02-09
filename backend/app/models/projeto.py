@@ -1,4 +1,7 @@
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+import uuid
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -8,13 +11,13 @@ from app.core.database import Base
 class Projeto(Base):
     __tablename__ = "projetos"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     tipo = Column(String(50), default="desenvolvimento_software", nullable=False)  # desenvolvimento_software, marketing, infoproduto, lancamento
     nome = Column(String(255), nullable=False)
     descricao = Column(Text, nullable=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=False)
     status = Column(String(50), default="ativo", nullable=False)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     data_inicio = Column(Date, nullable=True)
     data_fim = Column(Date, nullable=True)
     # Financeiro
