@@ -1,4 +1,5 @@
 from typing import Annotated, Optional
+import uuid
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -213,7 +214,7 @@ def archive(
 @router.post("/pin/{recipient_id}")
 def pin_notification(
     request: Request,
-    recipient_id: int,
+    recipient_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

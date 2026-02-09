@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
@@ -10,9 +12,9 @@ class PreProposta(Base):
     """Pré-Proposta (Diagnóstico multi-etapas com score e qualificação)"""
     __tablename__ = "pre_proposals"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False, index=True)
-    deal_id = Column(Integer, ForeignKey("deals.id", ondelete="SET NULL"), nullable=True, index=True)
+    deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="SET NULL"), nullable=True, index=True)
     status = Column(String(50), nullable=False, default="draft")  # draft, submitted, converted, archived
     score_total = Column(Integer, nullable=True)  # 0-100
     temperature = Column(String(20), nullable=True)  # cold, warm, hot
@@ -35,8 +37,8 @@ class PrePropostaAnswer(Base):
     """Respostas do diagnóstico (por campo)"""
     __tablename__ = "pre_proposal_answers"
 
-    id = Column(Integer, primary_key=True, index=True)
-    pre_proposal_id = Column(Integer, ForeignKey("pre_proposals.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    pre_proposal_id = Column(UUID(as_uuid=True), ForeignKey("pre_proposals.id", ondelete="CASCADE"), nullable=False, index=True)
     step_key = Column(String(50), nullable=False)  # Ex: "step_1", "step_2"
     field_key = Column(String(100), nullable=False)  # Ex: "objetivo_principal", "orcamento_faixa"
     answer_json = Column(JSONB, nullable=False)  # Valor da resposta (pode ser string, number, array, object)
@@ -56,7 +58,7 @@ class PrePropostaTemplate(Base):
     """Templates de diagnóstico (definição de steps/campos/validações/pesos)"""
     __tablename__ = "pre_proposal_templates"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), nullable=False)
     schema_json = Column(JSONB, nullable=False)  # Definição completa do wizard
     is_default = Column(String(20), nullable=False, default="false")
@@ -66,7 +68,3 @@ class PrePropostaTemplate(Base):
     __table_args__ = (
         {"comment": "Templates de diagnóstico para pré-propostas"}
     )
-
-
-
-

@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime
 from typing import List, Optional
 from decimal import Decimal
@@ -25,10 +26,10 @@ class PipelineUpdate(BaseModel):
 
 
 class PipelineResponse(PipelineBase):
-    id: int
-    created_by_user_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
+    id: uuid.UUID
+    created_by_user_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -57,17 +58,17 @@ class PipelineStageUpdate(BaseModel):
 
 
 class PipelineStageResponse(PipelineStageBase):
-    id: int
-    pipeline_id: int
-    created_at: datetime
-    updated_at: datetime
+    id: uuid.UUID
+    pipeline_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class PipelineStageReorderRequest(BaseModel):
-    stages: List[dict]  # [{stageId: int, orderIndex: int}]
+    stages: List[dict]  # [{stageId: uuid, orderIndex: int}]
 
 
 # ============== DEAL TAG ==============
@@ -82,8 +83,8 @@ class DealTagCreate(DealTagBase):
 
 
 class DealTagResponse(DealTagBase):
-    id: int
-    created_at: datetime
+    id: uuid.UUID
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -93,7 +94,7 @@ class DealTagResponse(DealTagBase):
 
 class DealBase(BaseModel):
     title: str
-    client_id: int
+    client_id: uuid.UUID
     value_cents: Optional[int] = None
     currency: str = "BRL"
     probability: int = 0  # 0-100
@@ -101,22 +102,22 @@ class DealBase(BaseModel):
     priority: DealPriority = DealPriority.NORMAL
     status: DealStatus = DealStatus.OPEN
     source: Optional[DealSource] = None
-    proposal_id: Optional[int] = None
-    contract_id: Optional[int] = None
-    assigned_user_ids: List[int] = []
-    tag_ids: List[int] = []
+    proposal_id: Optional[uuid.UUID] = None
+    contract_id: Optional[uuid.UUID] = None
+    assigned_user_ids: List[uuid.UUID] = []
+    tag_ids: List[uuid.UUID] = []
 
 
 class DealCreate(DealBase):
-    pipeline_id: int
-    stage_id: int
+    pipeline_id: uuid.UUID
+    stage_id: uuid.UUID
 
 
 class DealCreateFromClient(BaseModel):
     """Schema para criar deal a partir de cliente arrastado"""
-    client_id: int
-    pipeline_id: Optional[int] = None
-    stage_id: Optional[int] = None
+    client_id: uuid.UUID
+    pipeline_id: Optional[uuid.UUID] = None
+    stage_id: Optional[uuid.UUID] = None
     title: str
     value_cents: Optional[int] = None
     currency: str = "BRL"
@@ -124,8 +125,8 @@ class DealCreateFromClient(BaseModel):
     expected_close_date: Optional[date] = None
     priority: DealPriority = DealPriority.NORMAL
     source: Optional[DealSource] = None
-    assigned_user_ids: List[int] = []
-    tag_ids: List[int] = []
+    assigned_user_ids: List[uuid.UUID] = []
+    tag_ids: List[uuid.UUID] = []
     initial_note: Optional[str] = None
     create_followup_activity: bool = False
     followup_due_at: Optional[datetime] = None
@@ -133,7 +134,7 @@ class DealCreateFromClient(BaseModel):
 
 class DealUpdate(BaseModel):
     title: Optional[str] = None
-    client_id: Optional[int] = None
+    client_id: Optional[uuid.UUID] = None
     value_cents: Optional[int] = None
     currency: Optional[str] = None
     probability: Optional[int] = None
@@ -141,23 +142,23 @@ class DealUpdate(BaseModel):
     priority: Optional[DealPriority] = None
     status: Optional[DealStatus] = None
     source: Optional[DealSource] = None
-    proposal_id: Optional[int] = None
-    contract_id: Optional[int] = None
-    assigned_user_ids: Optional[List[int]] = None
-    tag_ids: Optional[List[int]] = None
+    proposal_id: Optional[uuid.UUID] = None
+    contract_id: Optional[uuid.UUID] = None
+    assigned_user_ids: Optional[List[uuid.UUID]] = None
+    tag_ids: Optional[List[uuid.UUID]] = None
 
 
 class DealMoveRequest(BaseModel):
-    to_stage_id: int
+    to_stage_id: uuid.UUID
     to_position_index: Optional[Decimal] = None
-    before_deal_id: Optional[int] = None
-    after_deal_id: Optional[int] = None
+    before_deal_id: Optional[uuid.UUID] = None
+    after_deal_id: Optional[uuid.UUID] = None
     reason: Optional[str] = None
 
 
 class DealAssigneeResponse(BaseModel):
-    id: int
-    user_id: int
+    id: uuid.UUID
+    user_id: uuid.UUID
     user_nome: Optional[str] = None
     role: str
 
@@ -166,8 +167,8 @@ class DealAssigneeResponse(BaseModel):
 
 
 class DealTagLinkResponse(BaseModel):
-    id: int
-    tag_id: int
+    id: uuid.UUID
+    tag_id: uuid.UUID
     tag_name: Optional[str] = None
     tag_color: Optional[str] = None
 
@@ -176,39 +177,39 @@ class DealTagLinkResponse(BaseModel):
 
 
 class DealActivityResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     type: DealActivityType
     title: str
     due_at: Optional[datetime] = None
     done_at: Optional[datetime] = None
-    created_by_user_id: Optional[int] = None
+    created_by_user_id: Optional[uuid.UUID] = None
     created_by_nome: Optional[str] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class DealNoteResponse(BaseModel):
-    id: int
-    author_user_id: Optional[int] = None
+    id: uuid.UUID
+    author_user_id: Optional[uuid.UUID] = None
     author_nome: Optional[str] = None
     content: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class DealStageHistoryResponse(BaseModel):
-    id: int
-    from_stage_id: Optional[int] = None
+    id: uuid.UUID
+    from_stage_id: Optional[uuid.UUID] = None
     from_stage_name: Optional[str] = None
-    to_stage_id: int
+    to_stage_id: uuid.UUID
     to_stage_name: Optional[str] = None
-    moved_by_user_id: Optional[int] = None
+    moved_by_user_id: Optional[uuid.UUID] = None
     moved_by_nome: Optional[str] = None
-    moved_at: datetime
+    moved_at: Optional[datetime] = None
     reason: Optional[str] = None
 
     class Config:
@@ -216,13 +217,13 @@ class DealStageHistoryResponse(BaseModel):
 
 
 class DealResponse(DealBase):
-    id: int
-    pipeline_id: int
-    stage_id: int
+    id: uuid.UUID
+    pipeline_id: uuid.UUID
+    stage_id: uuid.UUID
     position_index: Decimal
-    created_by_user_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
+    created_by_user_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     # Relacionamentos
     assignees: List[DealAssigneeResponse] = []
     tags: List[DealTagLinkResponse] = []
@@ -236,9 +237,9 @@ class DealResponse(DealBase):
 
 class DealKanbanResponse(BaseModel):
     """Resposta otimizada para o Kanban board"""
-    id: int
+    id: uuid.UUID
     title: str
-    client_id: int
+    client_id: uuid.UUID
     client_nome: Optional[str] = None
     value_cents: Optional[int] = None
     currency: str
@@ -265,7 +266,7 @@ class StageWithDealsResponse(BaseModel):
 
 class ClientListItem(BaseModel):
     """Item da lista de clientes para o Kanban"""
-    id: int
+    id: uuid.UUID
     nome: str
     razao_social: Optional[str] = None
     email: Optional[str] = None
@@ -310,6 +311,6 @@ class DealNoteCreate(BaseModel):
 # ============== BULK ACTIONS ==============
 
 class DealBulkActionRequest(BaseModel):
-    deal_ids: List[int]
+    deal_ids: List[uuid.UUID]
     action: str  # move_stage, assign_user, add_tag, set_priority
     params: dict  # Parâmetros específicos da ação

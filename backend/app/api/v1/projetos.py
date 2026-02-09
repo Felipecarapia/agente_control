@@ -271,7 +271,7 @@ def delete_projeto(
 
 @router.get("/{projeto_id}/members", response_model=list[dict])
 def get_projeto_members(
-    projeto_id: int,
+    projeto_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -284,21 +284,13 @@ def get_projeto_members(
 
 @router.post("/{projeto_id}/nudge", status_code=status.HTTP_201_CREATED)
 def nudge_projeto(
-    projeto_id: int,
+    projeto_id: uuid.UUID,
     data: ProjectNudgeRequest,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],  # Removida restrição de permissão
 ):
     """Envia notificação de cobrança para membros do projeto."""
-    # Validar ID
-    if projeto_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do projeto deve ser maior que 0",
-            status_code=400
-        )
-    
     projeto = db.query(Projeto).filter(Projeto.id == projeto_id).first()
     if not projeto:
         return error_response(

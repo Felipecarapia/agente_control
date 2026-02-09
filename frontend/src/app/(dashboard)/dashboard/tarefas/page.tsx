@@ -78,11 +78,10 @@ export default function TarefasPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-<<<<<<< HEAD
-  const [editId, setEditId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [cobrarTaskId, setCobrarTaskId] = useState<number | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [cobrarTaskId, setCobrarTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [taskDatabase, setTaskDatabase] = useState<any>(null);
   const [taskProperties, setTaskProperties] = useState<any[]>([]);
 
@@ -96,10 +95,6 @@ export default function TarefasPage() {
     const saved = localStorage.getItem("tarefas_view") as TasksView;
     return saved || "list";
   });
-=======
-  const [editId, setEditId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
->>>>>>> origin/main
   const [form, setForm] = useState({
     titulo: "",
     descricao: "",

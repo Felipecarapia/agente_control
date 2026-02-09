@@ -1,5 +1,6 @@
 import logging
 import secrets
+import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -265,7 +266,7 @@ def create_proposta_enhanced(
 
 @router.get("/{proposta_id}", response_model=ProposalEnhancedResponse)
 def get_proposta_enhanced(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
 ):
@@ -325,7 +326,7 @@ def get_proposta_enhanced(
 
 @router.patch("/{proposta_id}", response_model=ProposalEnhancedResponse)
 def update_proposta_enhanced(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     data: ProposalEnhancedUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
@@ -407,7 +408,7 @@ def update_proposta_enhanced(
 
 @router.post("/{proposta_id}/sections", response_model=ProposalSectionResponse)
 def create_section(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     data: ProposalSectionCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
@@ -442,8 +443,8 @@ def create_section(
 
 @router.patch("/{proposta_id}/sections/{section_id}", response_model=ProposalSectionResponse)
 def update_section(
-    proposta_id: int,
-    section_id: int,
+    proposta_id: uuid.UUID,
+    section_id: uuid.UUID,
     data: ProposalSectionUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
@@ -478,7 +479,7 @@ def update_section(
 
 @router.post("/{proposta_id}/pricing-plans", response_model=ProposalPricingPlanResponse)
 def create_pricing_plan(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     data: ProposalPricingPlanCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
@@ -521,7 +522,7 @@ def create_pricing_plan(
 
 @router.post("/{proposta_id}/generate-token")
 def generate_public_token_endpoint(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
 ):
@@ -725,7 +726,7 @@ def accept_proposta_public(
 
 @router.post("/{proposta_id}/send-email")
 def send_proposta_email(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     data: ProposalSendEmailRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
@@ -833,7 +834,7 @@ def send_proposta_email(
 
 @router.get("/{proposta_id}/export/pdf")
 def export_proposta_pdf(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PROPOSALS))],
 ):

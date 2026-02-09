@@ -26,7 +26,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 # ============== Schemas ==============
 
 class StageMetric(BaseModel):
-    stage_id: int
+    stage_id: uuid.UUID
     stage_name: str
     order_index: int
     volume: int
@@ -54,13 +54,13 @@ class Insight(BaseModel):
     severity: str  # info, warning, critical
     title: str
     message: str
-    stage_id: Optional[int] = None
+    stage_id: Optional[uuid.UUID] = None
     stage_name: Optional[str] = None
     value_cents: Optional[int] = None
     suggestion: Optional[str] = None
 
 class ForecastItem(BaseModel):
-    deal_id: int
+    deal_id: uuid.UUID
     title: str
     value_cents: int
     probability: float
@@ -115,7 +115,7 @@ class InteligenciaVendasResponse(BaseModel):
 
 # ============== Funções auxiliares ==============
 
-def calculate_stage_time(db: Session, deal_id: int, stage_id: int) -> Optional[float]:
+def calculate_stage_time(db: Session, deal_id: uuid.UUID, stage_id: uuid.UUID) -> Optional[float]:
     """Calcula tempo médio em dias que um deal ficou em uma etapa."""
     history = db.query(DealStageHistory).filter(
         DealStageHistory.deal_id == deal_id,

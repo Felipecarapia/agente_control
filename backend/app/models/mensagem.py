@@ -17,7 +17,7 @@ class Conversation(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     kind = Column(SQLEnum(ConversationKind), nullable=False, default=ConversationKind.DIRECT)
-    created_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     created_by = relationship("Usuario", foreign_keys=[created_by_user_id])
@@ -28,9 +28,9 @@ class Conversation(Base):
 class ConversationParticipant(Base):
     __tablename__ = "conversation_participants"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     last_read_at = Column(DateTime(timezone=True), nullable=True)
 
     conversation = relationship("Conversation", back_populates="participants")
@@ -46,7 +46,7 @@ class Message(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
-    author_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    author_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     edited_at = Column(DateTime(timezone=True), nullable=True)
@@ -59,10 +59,10 @@ class Message(Base):
 class MessageToNotificationLink(Base):
     __tablename__ = "message_to_notification_links"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     message_id = Column(UUID(as_uuid=True), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True)
-    recipient_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
-    notification_recipient_id = Column(Integer, ForeignKey("notification_recipients.id", ondelete="SET NULL"), nullable=True)
+    recipient_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    notification_recipient_id = Column(UUID(as_uuid=True), ForeignKey("notification_recipients.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     message = relationship("Message", back_populates="notification_links")
@@ -73,10 +73,10 @@ class MessageToNotificationLink(Base):
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     event_type = Column(String(50), nullable=False, index=True)  # NOTIFICATION_SENT, MESSAGE_SENT, etc
-    actor_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
-    target_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
+    actor_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    target_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
     context_type = Column(String(50), nullable=True)
     context_id = Column(String(255), nullable=True)
     payload = Column(Text, nullable=True)  # JSON string
@@ -86,7 +86,3 @@ class AuditEvent(Base):
 
     actor = relationship("Usuario", foreign_keys=[actor_user_id])
     target = relationship("Usuario", foreign_keys=[target_user_id])
-
-
-
-

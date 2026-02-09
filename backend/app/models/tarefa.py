@@ -26,7 +26,7 @@ class Tarefa(Base):
     parent_task_id = Column(UUID(as_uuid=True), ForeignKey("tarefas.id"), nullable=True)  # tarefa original que gerou esta
     
     # Novos campos para sistema Notion
-    task_database_id = Column(Integer, ForeignKey("task_databases.id", ondelete="SET NULL"), nullable=True, index=True)
+    task_database_id = Column(UUID(as_uuid=True), ForeignKey("task_databases.id", ondelete="SET NULL"), nullable=True, index=True)
     context_type = Column(String(50), nullable=True)  # CLIENT, PROJECT, DEAL
     context_id = Column(UUID(as_uuid=True), nullable=True)  # ID do contexto - pode ser client/project/deal (UUID)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -54,7 +54,7 @@ class TarefaAssignee(Base):
     """Tabela para atribuir múltiplos usuários a uma tarefa"""
     __tablename__ = "tarefa_assignees"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     tarefa_id = Column(UUID(as_uuid=True), ForeignKey("tarefas.id", ondelete="CASCADE"), nullable=False, index=True)
     usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

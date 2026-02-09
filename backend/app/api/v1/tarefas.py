@@ -595,7 +595,7 @@ def delete_tarefa(
 @router.post("/{tarefa_id}/toggle-status")
 def toggle_tarefa_status(
     request: Request,
-    tarefa_id: int,
+    tarefa_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -604,15 +604,6 @@ def toggle_tarefa_status(
     Retorna 404 padronizado se tarefa não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if tarefa_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da tarefa deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Tarefa).filter(Tarefa.id == tarefa_id).first()

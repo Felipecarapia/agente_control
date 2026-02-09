@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -220,7 +221,7 @@ def create_pre_proposta(
 
 @router.get("/{pre_proposta_id}", response_model=PrePropostaResponse)
 def get_pre_proposta(
-    pre_proposta_id: int,
+    pre_proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PRE_PROPOSALS))],
 ):
@@ -260,7 +261,7 @@ def get_pre_proposta(
 
 @router.patch("/{pre_proposta_id}", response_model=PrePropostaResponse)
 def update_pre_proposta(
-    pre_proposta_id: int,
+    pre_proposta_id: uuid.UUID,
     data: PrePropostaUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PRE_PROPOSALS))],
@@ -330,7 +331,7 @@ def update_pre_proposta(
 
 @router.put("/{pre_proposta_id}/answers")
 def upsert_answers(
-    pre_proposta_id: int,
+    pre_proposta_id: uuid.UUID,
     answers: list[PrePropostaAnswerCreate],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PRE_PROPOSALS))],
@@ -374,7 +375,7 @@ def upsert_answers(
 
 @router.post("/{pre_proposta_id}/submit", response_model=PrePropostaSubmitResponse)
 def submit_pre_proposta(
-    pre_proposta_id: int,
+    pre_proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PRE_PROPOSALS))],
 ):
@@ -434,7 +435,7 @@ def submit_pre_proposta(
 
 @router.post("/{pre_proposta_id}/convert-to-proposal")
 def convert_to_proposal(
-    pre_proposta_id: int,
+    pre_proposta_id: uuid.UUID,
     data: PrePropostaConvertRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role(CAN_MANAGE_PRE_PROPOSALS))],

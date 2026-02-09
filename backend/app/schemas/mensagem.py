@@ -1,6 +1,6 @@
+import uuid
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 from app.models.mensagem import ConversationKind
 
@@ -23,10 +23,10 @@ class MessageCreate(MessageBase):
 
 
 class MessageResponse(MessageBase):
-    id: UUID
-    conversation_id: UUID
-    author_user_id: Optional[int] = None
-    created_at: datetime
+    id: uuid.UUID
+    conversation_id: uuid.UUID
+    author_user_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
     edited_at: Optional[datetime] = None
     author_name: Optional[str] = None
 
@@ -35,14 +35,14 @@ class MessageResponse(MessageBase):
 
 
 class ConversationCreate(BaseModel):
-    recipient_user_id: int
+    recipient_user_id: uuid.UUID
     first_message: str = Field(..., min_length=1, max_length=2000)
 
 
 class ConversationParticipantResponse(BaseModel):
-    id: int
-    conversation_id: UUID
-    user_id: int
+    id: uuid.UUID
+    conversation_id: uuid.UUID
+    user_id: uuid.UUID
     last_read_at: Optional[datetime] = None
     user_name: Optional[str] = None
 
@@ -51,10 +51,10 @@ class ConversationParticipantResponse(BaseModel):
 
 
 class ConversationResponse(BaseModel):
-    id: UUID
+    id: uuid.UUID
     kind: ConversationKind
-    created_by_user_id: Optional[int] = None
-    created_at: datetime
+    created_by_user_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
     participants: list[ConversationParticipantResponse] = []
     last_message: Optional[MessageResponse] = None
     unread_count: int = 0
@@ -64,11 +64,11 @@ class ConversationResponse(BaseModel):
 
 
 class ConversationListResponse(BaseModel):
-    id: UUID
+    id: uuid.UUID
     kind: ConversationKind
-    created_at: datetime
+    created_at: Optional[datetime] = None
     other_participant_name: Optional[str] = None
-    other_participant_id: Optional[int] = None
+    other_participant_id: Optional[uuid.UUID] = None
     last_message: Optional[MessageResponse] = None
     unread_count: int = 0
 
@@ -77,10 +77,6 @@ class ConversationListResponse(BaseModel):
 
 
 class ProjectNudgeRequest(BaseModel):
-    recipient_user_ids: list[int] = Field(..., min_length=1)
+    recipient_user_ids: list[uuid.UUID] = Field(..., min_length=1)
     preset: str = Field("PENDING_CHECK", pattern="^(PENDING_CHECK|URGENT_UPDATE|STATUS_TODAY)$")
     custom_message: Optional[str] = Field(None, max_length=500)
-
-
-
-

@@ -23,7 +23,7 @@ class TaskDatabaseUpdate(BaseModel):
 
 
 class TaskDatabaseResponse(TaskDatabaseBase):
-    id: int
+    id: uuid.UUID
     created_by_user_id: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -44,7 +44,7 @@ class TaskPropertyBase(BaseModel):
 
 
 class TaskPropertyCreate(TaskPropertyBase):
-    task_database_id: int
+    task_database_id: uuid.UUID
 
 
 class TaskPropertyUpdate(BaseModel):
@@ -56,8 +56,8 @@ class TaskPropertyUpdate(BaseModel):
 
 
 class TaskPropertyResponse(TaskPropertyBase):
-    id: int
-    task_database_id: int
+    id: uuid.UUID
+    task_database_id: uuid.UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -68,12 +68,12 @@ class TaskPropertyResponse(TaskPropertyBase):
 # ============== Task Property Value Schemas ==============
 
 class TaskPropertyValueBase(BaseModel):
-    property_id: int
+    property_id: uuid.UUID
     value_json: Optional[Dict[str, Any]] = None
 
 
 class TaskPropertyValueCreate(TaskPropertyValueBase):
-    task_id: int
+    task_id: uuid.UUID
 
 
 class TaskPropertyValueUpdate(BaseModel):
@@ -81,8 +81,8 @@ class TaskPropertyValueUpdate(BaseModel):
 
 
 class TaskPropertyValueResponse(TaskPropertyValueBase):
-    id: int
-    task_id: int
+    id: uuid.UUID
+    task_id: uuid.UUID
     updated_at: Optional[datetime] = None
 
     class Config:
@@ -99,7 +99,7 @@ class TaskViewBase(BaseModel):
 
 
 class TaskViewCreate(TaskViewBase):
-    task_database_id: int
+    task_database_id: uuid.UUID
 
 
 class TaskViewUpdate(BaseModel):
@@ -110,8 +110,8 @@ class TaskViewUpdate(BaseModel):
 
 
 class TaskViewResponse(TaskViewBase):
-    id: int
-    task_database_id: int
+    id: uuid.UUID
+    task_database_id: uuid.UUID
     user_id: uuid.UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -129,7 +129,7 @@ class TaskBlockBase(BaseModel):
 
 
 class TaskBlockCreate(TaskBlockBase):
-    task_id: int
+    task_id: uuid.UUID
 
 
 class TaskBlockUpdate(BaseModel):
@@ -139,8 +139,8 @@ class TaskBlockUpdate(BaseModel):
 
 
 class TaskBlockResponse(TaskBlockBase):
-    id: int
-    task_id: int
+    id: uuid.UUID
+    task_id: uuid.UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -155,13 +155,13 @@ class TaskCommentBase(BaseModel):
 
 
 class TaskCommentCreate(TaskCommentBase):
-    task_id: int
+    task_id: uuid.UUID
     mentioned_user_ids: List[uuid.UUID] = Field(default_factory=list)
 
 
 class TaskCommentResponse(TaskCommentBase):
-    id: int
-    task_id: int
+    id: uuid.UUID
+    task_id: uuid.UUID
     author_user_id: Optional[uuid.UUID] = None
     author_nome: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -173,11 +173,11 @@ class TaskCommentResponse(TaskCommentBase):
 # ============== Task Mention Schemas ==============
 
 class TaskMentionResponse(BaseModel):
-    id: int
-    task_id: int
+    id: uuid.UUID
+    task_id: uuid.UUID
     mentioned_user_id: uuid.UUID
     mentioned_user_nome: Optional[str] = None
-    comment_id: Optional[int] = None
+    comment_id: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
 
     class Config:
@@ -195,7 +195,7 @@ class TaskAttachmentBase(BaseModel):
 
 
 class TaskAttachmentCreate(BaseModel):
-    task_id: int
+    task_id: uuid.UUID
     file_name: str
     mime_type: Optional[str] = None
     size_bytes: int
@@ -204,8 +204,8 @@ class TaskAttachmentCreate(BaseModel):
 
 
 class TaskAttachmentResponse(TaskAttachmentBase):
-    id: int
-    task_id: int
+    id: uuid.UUID
+    task_id: uuid.UUID
     uploaded_by_user_id: Optional[uuid.UUID] = None
     uploaded_by_nome: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -224,7 +224,7 @@ class TaskTemplateBase(BaseModel):
 
 
 class TaskTemplateCreate(TaskTemplateBase):
-    task_database_id: int
+    task_database_id: uuid.UUID
 
 
 class TaskTemplateUpdate(BaseModel):
@@ -235,8 +235,8 @@ class TaskTemplateUpdate(BaseModel):
 
 
 class TaskTemplateResponse(TaskTemplateBase):
-    id: int
-    task_database_id: int
+    id: uuid.UUID
+    task_database_id: uuid.UUID
     created_by_user_id: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -257,7 +257,7 @@ class TaskWithNotionResponse(BaseModel):
     prioridade: Optional[str] = None
     responsavel_id: Optional[uuid.UUID] = None
     data_vencimento: Optional[date] = None
-    task_database_id: Optional[int] = None
+    task_database_id: Optional[uuid.UUID] = None
     context_type: Optional[str] = None
     context_id: Optional[uuid.UUID] = None
     completed_at: Optional[datetime] = None
@@ -278,7 +278,3 @@ class TaskWithNotionResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-
-

@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, EmailStr
@@ -18,7 +19,7 @@ class ProfileUpdate(BaseModel):
 
 
 class ProfileResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     email: EmailStr
     nome: str
     avatar_url: Optional[str] = None
@@ -37,7 +38,3 @@ class ProfileResponse(BaseModel):
 class AvatarUploadResponse(BaseModel):
     avatar_url: str
     message: str = "Avatar atualizado com sucesso"
-
-
-
-

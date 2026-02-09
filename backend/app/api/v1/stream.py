@@ -1,6 +1,7 @@
 from typing import Annotated
 import asyncio
 import json
+import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request
@@ -15,7 +16,7 @@ from app.services.notificacao_service import get_unread_count
 router = APIRouter(prefix="/stream", tags=["stream"])
 
 
-async def event_generator(user_id: int):
+async def event_generator(user_id: uuid.UUID):
     """Gera eventos SSE para notificações em tempo real."""
     from app.core.database import SessionLocal
     

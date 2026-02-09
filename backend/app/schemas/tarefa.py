@@ -18,7 +18,7 @@ class TarefaBase(BaseModel):
     recurrence_interval: Optional[int] = None  # a cada X dias/semanas/meses
     recurrence_end_date: Optional[date] = None
     # Múltiplos usuários atribuídos
-    assigned_user_ids: List[int] = []
+    assigned_user_ids: List[uuid.UUID] = []
 
 
 class TarefaCreate(TarefaBase):
@@ -37,7 +37,7 @@ class TarefaUpdate(BaseModel):
     recurrence_type: Optional[str] = None
     recurrence_interval: Optional[int] = None
     recurrence_end_date: Optional[date] = None
-    assigned_user_ids: Optional[List[int]] = None
+    assigned_user_ids: Optional[List[uuid.UUID]] = None
 
 
     assigned_users: List['TarefaAssigneeResponse'] = []
@@ -46,7 +46,7 @@ class TarefaUpdate(BaseModel):
         from_attributes = True
 
 class TarefaAssigneeResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     usuario_id: uuid.UUID
     usuario_nome: Optional[str] = None
 

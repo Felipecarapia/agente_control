@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Annotated, Optional
 from decimal import Decimal
 from datetime import date, datetime
@@ -262,6 +263,8 @@ def get_kanban(
     - retornar 200 com { ok: true, data: { columns: [], cards: [] }, meta: { requiresSetup: true } }
     Jamais retornar 500.
     """
+    request_id = getattr(request.state, "request_id", None)
+    
     # Normalizar parâmetros (aceitar camelCase do frontend)
     pipeline_id = pipelineId
     client_search = clientSearch
@@ -459,19 +462,11 @@ def get_kanban(
 
 @router.get("/{deal_id}", response_model=DealResponse)
 def get_deal(
-    deal_id: int,
+    deal_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Obtém um deal completo."""
-    # Validar ID
-    if deal_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do deal deve ser maior que 0",
-            status_code=400
-        )
-    
     deal = db.query(Deal).options(
         joinedload(Deal.client),
         joinedload(Deal.assignees).joinedload(DealAssignee.user),
@@ -814,7 +809,7 @@ def create_deal_from_client(
 @router.post("/{deal_id}/move")
 def move_deal(
     request: Request,
-    deal_id: int,
+    deal_id: uuid.UUID,
     data: DealMoveRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -825,15 +820,6 @@ def move_deal(
     Usa transação para garantir atomicidade.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if deal_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do deal deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     # Validar body
     if not data.to_stage_id or data.to_stage_id <= 0:

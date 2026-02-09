@@ -16,8 +16,8 @@ class Proposta(Base):
     valor = Column(Numeric(15, 2), nullable=True)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=False)
     projeto_id = Column(UUID(as_uuid=True), ForeignKey("projetos.id"), nullable=True)
-    deal_id = Column(Integer, ForeignKey("deals.id", ondelete="SET NULL"), nullable=True, index=True)
-    from_pre_proposal_id = Column(Integer, ForeignKey("pre_proposals.id", ondelete="SET NULL"), nullable=True, index=True)
+    deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="SET NULL"), nullable=True, index=True)
+    from_pre_proposal_id = Column(UUID(as_uuid=True), ForeignKey("pre_proposals.id", ondelete="SET NULL"), nullable=True, index=True)
     status = Column(String(50), default="rascunho", nullable=False)  # draft, sent, viewed, accepted, rejected, expired
     usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     updated_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
@@ -58,7 +58,7 @@ class ProposalSection(Base):
     """Seções editáveis da proposta"""
     __tablename__ = "proposal_sections"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
     section_key = Column(String(50), nullable=False)  # Ex: "resumo_executivo", "escopo_trabalho"
     title = Column(String(255), nullable=False)
@@ -78,7 +78,7 @@ class ProposalPricingPlan(Base):
     """Planos de preço da proposta"""
     __tablename__ = "proposal_pricing_plans"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
     plan_name = Column(String(255), nullable=False)  # Ex: "Essencial", "Profissional", "Premium"
     plan_summary = Column(Text, nullable=True)
@@ -102,7 +102,7 @@ class ProposalStatusEvent(Base):
     """Eventos de status da proposta (CREATED, SENT, VIEWED, ACCEPTED, etc)"""
     __tablename__ = "proposal_status_events"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
     event_type = Column(String(50), nullable=False, index=True)  # CREATED, UPDATED, SENT, VIEWED, ACCEPTED, REJECTED, EXPORTED_PDF
     payload_json = Column(JSONB, nullable=True)  # Dados extras do evento
@@ -119,7 +119,7 @@ class EmailOutbox(Base):
     """Fila de e-mails para envio transacional"""
     __tablename__ = "email_outbox"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     to_email = Column(String(255), nullable=False, index=True)
     subject = Column(String(500), nullable=False)
     html_body = Column(Text, nullable=False)

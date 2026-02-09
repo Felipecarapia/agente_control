@@ -2,6 +2,7 @@
 Helper para padronizar respostas da API.
 """
 import json
+import uuid
 from decimal import Decimal
 from typing import Any, Optional
 from fastapi import Request
@@ -16,6 +17,8 @@ def json_serializer(obj: Any) -> Any:
     """
     from datetime import datetime, date
     
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
     if isinstance(obj, Decimal):
         return float(obj)
     if isinstance(obj, int) and obj > 2**53 - 1:  # BigInt que excede JavaScript Number.MAX_SAFE_INTEGER

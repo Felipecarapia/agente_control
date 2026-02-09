@@ -1,6 +1,6 @@
+import uuid
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 from app.models.notificacao import NotificationType, NotificationPriority
 
@@ -24,23 +24,23 @@ class NotificationBase(BaseModel):
 
 
 class NotificationCreate(NotificationBase):
-    recipient_user_ids: list[int] = Field(..., min_length=1)
+    recipient_user_ids: list[uuid.UUID] = Field(..., min_length=1)
 
 
 class NotificationResponse(NotificationBase):
-    id: UUID
-    author_user_id: Optional[int] = None
-    created_at: datetime
+    id: uuid.UUID
+    author_user_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class NotificationRecipientResponse(BaseModel):
-    id: int
-    notification_id: UUID
-    recipient_user_id: int
-    delivered_at: datetime
+    id: uuid.UUID
+    notification_id: uuid.UUID
+    recipient_user_id: uuid.UUID
+    delivered_at: Optional[datetime] = None
     read_at: Optional[datetime] = None
     archived_at: Optional[datetime] = None
     pinned_at: Optional[datetime] = None
@@ -52,10 +52,10 @@ class NotificationRecipientResponse(BaseModel):
 
 
 class NotificationListResponse(BaseModel):
-    id: int
-    notification_id: UUID
-    recipient_user_id: int
-    delivered_at: datetime
+    id: uuid.UUID
+    notification_id: uuid.UUID
+    recipient_user_id: uuid.UUID
+    delivered_at: Optional[datetime] = None
     read_at: Optional[datetime] = None
     archived_at: Optional[datetime] = None
     pinned_at: Optional[datetime] = None
@@ -68,8 +68,8 @@ class NotificationListResponse(BaseModel):
 
 
 class NotificationBulkAction(BaseModel):
-    recipient_ids: Optional[list[int]] = None
-    notification_ids: Optional[list[UUID]] = None
+    recipient_ids: Optional[list[uuid.UUID]] = None
+    notification_ids: Optional[list[uuid.UUID]] = None
 
 
 class NotificationFilter(BaseModel):
@@ -85,7 +85,3 @@ class NotificationFilter(BaseModel):
 
 class UnreadCountResponse(BaseModel):
     count: int
-
-
-
-

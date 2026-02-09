@@ -1,5 +1,6 @@
 from typing import Annotated, Optional
 from decimal import Decimal
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
@@ -54,19 +55,11 @@ def list_pipelines(
 
 @router.get("/{pipeline_id}", response_model=PipelineResponse)
 def get_pipeline(
-    pipeline_id: int,
+    pipeline_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Obtém um pipeline específico."""
-    # Validar ID
-    if pipeline_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do pipeline deve ser maior que 0",
-            status_code=400
-        )
-    
     pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
     if not pipeline:
         return error_response(
@@ -197,7 +190,7 @@ def create_pipeline(
 
 @router.patch("/{pipeline_id}", response_model=PipelineResponse)
 def update_pipeline(
-    pipeline_id: int,
+    pipeline_id: uuid.UUID,
     data: PipelineUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -221,7 +214,7 @@ def update_pipeline(
 
 @router.delete("/{pipeline_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_pipeline(
-    pipeline_id: int,
+    pipeline_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
@@ -246,7 +239,7 @@ def delete_pipeline(
 
 @router.get("/{pipeline_id}/stages", response_model=list[PipelineStageResponse])
 def list_stages(
-    pipeline_id: int,
+    pipeline_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -262,7 +255,7 @@ def list_stages(
 
 @router.post("/{pipeline_id}/stages", response_model=PipelineStageResponse, status_code=status.HTTP_201_CREATED)
 def create_stage(
-    pipeline_id: int,
+    pipeline_id: uuid.UUID,
     data: PipelineStageCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -297,7 +290,7 @@ def create_stage(
 
 @router.patch("/stages/{stage_id}", response_model=PipelineStageResponse)
 def update_stage(
-    stage_id: int,
+    stage_id: uuid.UUID,
     data: PipelineStageUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -317,7 +310,7 @@ def update_stage(
 
 @router.delete("/stages/{stage_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_stage(
-    stage_id: int,
+    stage_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
@@ -340,7 +333,7 @@ def delete_stage(
 
 @router.post("/{pipeline_id}/stages/reorder", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_stages(
-    pipeline_id: int,
+    pipeline_id: uuid.UUID,
     data: PipelineStageReorderRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],

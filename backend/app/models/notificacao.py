@@ -33,7 +33,7 @@ class Notification(Base):
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=False)
     priority = Column(SQLEnum(NotificationPriority, native_enum=False, length=20), default=NotificationPriority.NORMAL.value, nullable=False)
-    author_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    author_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     context_type = Column(String(50), nullable=True, index=True)  # PROJECT, TASK, PROPOSAL, CONTRACT
     context_id = Column(String(255), nullable=True, index=True)
     action_url = Column(Text, nullable=True)  # Deep link interno
@@ -47,9 +47,9 @@ class Notification(Base):
 class NotificationRecipient(Base):
     __tablename__ = "notification_recipients"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     notification_id = Column(UUID(as_uuid=True), ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False, index=True)
-    recipient_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    recipient_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     delivered_at = Column(DateTime(timezone=True), server_default=func.now())
     read_at = Column(DateTime(timezone=True), nullable=True, index=True)
     archived_at = Column(DateTime(timezone=True), nullable=True)
@@ -62,4 +62,3 @@ class NotificationRecipient(Base):
     __table_args__ = (
         {"comment": "Inbox por usuário: cada notificação pode ter múltiplos destinatários"}
     )
-

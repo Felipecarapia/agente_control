@@ -1,5 +1,6 @@
 from typing import Annotated, Optional, List, Dict, Any
 from datetime import date, datetime
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
@@ -51,7 +52,7 @@ def list_task_databases(
 
 @router.get("/databases/{database_id}")
 def get_task_database(
-    database_id: int,
+    database_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -177,7 +178,7 @@ def list_default_task_properties(
 
 @router.get("/databases/{database_id}/properties", response_model=List[TaskPropertyResponse])
 def list_task_properties(
-    database_id: int,
+    database_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -233,7 +234,7 @@ def create_task_property(
 
 @router.patch("/properties/{property_id}", response_model=TaskPropertyResponse)
 def update_task_property(
-    property_id: int,
+    property_id: uuid.UUID,
     data: TaskPropertyUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role([ROLE_ADMIN, ROLE_PROJECT_MANAGER]))],
@@ -256,7 +257,7 @@ def update_task_property(
 
 @router.get("/databases/{database_id}/views", response_model=List[TaskViewResponse])
 def list_task_views(
-    database_id: int,
+    database_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -270,7 +271,7 @@ def list_task_views(
 
 @router.get("/views/{view_id}", response_model=TaskViewResponse)
 def get_task_view(
-    view_id: int,
+    view_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -320,7 +321,7 @@ def create_task_view(
 
 @router.patch("/views/{view_id}", response_model=TaskViewResponse)
 def update_task_view(
-    view_id: int,
+    view_id: uuid.UUID,
     data: TaskViewUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -354,7 +355,7 @@ def update_task_view(
 
 @router.delete("/views/{view_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task_view(
-    view_id: int,
+    view_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -413,7 +414,7 @@ def create_task_property_value(
 
 @router.patch("/property-values/{value_id}", response_model=TaskPropertyValueResponse)
 def update_task_property_value(
-    value_id: int,
+    value_id: uuid.UUID,
     data: TaskPropertyValueUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -436,7 +437,7 @@ def update_task_property_value(
 
 @router.get("/tasks/{task_id}/blocks", response_model=List[TaskBlockResponse])
 def list_task_blocks(
-    task_id: int,
+    task_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -476,7 +477,7 @@ def create_task_block(
 
 @router.put("/tasks/{task_id}/blocks", response_model=List[TaskBlockResponse])
 def bulk_update_task_blocks(
-    task_id: int,
+    task_id: uuid.UUID,
     blocks: List[Dict[str, Any]],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -509,7 +510,7 @@ def bulk_update_task_blocks(
 
 @router.patch("/blocks/{block_id}", response_model=TaskBlockResponse)
 def update_task_block(
-    block_id: int,
+    block_id: uuid.UUID,
     data: TaskBlockUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -530,7 +531,7 @@ def update_task_block(
 
 @router.delete("/blocks/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task_block(
-    block_id: int,
+    block_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -547,7 +548,7 @@ def delete_task_block(
 
 @router.get("/tasks/{task_id}/comments", response_model=List[TaskCommentResponse])
 def list_task_comments(
-    task_id: int,
+    task_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -618,7 +619,7 @@ def create_task_comment(
 
 @router.get("/tasks/{task_id}/attachments", response_model=List[TaskAttachmentResponse])
 def list_task_attachments(
-    task_id: int,
+    task_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -650,7 +651,7 @@ def list_task_attachments(
 
 @router.post("/tasks/{task_id}/attachments", response_model=TaskAttachmentResponse, status_code=status.HTTP_201_CREATED)
 def upload_task_attachment(
-    task_id: int,
+    task_id: uuid.UUID,
     file: Annotated[UploadFile, File()],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -729,7 +730,7 @@ def upload_task_attachment(
 
 @router.delete("/attachments/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task_attachment(
-    attachment_id: int,
+    attachment_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -748,7 +749,7 @@ def delete_task_attachment(
 
 @router.get("/databases/{database_id}/templates", response_model=List[TaskTemplateResponse])
 def list_task_templates(
-    database_id: int,
+    database_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -786,7 +787,7 @@ def create_task_template(
 
 @router.patch("/templates/{template_id}", response_model=TaskTemplateResponse)
 def update_task_template(
-    template_id: int,
+    template_id: uuid.UUID,
     data: TaskTemplateUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_any_role([ROLE_ADMIN, ROLE_PROJECT_MANAGER]))],

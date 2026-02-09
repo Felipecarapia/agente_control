@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Optional
@@ -22,10 +23,10 @@ class ProposalSectionUpdate(BaseModel):
 
 
 class ProposalSectionResponse(ProposalSectionBase):
-    id: int
-    proposal_id: int
-    created_at: datetime
-    updated_at: datetime
+    id: uuid.UUID
+    proposal_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -58,10 +59,10 @@ class ProposalPricingPlanUpdate(BaseModel):
 
 
 class ProposalPricingPlanResponse(ProposalPricingPlanBase):
-    id: int
-    proposal_id: int
-    created_at: datetime
-    updated_at: datetime
+    id: uuid.UUID
+    proposal_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -70,10 +71,10 @@ class ProposalPricingPlanResponse(ProposalPricingPlanBase):
 class ProposalEnhancedBase(BaseModel):
     titulo: str
     descricao: Optional[str] = None
-    cliente_id: int
-    projeto_id: Optional[int] = None
-    deal_id: Optional[int] = None
-    from_pre_proposal_id: Optional[int] = None
+    cliente_id: uuid.UUID
+    projeto_id: Optional[uuid.UUID] = None
+    deal_id: Optional[uuid.UUID] = None
+    from_pre_proposal_id: Optional[uuid.UUID] = None
     validade_ate: Optional[date] = None
     currency: str = "BRL"
     total_value_cents: Optional[int] = None
@@ -94,15 +95,15 @@ class ProposalEnhancedUpdate(BaseModel):
 
 
 class ProposalEnhancedResponse(ProposalEnhancedBase):
-    id: int
+    id: uuid.UUID
     status: str
     public_token: Optional[str] = None
     accepted_at: Optional[datetime] = None
     accepted_by_name: Optional[str] = None
-    usuario_id: Optional[int] = None
-    updated_by_user_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
+    usuario_id: Optional[uuid.UUID] = None
+    updated_by_user_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     sections: list[ProposalSectionResponse] = []
     pricing_plans: list[ProposalPricingPlanResponse] = []
 
@@ -118,14 +119,10 @@ class ProposalPublicAcceptRequest(BaseModel):
 class ProposalPublicAcceptResponse(BaseModel):
     success: bool
     message: str
-    proposal_id: int
+    proposal_id: uuid.UUID
 
 
 class ProposalSendEmailRequest(BaseModel):
     to_email: Optional[str] = None  # Se não fornecido, usar email do cliente
     subject: Optional[str] = None  # Se não fornecido, usar título padrão
     message: Optional[str] = None  # Mensagem adicional no e-mail
-
-
-
-

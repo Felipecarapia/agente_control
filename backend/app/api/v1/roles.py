@@ -55,7 +55,7 @@ def list_roles(
 @router.get("/{role_id}")
 def get_role(
     request: Request,
-    role_id: int,
+    role_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -64,15 +64,6 @@ def get_role(
     Retorna 404 padronizado se role não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if role_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da role deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         # Carregar role com permissões usando selectinload para evitar N+1
@@ -170,7 +161,7 @@ def create_role(
 @router.patch("/{role_id}")
 def update_role(
     request: Request,
-    role_id: int,
+    role_id: uuid.UUID,
     data: RoleUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -181,15 +172,6 @@ def update_role(
     Retorna 404 se role não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if role_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da role deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         role = db.query(Role).filter(Role.id == role_id).first()
@@ -235,7 +217,7 @@ def update_role(
 @router.delete("/{role_id}")
 def delete_role(
     request: Request,
-    role_id: int,
+    role_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
@@ -244,15 +226,6 @@ def delete_role(
     Retorna 404 padronizado se role não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if role_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da role deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         role = db.query(Role).filter(Role.id == role_id).first()
@@ -414,7 +387,7 @@ def create_permission(
 @router.patch("/permissions/{permission_id}")
 def update_permission(
     request: Request,
-    permission_id: int,
+    permission_id: uuid.UUID,
     data: PermissionCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -426,15 +399,6 @@ def update_permission(
     Retorna 409 se module.action duplicado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if permission_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da permissão deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         permission = db.query(Permission).filter(Permission.id == permission_id).first()
@@ -498,7 +462,7 @@ def update_permission(
 @router.delete("/permissions/{permission_id}")
 def delete_permission(
     request: Request,
-    permission_id: int,
+    permission_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
@@ -507,15 +471,6 @@ def delete_permission(
     Retorna 404 padronizado se permissão não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if permission_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da permissão deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         permission = db.query(Permission).filter(Permission.id == permission_id).first()
@@ -545,7 +500,7 @@ def delete_permission(
 @router.put("/{role_id}/permissions")
 def update_role_permissions(
     request: Request,
-    role_id: int,
+    role_id: uuid.UUID,
     data: UpdateRolePermissionsRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -558,15 +513,6 @@ def update_role_permissions(
     Usa transação para garantir atomicidade (rollback se falhar).
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if role_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da role deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         role = db.query(Role).filter(Role.id == role_id).first()
@@ -728,7 +674,7 @@ def assign_role(
 @router.delete("/users/{user_id}/remove/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_role(
     user_id: uuid.UUID,
-    role_id: int,
+    role_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):

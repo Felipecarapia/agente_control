@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Any, Optional
 from pydantic import BaseModel
@@ -16,18 +17,18 @@ class PrePropostaAnswerCreate(PrePropostaAnswerBase):
 
 
 class PrePropostaAnswerResponse(PrePropostaAnswerBase):
-    id: int
-    pre_proposal_id: int
-    created_at: datetime
-    updated_at: datetime
+    id: uuid.UUID
+    pre_proposal_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class PrePropostaBase(BaseModel):
-    client_id: int
-    deal_id: Optional[int] = None
+    client_id: uuid.UUID
+    deal_id: Optional[uuid.UUID] = None
     status: str = "draft"  # draft, submitted, converted, archived
 
 
@@ -37,19 +38,19 @@ class PrePropostaCreate(PrePropostaBase):
 
 class PrePropostaUpdate(BaseModel):
     status: Optional[str] = None
-    deal_id: Optional[int] = None
+    deal_id: Optional[uuid.UUID] = None
 
 
 class PrePropostaResponse(PrePropostaBase):
-    id: int
+    id: uuid.UUID
     score_total: Optional[int] = None
     temperature: Optional[str] = None
     summary: Optional[str] = None
     recommendations: Optional[dict[str, Any]] = None
-    created_by_user_id: Optional[int] = None
-    updated_by_user_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
+    created_by_user_id: Optional[uuid.UUID] = None
+    updated_by_user_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     answers: list[PrePropostaAnswerResponse] = []
 
     class Config:
@@ -57,7 +58,7 @@ class PrePropostaResponse(PrePropostaBase):
 
 
 class PrePropostaSubmitResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     status: str
     score_total: int
     temperature: str
@@ -72,7 +73,3 @@ class PrePropostaConvertRequest(BaseModel):
     """Request para converter pré-proposta em proposta"""
     proposal_title: Optional[str] = None  # Se não fornecido, usar título padrão
     auto_fill: bool = True  # Preencher proposta com dados do diagnóstico
-
-
-
-

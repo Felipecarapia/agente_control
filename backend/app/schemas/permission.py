@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -15,15 +16,15 @@ class PermissionCreate(PermissionBase):
 
 
 class PermissionResponse(PermissionBase):
-    id: int
-    created_at: datetime
+    id: uuid.UUID
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class RolePermissionResponse(BaseModel):
-    permission_id: int
+    permission_id: uuid.UUID
     permission: PermissionResponse
 
     class Config:
@@ -40,10 +41,10 @@ class RoleUpdate(BaseModel):
 
 
 class RoleResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     key: str
     name: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
     permissions: list[PermissionResponse] = []
 
     class Config:
@@ -58,8 +59,4 @@ class RoleWithPermissionsResponse(RoleResponse):
 
 
 class UpdateRolePermissionsRequest(BaseModel):
-    permission_ids: list[int]
-
-
-
-
+    permission_ids: list[uuid.UUID]
