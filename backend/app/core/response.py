@@ -11,6 +11,20 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 
+class SafeJSONResponse(JSONResponse):
+    """JSONResponse que serializa UUID, Enum, Decimal etc. automaticamente."""
+
+    def render(self, content: Any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+            default=json_serializer,
+        ).encode("utf-8")
+
+
 def json_serializer(obj: Any) -> Any:
     """
     Serializador customizado para tipos não nativos do JSON.
@@ -157,7 +171,7 @@ def success_response(
     if request_id:
         response_data["requestId"] = request_id
     
-    response = JSONResponse(
+    response = SafeJSONResponse(
         status_code=status_code,
         content=response_data
     )
@@ -213,7 +227,7 @@ def error_response(
     if request_id:
         response_data["requestId"] = request_id  # Também no nível raiz para compatibilidade
     
-    response = JSONResponse(
+    response = SafeJSONResponse(
         status_code=status_code,
         content=response_data
     )

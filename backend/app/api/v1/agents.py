@@ -1,5 +1,4 @@
 import uuid
-import os
 import logging
 from typing import Annotated, Optional
 
@@ -18,6 +17,7 @@ from app.schemas.agent import (
     AgentTestRequest,
 )
 from app.services.openai_agent import OpenAIAgentService
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -150,7 +150,7 @@ async def test_agent(
         if not obj:
             return error_response(code="NOT_FOUND", message="Agente não encontrado", status_code=404, request_id=request_id)
 
-        openai_key = os.getenv("OPENAI_API_KEY", "")
+        openai_key = settings.OPENAI_API_KEY or ""
         if not openai_key:
             return error_response(
                 code="CONFIG_ERROR",

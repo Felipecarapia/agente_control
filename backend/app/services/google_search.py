@@ -43,6 +43,8 @@ class GoogleSearchService:
         results = []
         next_page_token = None
 
+        logger.info(f"[GOOGLE] Buscando: query='{location_query}', max_results={max_results}")
+
         async with httpx.AsyncClient(timeout=30) as client:
             while len(results) < max_results:
                 params: Dict[str, Any] = {
@@ -60,8 +62,9 @@ class GoogleSearchService:
                 response.raise_for_status()
                 data = response.json()
 
+                logger.info(f"[GOOGLE] Resposta text search: status={data.get('status')}, resultados={len(data.get('results', []))}")
                 if data.get("status") != "OK":
-                    logger.warning(f"Google Places API status: {data.get('status')} - {data.get('error_message', '')}")
+                    logger.warning(f"[GOOGLE] API retornou status={data.get('status')}: {data.get('error_message', '')}")
                     break
 
                 for place in data.get("results", []):
@@ -85,6 +88,7 @@ class GoogleSearchService:
                 import asyncio
                 await asyncio.sleep(2)
 
+        logger.info(f"[GOOGLE] Text search finalizado: {len(results)} negócios encontrados")
         return results
 
     async def extract_business_info(self, place_id: str) -> Dict[str, Any]:
@@ -158,6 +162,8 @@ class GoogleSearchService:
         Returns:
             Lista de leads com informações completas
         """
+        logger.info(f"[GOOGLE] Iniciando prospecção completa: {activity} em {city} ({state or 'sem estado'}), max={max_results}")
+        
         # Primeiro busca os negócios
         businesses = await self.search_businesses(
             city=city,
@@ -166,6 +172,8 @@ class GoogleSearchService:
             max_results=max_results,
         )
 
+        logger.info(f"[GOOGLE] Busca inicial retornou {len(businesses)} negócios. Extraindo detalhes...")
+        
         # Depois extrai detalhes de cada um
         leads = []
         for business in businesses:
@@ -177,8 +185,9 @@ class GoogleSearchService:
                 details = await self.extract_business_info(place_id)
                 if details:
                     leads.append(details)
+                    logger.info(f"[GOOGLE]   -> {details.get('business_name')} | tel={details.get('phone')} | {details.get('city')}")
             except Exception as e:
-                logger.error(f"Erro ao extrair detalhes do place_id={place_id}: {e}")
+                logger.error(f"[GOOGLE] Erro ao extrair detalhes do place_id={place_id}: {e}")
                 # Adiciona com info básica mesmo sem detalhes
                 leads.append({
                     "business_name": business.get("business_name", ""),
@@ -187,4 +196,5 @@ class GoogleSearchService:
                     "place_id": place_id,
                 })
 
+        logger.info(f"[GOOGLE] Prospecção completa: {len(leads)} leads com detalhes extraídos")
         return leads

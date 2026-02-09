@@ -6,13 +6,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-# Configura logging ANTES de tudo (apenas WARNING para startup mais rápido)
+# Configura logging ANTES de tudo
 logging.basicConfig(
-    level=logging.WARNING,  # Reduzido de INFO para WARNING
+    level=logging.WARNING,
     format="%(levelname)s:     %(name)s - %(message)s",
 )
 
 logger = logging.getLogger(__name__)
+
+# Habilita INFO para módulos da aplicação que precisam de logs visíveis
+for _mod in (
+    "app.api.v1.whatsapp",
+    "app.api.v1.leads",
+    "app.api.v1.agents",
+    "app.api.v1.campaigns",
+    "app.services.evolution_api",
+    "app.services.openai_agent",
+    "app.services.google_search",
+):
+    logging.getLogger(_mod).setLevel(logging.INFO)
 
 # Log das variáveis de ambiente importantes (sem expor secrets)
 # Apenas em modo debug

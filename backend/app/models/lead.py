@@ -1,11 +1,28 @@
+import enum
 import uuid
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
+
+
+class LeadMessageRole(str, enum.Enum):
+    AGENT = "agent"
+    LEAD = "lead"
+    SYSTEM = "system"
+
+
+class LeadMessageChannel(str, enum.Enum):
+    WHATSAPP = "whatsapp"
+    WEB = "web"
+
+
+class LeadConversationStatus(str, enum.Enum):
+    ACTIVE = "active"
+    CLOSED = "closed"
 
 
 class Lead(Base):
@@ -73,3 +90,47 @@ class Lead(Base):
     responsavel = relationship("Usuario", foreign_keys=[responsavel_id])
     criado_por = relationship("Usuario", foreign_keys=[criado_por_id])
     cliente = relationship("Cliente", foreign_keys=[cliente_id])
+    conversations = relationship("LeadConversation", back_populates="lead", cascade="all, delete-orphan")
+
+
+class LeadConversation(Base):
+    """Conversa de prospecção IA vinculada a um lead."""
+    __tablename__ = "lead_conversations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("ai_agents.id", ondelete="SET NULL"), nullable=True)
+    whatsapp_connection_id = Column(UUID(as_uuid=True), ForeignKey("whatsapp_connections.id", ondelete="SET NULL"), nullable=True)
+    remote_jid = Column(String(255), nullable=True)  # LID ou JID do WhatsApp para responder
+    status = Column(
+        SQLEnum(LeadConversationStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=20),
+        nullable=False, default=LeadConversationStatus.ACTIVE
+    )
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+
+    lead = relationship("Lead", back_populates="conversations")
+    agent = relationship("AIAgent")
+    whatsapp_connection = relationship("WhatsAppConnection")
+    messages = relationship("LeadMessage", back_populates="conversation", cascade="all, delete-orphan", order_by="LeadMessage.created_at")
+
+
+class LeadMessage(Base):
+    """Mensagem individual dentro de uma conversa lead/agente."""
+    __tablename__ = "lead_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("lead_conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(
+        SQLEnum(LeadMessageRole, values_callable=lambda x: [e.value for e in x], native_enum=False, length=20),
+        nullable=False
+    )
+    content = Column(Text, nullable=False)
+    sent_via = Column(
+        SQLEnum(LeadMessageChannel, values_callable=lambda x: [e.value for e in x], native_enum=False, length=20),
+        nullable=False, default=LeadMessageChannel.WHATSAPP
+    )
+    whatsapp_message_id = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    conversation = relationship("LeadConversation", back_populates="messages")

@@ -52,8 +52,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 type Stage = {
-  id: number;
-  pipeline_id: number;
+  id: string;
+  pipeline_id: string;
   name: string;
   key: string | null;
   order_index: number;
@@ -62,9 +62,9 @@ type Stage = {
 };
 
 type Deal = {
-  id: number;
+  id: string;
   title: string;
-  client_id: number;
+  client_id: string;
   client_nome: string | null;
   value_cents: number | null;
   currency: string;
@@ -73,8 +73,8 @@ type Deal = {
   priority: "low" | "normal" | "high" | "urgent";
   status: "open" | "won" | "lost";
   position_index: number;
-  assignees: Array<{ user_id: number; user_nome: string | null }>;
-  tags: Array<{ tag_id: number; tag_name: string | null; tag_color: string | null }>;
+  assignees: Array<{ user_id: string; user_nome: string | null }>;
+  tags: Array<{ tag_id: string; tag_name: string | null; tag_color: string | null }>;
   has_pending_activity: boolean;
 };
 
@@ -86,7 +86,7 @@ type StageWithDeals = {
 };
 
 type ClientListItem = {
-  id: number;
+  id: string;
   nome: string;
   razao_social: string | null;
   email: string | null;
@@ -96,7 +96,7 @@ type ClientListItem = {
 };
 
 type KanbanData = {
-  pipeline: { id: number; name: string; description: string | null; is_default: boolean } | null;
+  pipeline: { id: string; name: string; description: string | null; is_default: boolean } | null;
   stages: StageWithDeals[];
   clients: ClientListItem[];
   clients_total: number;
@@ -133,13 +133,13 @@ export default function FunilPage() {
   const [kanbanData, setKanbanData] = useState<KanbanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeId, setActiveId] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<string | number | null>(null);
   const [activeType, setActiveType] = useState<"DEAL" | "CLIENT" | "STAGE" | null>(null);
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
-  const [selectedDealId, setSelectedDealId] = useState<number | null>(null);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [droppedClient, setDroppedClient] = useState<ClientListItem | null>(null);
-  const [droppedStageId, setDroppedStageId] = useState<number | null>(null);
+  const [droppedStageId, setDroppedStageId] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState("");
   const [clientPage, setClientPage] = useState(1);
 
@@ -223,7 +223,7 @@ export default function FunilPage() {
 
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id;
-    setActiveId(id as number);
+    setActiveId(id as string | number);
     // Determinar tipo: CLIENT, DEAL ou STAGE
     if (typeof id === "string") {
       if (id.startsWith("client-")) {
@@ -252,8 +252,8 @@ export default function FunilPage() {
     
     // Se arrastou um CLIENTE para uma STAGE
     if (activeIdStr.startsWith("client-") && overIdStr.startsWith("stage-")) {
-      const clientId = parseInt(activeIdStr.replace("client-", ""));
-      const stageId = parseInt(overIdStr.replace("stage-", ""));
+      const clientId = activeIdStr.replace("client-", "");
+      const stageId = overIdStr.replace("stage-", "");
       const client = kanbanData?.clients.find((c) => c.id === clientId);
       
       if (client) {
@@ -267,8 +267,8 @@ export default function FunilPage() {
     
     // Se arrastou uma STAGE (reordenar colunas)
     if (activeIdStr.startsWith("stage-") && overIdStr.startsWith("stage-")) {
-      const fromStageId = parseInt(activeIdStr.replace("stage-", ""));
-      const toStageId = parseInt(overIdStr.replace("stage-", ""));
+      const fromStageId = activeIdStr.replace("stage-", "");
+      const toStageId = overIdStr.replace("stage-", "");
       
       // Reordenar stages (desabilitado - stages são fixos)
       // Stages padrão não podem ser reordenadas sem pipeline
@@ -287,8 +287,8 @@ export default function FunilPage() {
       return; // Já tratado acima
     }
     
-    const dealId = active.id as number;
-    const targetStageId = parseInt(overIdStr.replace("stage-", ""));
+    const dealId = active.id as string;
+    const targetStageId = overIdStr.replace("stage-", "");
     
     // Encontrar stage atual do deal
     if (!kanbanData) {
@@ -568,7 +568,7 @@ function StageColumn({
   onDealClick,
 }: {
   stageData: StageWithDeals;
-  onDealClick: (dealId: number) => void;
+  onDealClick: (dealId: string) => void;
 }) {
   const { stage, deals, total_value_cents, deal_count } = stageData;
   const [isOverLimit, setIsOverLimit] = useState(false);
@@ -748,7 +748,7 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
   );
 }
 
-function DealDetail({ dealId }: { dealId: number }) {
+function DealDetail({ dealId }: { dealId: string }) {
   const [deal, setDeal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -802,7 +802,7 @@ function ClientsListColumn({
   onClientClick,
 }: {
   clients: ClientListItem[];
-  onClientClick: (clientId: number) => void;
+  onClientClick: (clientId: string) => void;
 }) {
   return (
     <div className="flex-shrink-0 w-80">
@@ -906,7 +906,7 @@ function CreateDealModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client: ClientListItem | null;
-  stageId: number | null;
+  stageId: string | null;
   onSuccess: () => void;
 }) {
   const [form, setForm] = useState({
@@ -916,7 +916,7 @@ function CreateDealModal({
     expected_close_date: "",
     priority: "normal" as "low" | "normal" | "high" | "urgent",
     source: "" as "" | "inbound" | "outbound" | "indicacao" | "evento" | "rede_social" | "outro",
-    assigned_user_ids: [] as number[],
+    assigned_user_ids: [] as string[],
     initial_note: "",
     create_followup: false,
     followup_due_at: "",

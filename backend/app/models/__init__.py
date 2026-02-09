@@ -14,7 +14,7 @@ from app.models.tracking import ProposalSession, ProposalEvent as ProposalEventL
 # Módulos novos da main
 from app.models.onboarding import ClienteOnboarding, ClienteMetaWhatsapp, ClienteContatoOperacional
 from app.models.cliente_docs import ClienteDocumentoRAG, ClienteImagem, ClienteCronogramaEtapa, ClienteCronogramaItem
-from app.models.lead import Lead
+from app.models.lead import Lead, LeadConversation, LeadMessage, LeadMessageRole, LeadMessageChannel, LeadConversationStatus
 # Módulos novos criados localmente
 from app.models.role import Role, UserRole
 from app.models.permission import Permission, RolePermission
@@ -42,7 +42,7 @@ __all__ = [
     # Módulos novos da main
     "ClienteOnboarding", "ClienteMetaWhatsapp", "ClienteContatoOperacional",
     "ClienteDocumentoRAG", "ClienteImagem", "ClienteCronogramaEtapa", "ClienteCronogramaItem",
-    "Lead",
+    "Lead", "LeadConversation", "LeadMessage", "LeadMessageRole", "LeadMessageChannel", "LeadConversationStatus",
     # Módulos novos criados localmente
     "Role", "UserRole",
     "Permission", "RolePermission",

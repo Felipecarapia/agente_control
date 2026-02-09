@@ -1,5 +1,4 @@
 import uuid
-import os
 import logging
 from typing import Annotated, Optional
 
@@ -18,6 +17,7 @@ from app.schemas.campaign import (
     CampaignUpdate,
 )
 from app.services.google_search import GoogleSearchService
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
@@ -152,12 +152,15 @@ async def run_prospecting(
 ):
     """Executa a prospecção da campanha: busca leads no Google Places."""
     request_id = getattr(request.state, "request_id", None)
+    logger.info(f"[PROSPECÇÃO] Iniciando prospecção para campanha {campaign_id}")
     try:
         obj = db.query(Campaign).filter(Campaign.id == campaign_id).first()
         if not obj:
+            logger.warning(f"[PROSPECÇÃO] Campanha {campaign_id} não encontrada")
             return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
 
         if obj.type != "prospecting":
+            logger.warning(f"[PROSPECÇÃO] Campanha {campaign_id} não é do tipo prospecting (tipo={obj.type})")
             return error_response(
                 code="INVALID_TYPE",
                 message="Apenas campanhas do tipo 'prospecting' podem ser executadas.",
@@ -165,7 +168,8 @@ async def run_prospecting(
                 request_id=request_id,
             )
 
-        google_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
+        google_key = settings.GOOGLE_PLACES_API_KEY or ""
+        logger.info(f"[PROSPECÇÃO] GOOGLE_PLACES_API_KEY configurada: {'SIM' if google_key else 'NÃO'} (len={len(google_key)})")
         if not google_key:
             return error_response(
                 code="CONFIG_ERROR",
@@ -180,7 +184,11 @@ async def run_prospecting(
         state = config.get("state")
         max_results = config.get("max_results", 50)
 
+        logger.info(f"[PROSPECÇÃO] Parâmetros: cidade={city}, atividade={activity}, estado={state}, max={max_results}")
+        logger.info(f"[PROSPECÇÃO] config_json completo: {config}")
+
         if not city or not activity:
+            logger.warning(f"[PROSPECÇÃO] Parâmetros incompletos: city={city!r}, activity={activity!r}")
             return error_response(
                 code="INVALID_CONFIG",
                 message="A campanha precisa ter 'city' e 'activity' configurados.",
@@ -190,6 +198,7 @@ async def run_prospecting(
 
         obj.status = "running"
         db.commit()
+        logger.info(f"[PROSPECÇÃO] Status atualizado para 'running'. Iniciando busca no Google Places...")
 
         svc = GoogleSearchService(api_key=google_key)
         leads_data = await svc.run_prospecting(
@@ -199,9 +208,13 @@ async def run_prospecting(
             max_results=max_results,
         )
 
+        logger.info(f"[PROSPECÇÃO] Google Places retornou {len(leads_data)} leads")
+        for i, ld in enumerate(leads_data[:5]):
+            logger.info(f"[PROSPECÇÃO]   Lead {i+1}: {ld.get('business_name')} | tel={ld.get('phone')} | {ld.get('city')}")
+
         new_leads_count = 0
         for ld in leads_data:
-            # Verifica se já existe lead com mesmo nome e telefone nesta campanha
+            # Verifica se já existe lead com mesmo telefone nesta campanha
             existing = None
             if ld.get("phone"):
                 existing = (
@@ -241,6 +254,8 @@ async def run_prospecting(
         )
         db.commit()
 
+        logger.info(f"[PROSPECÇÃO] ✅ Concluída! {new_leads_count} novos leads salvos na tabela campaign_leads (total na campanha: {obj.total_leads_found})")
+
         return success_response(
             data={
                 "campaign_id": str(campaign_id),
@@ -252,6 +267,7 @@ async def run_prospecting(
         )
 
     except Exception as e:
+        logger.error(f"[PROSPECÇÃO] ❌ Erro na prospecção da campanha {campaign_id}: {e}", exc_info=True)
         logger.error(f"Erro ao executar prospecção: {e}", exc_info=True)
         # Marcar campanha como falha
         try:

@@ -2,11 +2,38 @@
 Serviço de integração com a Evolution API e API Oficial do WhatsApp.
 """
 import logging
+import re
 from typing import Optional, Dict, Any
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_phone_br(phone: str) -> str:
+    """
+    Normaliza um número de telefone brasileiro para o formato que a Evolution API espera.
+    
+    Exemplos:
+      (11) 99999-9999  ->  5511999999999
+      11999999999      ->  5511999999999
+      +5511999999999   ->  5511999999999
+      5511999999999    ->  5511999999999
+      99999-9999       ->  5599999999 (sem DDD, mantém como está + 55)
+    """
+    # Remove tudo que não é dígito
+    digits = re.sub(r"\D", "", phone)
+
+    # Se começa com +55 ou 55 e tem 12-13 dígitos, já está ok
+    if digits.startswith("55") and len(digits) >= 12:
+        return digits
+
+    # Se tem 10-11 dígitos (DDD + número), adiciona 55
+    if len(digits) >= 10:
+        return f"55{digits}"
+
+    # Fallback: adiciona 55 mesmo assim
+    return f"55{digits}"
 
 
 class EvolutionAPIService:
@@ -61,8 +88,15 @@ class EvolutionAPIService:
 
     async def send_message(self, instance_name: str, phone: str, text: str) -> Dict[str, Any]:
         """Envia uma mensagem de texto via WhatsApp."""
+        # Se for um LID (@lid) ou JID (@s.whatsapp.net), enviar como está
+        if "@lid" in phone or "@s.whatsapp.net" in phone or "@c.us" in phone:
+            number_to_send = phone
+            logger.info(f"[WA SEND] Usando JID/LID direto: {number_to_send}")
+        else:
+            number_to_send = normalize_phone_br(phone)
+            logger.info(f"[WA SEND] Número original: {phone} -> normalizado: {number_to_send}")
         payload = {
-            "number": phone,
+            "number": number_to_send,
             "text": text,
         }
         async with httpx.AsyncClient(timeout=30) as client:
@@ -131,9 +165,11 @@ class MetaWhatsAppService:
 
     async def send_message(self, phone_number_id: str, to: str, text: str) -> Dict[str, Any]:
         """Envia mensagem de texto pela API Oficial."""
+        normalized_to = normalize_phone_br(to)
+        logger.info(f"[META WA SEND] Número original: {to} -> normalizado: {normalized_to}")
         payload = {
             "messaging_product": "whatsapp",
-            "to": to,
+            "to": normalized_to,
             "type": "text",
             "text": {"body": text},
         }

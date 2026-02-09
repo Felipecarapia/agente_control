@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 import logging
 
@@ -9,10 +10,15 @@ from pydantic import ValidationError
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.core.response import success_response, error_response
-from app.models.lead import Lead
+from app.core.config import settings
+from app.core.response import success_response, error_response, serialize_data
+from app.models.lead import Lead, LeadConversation, LeadMessage
+from app.models.agent import AIAgent
+from app.models.whatsapp import WhatsAppConnection
 from app.models.usuario import Usuario
 from app.schemas.lead import LeadCreate, LeadUpdate, LeadResponse
+from app.services.openai_agent import OpenAIAgentService
+from app.services.evolution_api import EvolutionAPIService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/leads", tags=["leads"])
@@ -302,3 +308,221 @@ def delete_lead(
             status_code=500,
             request_id=request_id
         )
+
+
+# ──────────────────── Prospecção via IA ────────────────────
+
+@router.post("/{lead_id}/prospect")
+async def prospect_lead(
+    request: Request,
+    lead_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """
+    Inicia prospecção via IA: gera mensagem com OpenAI e envia via WhatsApp.
+    Usa o primeiro agente ativo com conexão WhatsApp configurada.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    logger.info(f"[PROSPECT] Iniciando prospecção para lead {lead_id}")
+
+    try:
+        # 1) Buscar lead
+        lead = db.query(Lead).filter(Lead.id == lead_id).first()
+        if not lead:
+            return error_response(code="LEAD_NOT_FOUND", message="Lead não encontrado", status_code=404, request_id=request_id)
+
+        phone = lead.whatsapp or lead.telefone
+        if not phone:
+            return error_response(
+                code="NO_PHONE",
+                message="O lead não possui WhatsApp ou telefone cadastrado.",
+                status_code=400,
+                request_id=request_id,
+            )
+        # Se o lead não tem whatsapp preenchido, preenche com o telefone usado
+        if not lead.whatsapp and lead.telefone:
+            lead.whatsapp = lead.telefone
+            logger.info(f"[PROSPECT] Campo whatsapp do lead preenchido automaticamente: {lead.telefone}")
+        logger.info(f"[PROSPECT] Lead: {lead.nome} | whatsapp: {lead.whatsapp} | telefone: {lead.telefone}")
+
+        # 2) Buscar agente ativo com WhatsApp
+        agent = (
+            db.query(AIAgent)
+            .filter(AIAgent.is_active == True, AIAgent.whatsapp_connection_id.isnot(None))
+            .first()
+        )
+        if not agent:
+            return error_response(
+                code="NO_AGENT",
+                message="Nenhum agente de IA ativo com conexão WhatsApp encontrado. Configure um agente em Agentes de IA.",
+                status_code=400,
+                request_id=request_id,
+            )
+        logger.info(f"[PROSPECT] Agente: {agent.name} (model={agent.model})")
+
+        # 3) Buscar conexão WhatsApp
+        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == agent.whatsapp_connection_id).first()
+        if not wa_conn or wa_conn.status != "connected":
+            return error_response(
+                code="WA_NOT_CONNECTED",
+                message="A conexão WhatsApp do agente não está conectada.",
+                status_code=400,
+                request_id=request_id,
+            )
+        logger.info(f"[PROSPECT] WhatsApp: {wa_conn.name} (instância={wa_conn.instance_name})")
+
+        # 4) Gerar mensagem com OpenAI
+        openai_key = settings.OPENAI_API_KEY or ""
+        if not openai_key:
+            return error_response(code="CONFIG_ERROR", message="OPENAI_API_KEY não configurada.", status_code=500, request_id=request_id)
+
+        lead_context = (
+            f"Dados do lead para prospecção:\n"
+            f"- Nome: {lead.nome}\n"
+            f"- Empresa: {lead.empresa or 'Não informada'}\n"
+            f"- Cargo: {lead.cargo or 'Não informado'}\n"
+            f"- Cidade: {lead.cidade or 'Não informada'}, {lead.estado or ''}\n"
+            f"- Interesse: {lead.interesse or 'Não informado'}\n"
+            f"- Necessidade: {lead.necessidade or 'Não informada'}\n"
+            f"- Origem: {lead.origem or 'Não informada'}\n\n"
+            f"Gere uma mensagem inicial de prospecção para enviar via WhatsApp. "
+            f"Seja profissional, educado e direto. A mensagem deve ser curta (máximo 3 parágrafos)."
+        )
+
+        svc_ai = OpenAIAgentService(api_key=openai_key)
+        ai_result = await svc_ai.create_chat_completion(
+            system_prompt=agent.system_prompt,
+            messages=[{"role": "user", "content": lead_context}],
+            model=agent.model,
+            temperature=agent.temperature,
+            max_tokens=agent.max_tokens,
+        )
+        message_text = ai_result["response"]
+        logger.info(f"[PROSPECT] Mensagem gerada ({len(message_text)} chars): {message_text[:100]}...")
+
+        # 5) Enviar via WhatsApp
+        svc_wa = EvolutionAPIService(api_url=wa_conn.api_url, api_key=wa_conn.api_key)
+
+        # Verificar se já existe uma conversa ativa com este lead - reutilizar (como WhatsApp real)
+        existing_conv = (
+            db.query(LeadConversation)
+            .filter(
+                LeadConversation.lead_id == lead_id,
+                LeadConversation.status == "active",
+            )
+            .first()
+        )
+
+        # Se existe conversa ativa, usar o remote_jid (LID) salvo para enviar
+        send_to = phone
+        if existing_conv and existing_conv.remote_jid:
+            send_to = existing_conv.remote_jid
+            logger.info(f"[PROSPECT] Usando remote_jid da conversa existente: {send_to}")
+
+        wa_result = await svc_wa.send_message(
+            instance_name=wa_conn.instance_name,
+            phone=send_to,
+            text=message_text,
+        )
+        wa_msg_id = wa_result.get("key", {}).get("id")
+        wa_remote_jid = wa_result.get("key", {}).get("remoteJid", "")
+        logger.info(f"[PROSPECT] Mensagem enviada! msg_id={wa_msg_id}, remoteJid={wa_remote_jid}")
+        logger.info(f"[PROSPECT] wa_result completo: {wa_result}")
+
+        # 6) Reutilizar conversa existente ou criar nova
+        if existing_conv:
+            conversation = existing_conv
+            conversation.agent_id = agent.id
+            conversation.whatsapp_connection_id = wa_conn.id
+            # Atualizar remote_jid se veio um novo (ex: LID da Meta)
+            if wa_remote_jid:
+                conversation.remote_jid = wa_remote_jid
+                logger.info(f"[PROSPECT] remote_jid atualizado: {wa_remote_jid}")
+            logger.info(f"[PROSPECT] Reutilizando conversa existente: {conversation.id}")
+        else:
+            conversation = LeadConversation(
+                lead_id=lead_id,
+                agent_id=agent.id,
+                whatsapp_connection_id=wa_conn.id,
+                remote_jid=wa_remote_jid or None,
+                status="active",
+            )
+            db.add(conversation)
+            db.flush()
+            logger.info(f"[PROSPECT] Nova conversa criada: {conversation.id}, remote_jid={wa_remote_jid}")
+
+        msg = LeadMessage(
+            conversation_id=conversation.id,
+            role="agent",
+            content=message_text,
+            sent_via="whatsapp",
+            whatsapp_message_id=wa_msg_id,
+        )
+        db.add(msg)
+
+        # 7) Atualizar lead
+        lead.status = "contatado"
+        lead.ultimo_contato = datetime.now(timezone.utc)
+
+        db.commit()
+        logger.info(f"[PROSPECT] Conversa {conversation.id} atualizada. Lead atualizado para 'contatado'.")
+
+        return success_response(
+            data={
+                "conversation_id": str(conversation.id),
+                "agent_name": agent.name,
+                "message_sent": message_text,
+                "phone": phone,
+                "whatsapp_message_id": wa_msg_id,
+            },
+            request_id=request_id,
+        )
+
+    except Exception as e:
+        logger.error(f"[PROSPECT] Erro na prospecção do lead {lead_id}: {e}", exc_info=True)
+        db.rollback()
+        return error_response(code="PROSPECT_ERROR", message=str(e), status_code=500, request_id=request_id)
+
+
+# ──────────────────── Conversas do Lead ────────────────────
+
+@router.get("/{lead_id}/conversations")
+def list_lead_conversations(
+    request: Request,
+    lead_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Lista todas as conversas de prospecção de um lead, com mensagens."""
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        conversations = (
+            db.query(LeadConversation)
+            .filter(LeadConversation.lead_id == lead_id)
+            .order_by(desc(LeadConversation.started_at))
+            .all()
+        )
+
+        result = []
+        for conv in conversations:
+            conv_data = serialize_data(conv)
+            # Buscar mensagens
+            messages = (
+                db.query(LeadMessage)
+                .filter(LeadMessage.conversation_id == conv.id)
+                .order_by(LeadMessage.created_at)
+                .all()
+            )
+            conv_data["messages"] = [serialize_data(m) for m in messages]
+            # Nome do agente
+            if conv.agent:
+                conv_data["agent_name"] = conv.agent.name
+            else:
+                conv_data["agent_name"] = None
+            result.append(conv_data)
+
+        return success_response(data=result, request_id=request_id)
+    except Exception as e:
+        logger.error(f"Erro ao listar conversas do lead {lead_id}: {e}", exc_info=True)
+        return success_response(data=[], request_id=request_id)

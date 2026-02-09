@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     # API Key para integrações externas (inserção de leads via API pública)
     LEADS_API_KEY: str = "CHANGE-ME-USE-A-STRONG-RANDOM-TOKEN"
 
+    # OpenAI
+    OPENAI_API_KEY: Optional[str] = None
+
+    # Google Places API (prospecção)
+    GOOGLE_PLACES_API_KEY: Optional[str] = None
+
     # S3/MinIO Storage
     S3_ENDPOINT: Optional[str] = None
     S3_REGION: str = "us-east-1"
