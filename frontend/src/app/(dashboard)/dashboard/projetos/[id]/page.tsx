@@ -53,7 +53,7 @@ const emptyForm = {
 export default function EditarProjetoPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id;
+  const id = params.id as string;
   const [form, setForm] = useState(emptyForm);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
