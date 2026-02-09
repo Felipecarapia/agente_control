@@ -184,21 +184,21 @@ export default function CampaignDetailPage() {
             <p className="text-lg font-semibold">{leads.length}</p>
           </CardContent>
         </Card>
-        {config.city && (
+        {typeof config.city === "string" && config.city && (
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Cidade</p>
               <p className="text-lg font-semibold flex items-center gap-1">
-                <MapPin className="h-4 w-4" /> {config.city as string}{config.state ? `, ${config.state}` : ""}
+                <MapPin className="h-4 w-4" /> {config.city}{typeof config.state === "string" && config.state ? `, ${config.state}` : ""}
               </p>
             </CardContent>
           </Card>
         )}
-        {config.activity && (
+        {typeof config.activity === "string" && config.activity && (
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Atividade</p>
-              <p className="text-lg font-semibold">{config.activity as string}</p>
+              <p className="text-lg font-semibold">{config.activity}</p>
             </CardContent>
           </Card>
         )}
