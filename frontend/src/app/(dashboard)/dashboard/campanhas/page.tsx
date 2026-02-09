@@ -157,8 +157,8 @@ export default function CampanhasPage() {
         name: form.name,
         description: form.description,
         type: form.type,
-        agent_id: form.agent_id || null,
-        whatsapp_connection_id: form.whatsapp_connection_id || null,
+        agent_id: form.agent_id && form.agent_id !== "none" ? form.agent_id : null,
+        whatsapp_connection_id: form.whatsapp_connection_id && form.whatsapp_connection_id !== "none" ? form.whatsapp_connection_id : null,
         config_json: form.type === "prospecting" ? {
           city: form.city,
           activity: form.activity,
@@ -324,7 +324,7 @@ export default function CampanhasPage() {
               <Select value={form.agent_id} onValueChange={(v) => setForm((f) => ({ ...f, agent_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {agents.map((a) => (
                     <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                   ))}
@@ -336,7 +336,7 @@ export default function CampanhasPage() {
               <Select value={form.whatsapp_connection_id} onValueChange={(v) => setForm((f) => ({ ...f, whatsapp_connection_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {waConnections.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}

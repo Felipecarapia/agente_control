@@ -137,7 +137,7 @@ export default function AgentesPage() {
     try {
       const body: Record<string, unknown> = {
         ...form,
-        whatsapp_connection_id: form.whatsapp_connection_id || null,
+        whatsapp_connection_id: form.whatsapp_connection_id && form.whatsapp_connection_id !== "none" ? form.whatsapp_connection_id : null,
       };
       if (editId) {
         await api(`/api/v1/agents/${editId}`, { method: "PUT", body: JSON.stringify(body) });
@@ -328,7 +328,7 @@ export default function AgentesPage() {
               <Select value={form.whatsapp_connection_id} onValueChange={(v) => setForm((f) => ({ ...f, whatsapp_connection_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {waConnections.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name} ({c.status})</SelectItem>
                   ))}

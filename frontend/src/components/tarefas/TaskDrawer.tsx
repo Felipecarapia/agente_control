@@ -40,7 +40,7 @@ import { TaskComments } from "./TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
 
 type TaskProperty = {
-  id: number;
+  id: string;
   key: string;
   name: string;
   type: string;
@@ -48,22 +48,22 @@ type TaskProperty = {
 };
 
 type TaskBlock = {
-  id: number;
+  id: string;
   type: string;
   content_json?: any;
   order_index: number;
 };
 
 type TaskComment = {
-  id: number;
+  id: string;
   content: string;
-  author_user_id: number | null;
+  author_user_id: string | null;
   author_nome: string | null;
   created_at: string;
 };
 
 type TaskAttachment = {
-  id: number;
+  id: string;
   file_name: string;
   mime_type: string | null;
   size_bytes: number;
@@ -72,17 +72,17 @@ type TaskAttachment = {
 };
 
 type TaskWithNotion = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
   status: string;
   prioridade: string | null;
   data_vencimento: string | null;
-  responsavel_id: number | null;
+  responsavel_id: string | null;
   is_recurring: boolean;
   property_values: Array<{
-    id: number;
-    property_id: number;
+    id: string;
+    property_id: string;
     value_json?: any;
   }>;
   blocks: TaskBlock[];
@@ -93,10 +93,10 @@ type TaskWithNotion = {
 interface TaskDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  taskId: number | null;
+  taskId: string | null;
   properties: TaskProperty[];
-  usuarios: Array<{ id: number; nome: string }>;
-  projetos: Array<{ id: number; nome: string }>;
+  usuarios: Array<{ id: string; nome: string }>;
+  projetos: Array<{ id: string; nome: string }>;
   onSave?: () => void;
 }
 
@@ -116,10 +116,10 @@ export function TaskDrawer({
   const [status, setStatus] = useState("pendente");
   const [prioridade, setPrioridade] = useState<string>("none");
   const [dataVencimento, setDataVencimento] = useState<string>("");
-  const [responsavelId, setResponsavelId] = useState<number | null>(null);
+  const [responsavelId, setResponsavelId] = useState<string | null>(null);
   const [isRecurring, setIsRecurring] = useState(false);
   const [blocks, setBlocks] = useState<TaskBlock[]>([]);
-  const [propertyValues, setPropertyValues] = useState<Record<number, any>>({});
+  const [propertyValues, setPropertyValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (open && taskId) {
@@ -146,7 +146,7 @@ export function TaskDrawer({
       setBlocks(data.blocks || []);
       
       // Carregar property values
-      const values: Record<number, any> = {};
+      const values: Record<string, any> = {};
       data.property_values.forEach((pv) => {
         values[pv.property_id] = pv.value_json;
       });
@@ -187,7 +187,7 @@ export function TaskDrawer({
           method: "POST",
           body: JSON.stringify({
             task_id: taskId,
-            property_id: parseInt(propertyId),
+            property_id: propertyId,
             value_json: valueJson,
           }),
         });
@@ -203,14 +203,14 @@ export function TaskDrawer({
     }
   }
 
-  function updatePropertyValue(propertyId: number, value: any) {
+  function updatePropertyValue(propertyId: string, value: any) {
     setPropertyValues((prev) => ({
       ...prev,
       [propertyId]: value,
     }));
   }
 
-  function getPropertyValue(propertyId: number): any {
+  function getPropertyValue(propertyId: string): any {
     return propertyValues[propertyId] || null;
   }
 
@@ -375,7 +375,7 @@ export function TaskDrawer({
               <Select
                 value={responsavelId?.toString() || "none"}
                 onValueChange={(val) =>
-                  setResponsavelId(val && val !== "none" ? parseInt(val) : null)
+                  setResponsavelId(val && val !== "none" ? val : null)
                 }
               >
                 <SelectTrigger>
@@ -435,8 +435,8 @@ export function TaskDrawer({
           <div className="space-y-4 border-t pt-4">
             <h3 className="font-semibold text-sm">Conteúdo</h3>
             <BlockEditor 
-              blocks={blocks.map(b => ({ ...b, id: b.id || 0 }))} 
-              onChange={(newBlocks) => setBlocks(newBlocks.map(b => ({ ...b, id: b.id || 0 })))} 
+              blocks={blocks.map(b => ({ ...b, id: b.id || "" }))} 
+              onChange={(newBlocks) => setBlocks(newBlocks.map(b => ({ ...b, id: b.id || "" })))} 
             />
           </div>
 

@@ -10,21 +10,21 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export type Tarefa = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
-  projeto_id: number;
+  projeto_id: string;
   status: string;
   prioridade: string | null;
-  responsavel_id: number | null;
+  responsavel_id: string | null;
   data_vencimento: string | null;
   is_recurring?: boolean;
   recurrence_type?: string | null;
   recurrence_interval?: number | null;
   recurrence_end_date?: string | null;
-  parent_task_id?: number | null;
-  assigned_user_ids?: number[];
-  assigned_users?: Array<{ id: number; usuario_id: number; usuario_nome: string | null }>;
+  parent_task_id?: string | null;
+  assigned_user_ids?: string[];
+  assigned_users?: Array<{ id: string; usuario_id: string; usuario_nome: string | null }>;
 };
 
 interface TaskCardProps {
@@ -32,8 +32,8 @@ interface TaskCardProps {
   projetoNome: string;
   responsavelNome: string | null;
   isCompleted: boolean;
-  onToggleComplete: (id: number) => void;
-  onClick: (id: number) => void;
+  onToggleComplete: (id: string) => void;
+  onClick: (id: string) => void;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -57,7 +57,7 @@ export function TaskCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tarefa.id.toString() });
+  } = useSortable({ id: tarefa.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),

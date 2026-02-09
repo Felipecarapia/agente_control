@@ -9,10 +9,10 @@ interface KanbanColumnProps {
   id: string;
   title: string;
   tasks: Tarefa[];
-  projetoMap: Record<number, string>;
-  usuarioMap: Record<number, string>;
-  onToggleComplete: (id: number) => void;
-  onTaskClick: (id: number) => void;
+  projetoMap: Record<string, string>;
+  usuarioMap: Record<string, string>;
+  onToggleComplete: (id: string) => void;
+  onTaskClick: (id: string) => void;
 }
 
 export function KanbanColumn({
@@ -28,7 +28,7 @@ export function KanbanColumn({
     id,
   });
 
-  const taskIds = tasks.map((t) => t.id.toString());
+  const taskIds = tasks.map((t) => t.id);
 
   return (
     <div className="flex flex-col h-full min-w-[280px] max-w-[320px]">

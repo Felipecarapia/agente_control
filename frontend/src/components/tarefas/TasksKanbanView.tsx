@@ -21,10 +21,10 @@ import { Plus } from "lucide-react";
 export type TarefaKanban = Tarefa;
 
 interface TasksKanbanViewProps {
-  projetos: Array<{ id: number; nome: string }>;
-  usuarios: Array<{ id: number; nome: string }>;
-  onToggleComplete: (id: number) => void;
-  onTaskClick: (id: number) => void;
+  projetos: Array<{ id: string; nome: string }>;
+  usuarios: Array<{ id: string; nome: string }>;
+  onToggleComplete: (id: string) => void;
+  onTaskClick: (id: string) => void;
   onCreateTask?: () => void;
 }
 
@@ -136,7 +136,7 @@ export function TasksKanbanView({
 
     if (!over) return;
 
-    const taskId = parseInt(active.id.toString());
+    const taskId = active.id.toString();
     const targetColumnId = over.id.toString();
 
     // Encontrar a tarefa atual
@@ -194,7 +194,7 @@ export function TasksKanbanView({
     }
   }
 
-  async function handleToggleComplete(id: number) {
+  async function handleToggleComplete(id: string) {
     // Atualização otimista
     const previousData = { ...kanbanData };
     const task = [

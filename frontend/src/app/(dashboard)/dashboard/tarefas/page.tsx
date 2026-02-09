@@ -288,7 +288,7 @@ export default function TarefasPage() {
     }
   }
 
-  async function handleToggleComplete(id: number) {
+  async function handleToggleComplete(id: string) {
     const task = list.find((t) => t.id === id);
     if (!task) return;
 
@@ -348,7 +348,7 @@ export default function TarefasPage() {
     }
   }
 
-  function handleTaskClick(id: number) {
+  function handleTaskClick(id: string) {
     openEdit(list.find((t) => t.id === id)!);
   }
 

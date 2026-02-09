@@ -10,17 +10,17 @@ import { ptBR } from "date-fns/locale";
 import { Send, AtSign } from "lucide-react";
 
 type TaskComment = {
-  id: number;
+  id: string;
   content: string;
-  author_user_id: number | null;
+  author_user_id: string | null;
   author_nome: string | null;
   created_at: string;
 };
 
 interface TaskCommentsProps {
-  taskId: number;
+  taskId: string;
   comments: TaskComment[];
-  usuarios: Array<{ id: number; nome: string }>;
+  usuarios: Array<{ id: string; nome: string }>;
   onCommentAdded: () => void;
 }
 
@@ -42,7 +42,7 @@ export function TaskComments({
       // Detectar menções (@nome)
       const mentionRegex = /@(\w+)/g;
       const matches = content.match(mentionRegex);
-      const mentionedUserIds: number[] = [];
+      const mentionedUserIds: string[] = [];
 
       if (matches) {
         matches.forEach((match) => {

@@ -18,10 +18,10 @@ interface DayDrawerProps {
   onOpenChange: (open: boolean) => void;
   date: Date;
   tasks: Tarefa[];
-  projetoMap: Record<number, string>;
-  usuarioMap: Record<number, string>;
-  onToggleComplete: (id: number) => void;
-  onTaskClick: (id: number) => void;
+  projetoMap: Record<string, string>;
+  usuarioMap: Record<string, string>;
+  onToggleComplete: (id: string) => void;
+  onTaskClick: (id: string) => void;
   onCreateTask?: (date: Date) => void;
 }
 

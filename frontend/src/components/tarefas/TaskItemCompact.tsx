@@ -7,26 +7,26 @@ import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 
 export type Tarefa = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
-  projeto_id: number;
+  projeto_id: string;
   status: string;
   prioridade: string | null;
-  responsavel_id: number | null;
+  responsavel_id: string | null;
   data_vencimento: string | null;
   is_recurring?: boolean;
   recurrence_type?: string | null;
-  assigned_user_ids?: number[];
-  assigned_users?: Array<{ id: number; usuario_id: number; usuario_nome: string | null }>;
+  assigned_user_ids?: string[];
+  assigned_users?: Array<{ id: string; usuario_id: string; usuario_nome: string | null }>;
 };
 
 interface TaskItemCompactProps {
   tarefa: Tarefa;
   projetoNome?: string;
   responsavelNome?: string;
-  onToggleComplete?: (id: number) => void;
-  onClick?: (id: number) => void;
+  onToggleComplete?: (id: string) => void;
+  onClick?: (id: string) => void;
   showCheckbox?: boolean;
   className?: string;
 }

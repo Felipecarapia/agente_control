@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type TaskAttachment = {
-  id: number;
+  id: string;
   file_name: string;
   mime_type: string | null;
   size_bytes: number;
@@ -17,7 +17,7 @@ type TaskAttachment = {
 };
 
 interface TaskAttachmentsProps {
-  taskId: number;
+  taskId: string;
   attachments: TaskAttachment[];
   onUploadComplete: () => void;
 }
@@ -76,7 +76,7 @@ export function TaskAttachments({
     }
   }
 
-  async function deleteAttachment(attachmentId: number) {
+  async function deleteAttachment(attachmentId: string) {
     if (!confirm("Deseja excluir este anexo?")) return;
 
     try {

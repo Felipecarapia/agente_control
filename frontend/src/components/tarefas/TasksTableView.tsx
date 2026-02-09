@@ -20,7 +20,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type TaskProperty = {
-  id: number;
+  id: string;
   key: string;
   name: string;
   type: string;
@@ -28,27 +28,27 @@ type TaskProperty = {
 };
 
 type TaskPropertyValue = {
-  id: number;
-  property_id: number;
+  id: string;
+  property_id: string;
   value_json?: any;
 };
 
 type Tarefa = {
-  id: number;
+  id: string;
   titulo: string;
   status: string;
   prioridade: string | null;
   data_vencimento: string | null;
-  responsavel_id: number | null;
+  responsavel_id: string | null;
   property_values: TaskPropertyValue[];
 };
 
 interface TasksTableViewProps {
-  databaseId: number;
-  viewId?: number;
+  databaseId: string;
+  viewId?: string;
   properties: TaskProperty[];
-  onTaskClick: (id: number) => void;
-  onToggleComplete: (id: number) => void;
+  onTaskClick: (id: string) => void;
+  onToggleComplete: (id: string) => void;
   onCreateTask: () => void;
 }
 

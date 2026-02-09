@@ -26,10 +26,10 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 interface TasksCalendarViewProps {
-  projetos: Array<{ id: number; nome: string }>;
-  usuarios: Array<{ id: number; nome: string }>;
-  onToggleComplete: (id: number) => void;
-  onTaskClick: (id: number) => void;
+  projetos: Array<{ id: string; nome: string }>;
+  usuarios: Array<{ id: string; nome: string }>;
+  onToggleComplete: (id: string) => void;
+  onTaskClick: (id: string) => void;
   onCreateTask?: (date: Date) => void;
 }
 

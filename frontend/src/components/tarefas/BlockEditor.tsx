@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 
 type TaskBlock = {
-  id?: number;
+  id?: string;
   type: string;
   content_json?: any;
   order_index: number;
