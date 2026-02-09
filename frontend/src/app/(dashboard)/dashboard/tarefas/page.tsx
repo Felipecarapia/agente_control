@@ -64,9 +64,9 @@ type Tarefa = {
   recurrence_type?: string | null;
   recurrence_interval?: number | null;
   recurrence_end_date?: string | null;
-  parent_task_id?: number | null;
-  assigned_user_ids?: number[];
-  assigned_users?: Array<{ id: number; usuario_id: number; usuario_nome: string | null }>;
+  parent_task_id?: string | null;
+  assigned_user_ids?: string[];
+  assigned_users?: Array<{ id: string; usuario_id: string; usuario_nome: string | null }>;
 };
 
 export default function TarefasPage() {
