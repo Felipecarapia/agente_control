@@ -27,6 +27,10 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.task_notion import router as task_notion_router
 from app.api.v1.health import router as health_router
 from app.api.v1.config import router as config_router
+# Novos módulos: WhatsApp, Agentes IA, Campanhas
+from app.api.v1.whatsapp import router as whatsapp_router
+from app.api.v1.agents import router as agents_router
+from app.api.v1.campaigns import router as campaigns_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -56,3 +60,7 @@ api_router.include_router(analytics_router)
 api_router.include_router(task_notion_router)
 api_router.include_router(health_router)
 api_router.include_router(config_router)
+# Novos módulos
+api_router.include_router(whatsapp_router)
+api_router.include_router(agents_router)
+api_router.include_router(campaigns_router)

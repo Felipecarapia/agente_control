@@ -27,6 +27,12 @@ from app.models.pipeline import (
     Pipeline, PipelineStage, Deal, DealAssignee, DealTag, DealTagLink,
     DealActivity, DealNote, DealStageHistory, DealPriority, DealStatus, DealSource, DealActivityType
 )
+from app.models.whatsapp import WhatsAppConnection, WhatsAppProvider, WhatsAppConnectionStatus
+from app.models.agent import AIAgent, AgentConversation, AIAgentProvider, ConversationChannel, ConversationStatus
+from app.models.campaign import (
+    Campaign, CampaignLead, CampaignType, CampaignStatus,
+    CampaignLeadSource, CampaignLeadStatus
+)
 
 __all__ = [
     "Usuario", "Cliente", "Projeto", "Tarefa", "TarefaAssignee", "Proposta", "ProposalSection", "ProposalPricingPlan", "ProposalStatusEvent", "EmailOutbox",
@@ -46,5 +52,12 @@ __all__ = [
     "Pipeline", "PipelineStage", "Deal", "DealAssignee", "DealTag", "DealTagLink",
     "DealActivity", "DealNote", "DealStageHistory", "DealPriority", "DealStatus", "DealSource", "DealActivityType",
     "TaskDatabase", "TaskProperty", "TaskPropertyValue", "TaskView",
-    "TaskBlock", "TaskComment", "TaskMention", "TaskAttachment", "TaskTemplate"
+    "TaskBlock", "TaskComment", "TaskMention", "TaskAttachment", "TaskTemplate",
+    # WhatsApp
+    "WhatsAppConnection", "WhatsAppProvider", "WhatsAppConnectionStatus",
+    # AI Agents
+    "AIAgent", "AgentConversation", "AIAgentProvider", "ConversationChannel", "ConversationStatus",
+    # Campaigns
+    "Campaign", "CampaignLead", "CampaignType", "CampaignStatus",
+    "CampaignLeadSource", "CampaignLeadStatus",
 ]

@@ -26,6 +26,9 @@ import {
   PanelLeftClose,
   PanelLeft,
   Target,
+  Bot,
+  Megaphone,
+  MessageSquareMore,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationToastManager } from "@/components/notifications/NotificationToast";
@@ -58,11 +61,20 @@ const navGroups = [
     ],
   },
   {
+    title: "Automação",
+    desc: "Agentes, campanhas e WhatsApp",
+    items: [
+      { href: "/dashboard/agentes", label: "Agentes de IA", icon: Bot },
+      { href: "/dashboard/campanhas", label: "Campanhas", icon: Megaphone },
+    ],
+  },
+  {
     title: "Configurações",
     desc: "Administração",
     items: [
       { href: "/dashboard/configuracoes/usuarios", label: "Usuários", icon: Users },
       { href: "/dashboard/configuracoes/roles", label: "Roles e Permissões", icon: Shield },
+      { href: "/dashboard/configuracoes/whatsapp", label: "WhatsApp", icon: MessageSquareMore },
     ],
   },
 ];
@@ -78,8 +90,11 @@ const pathToTitle: Record<string, string> = {
   "/dashboard/tarefas": "Tarefas",
   "/dashboard/propostas": "Propostas",
   "/dashboard/contratos": "Contratos",
+  "/dashboard/agentes": "Agentes de IA",
+  "/dashboard/campanhas": "Campanhas",
   "/dashboard/configuracoes/usuarios": "Usuários",
   "/dashboard/configuracoes/roles": "Roles e Permissões",
+  "/dashboard/configuracoes/whatsapp": "WhatsApp",
 };
 
 function getPageTitle(pathname: string): string {
@@ -91,8 +106,11 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/dashboard/propostas")) return "Propostas";
   if (pathname.startsWith("/dashboard/contratos")) return "Contratos";
   if (pathname.startsWith("/dashboard/mensagens")) return "Mensagens";
-  if (pathname.startsWith("/dashboard/configuracoes")) return "Configurações";
+  if (pathname.startsWith("/dashboard/agentes")) return "Agentes de IA";
+  if (pathname.startsWith("/dashboard/campanhas")) return "Campanhas";
+  if (pathname.startsWith("/dashboard/configuracoes/whatsapp")) return "WhatsApp";
   if (pathname.startsWith("/dashboard/configuracoes/roles")) return "Roles e Permissões";
+  if (pathname.startsWith("/dashboard/configuracoes")) return "Configurações";
   return "Dashboard";
 }
 

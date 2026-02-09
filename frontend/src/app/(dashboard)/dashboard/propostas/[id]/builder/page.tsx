@@ -43,7 +43,7 @@ function newSectionId(): string {
 
 export default function BuilderPropostaPage() {
   const params = useParams();
-  const id = params.id;
+  const id = params.id as string;
   const [proposta, setProposta] = useState<Proposta | null>(null);
   const [sections, setSections] = useState<LandingSection[]>([]);
   const [templateId, setTemplateId] = useState<TemplateId>("branco");

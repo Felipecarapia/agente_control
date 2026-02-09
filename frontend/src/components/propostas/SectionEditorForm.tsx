@@ -8,7 +8,7 @@ import { ImageUpload } from "./ImageUpload";
 type Props = {
   section: LandingSection;
   onChange: (data: Record<string, unknown>) => void;
-  propostaId?: number;
+  propostaId?: string;
 };
 
 function setData(
