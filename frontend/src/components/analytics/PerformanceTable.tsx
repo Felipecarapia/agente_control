@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 interface SalesPerformance {
-  user_id: number;
+  user_id: string;
   user_nome: string;
   deals_created: number;
   deals_won: number;

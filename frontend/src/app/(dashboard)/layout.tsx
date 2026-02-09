@@ -115,11 +115,11 @@ function getPageTitle(pathname: string): string {
 }
 
 interface UserInfo {
-  id: number;
+  id: string;
   email: string;
   nome: string;
   ativo: boolean;
-  roles?: Array<{ id: number; key: string; name: string }>;
+  roles?: Array<{ id: string; key: string; name: string }>;
 }
 
 export default function DashboardLayout({

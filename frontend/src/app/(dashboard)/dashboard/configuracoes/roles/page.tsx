@@ -31,7 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 type Permission = {
-  id: number;
+  id: string;
   module: string;
   action: string;
   name: string;
@@ -39,7 +39,7 @@ type Permission = {
 };
 
 type Role = {
-  id: number;
+  id: string;
   key: string;
   name: string;
   created_at: string;

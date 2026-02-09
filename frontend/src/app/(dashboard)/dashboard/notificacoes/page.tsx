@@ -23,9 +23,9 @@ import { api } from "@/lib/api";
 import { retryWithBackoff } from "@/lib/retry";
 
 type NotificationItem = {
-  id: number;
+  id: string;
   notification_id: string;
-  recipient_user_id: number;
+  recipient_user_id: string;
   delivered_at: string;
   read_at: string | null;
   archived_at: string | null;
@@ -37,7 +37,7 @@ type NotificationItem = {
     title: string;
     body: string;
     priority: string;
-    author_user_id: number | null;
+    author_user_id: string | null;
     context_type: string | null;
     context_id: string | null;
     action_url: string | null;

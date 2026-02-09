@@ -22,7 +22,7 @@ import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface ProfileData {
-  id: number;
+  id: string;
   email: string;
   nome: string;
   avatar_url?: string | null;

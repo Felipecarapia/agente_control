@@ -16,7 +16,7 @@ import { clearToken } from "@/lib/api";
 
 interface ProfileMenuProps {
   userInfo: {
-    id: number;
+    id: string;
     nome: string;
     email: string;
     avatar_url?: string | null;

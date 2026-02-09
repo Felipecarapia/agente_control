@@ -216,10 +216,10 @@ def get_inteligencia_vendas(
     
     # Validar pipeline_id se fornecido
     if pipeline_id is not None:
-        if pipeline_id <= 0:
+        if not pipeline_id:
             return error_response(
                 code="INVALID_PIPELINE_ID",
-                message="ID do pipeline deve ser maior que 0",
+                message="ID do pipeline é inválido",
                 status_code=400,
                 request_id=request_id
             )

@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
 interface ForecastItem {
-  deal_id: number;
+  deal_id: string;
   title: string;
   value_cents: number;
   probability: number;

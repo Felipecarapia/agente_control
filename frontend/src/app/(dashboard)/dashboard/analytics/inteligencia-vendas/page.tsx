@@ -46,7 +46,7 @@ type InteligenciaVendasData = {
     color?: string;
   }>;
   stage_metrics: Array<{
-    stage_id: number;
+    stage_id: string;
     stage_name: string;
     order_index: number;
     volume: number;
@@ -68,7 +68,7 @@ type InteligenciaVendasData = {
   }>;
   forecast_total_cents: number;
   forecast_items: Array<{
-    deal_id: number;
+    deal_id: string;
     title: string;
     value_cents: number;
     probability: number;
@@ -76,7 +76,7 @@ type InteligenciaVendasData = {
     stage_name: string;
   }>;
   sales_performance: Array<{
-    user_id: number;
+    user_id: string;
     user_nome: string;
     deals_created: number;
     deals_won: number;
@@ -100,8 +100,8 @@ type InteligenciaVendasData = {
   previous_period_end: string;
 };
 
-type Pipeline = { id: number; name: string; description: string | null; is_default: boolean };
-type Usuario = { id: number; nome: string; email: string };
+type Pipeline = { id: string; name: string; description: string | null; is_default: boolean };
+type Usuario = { id: string; nome: string; email: string };
 
 export default function InteligenciaVendasPage() {
   const [data, setData] = useState<InteligenciaVendasData | null>(null);

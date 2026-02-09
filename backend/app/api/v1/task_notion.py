@@ -50,23 +50,6 @@ def list_task_databases(
         return success_response(data=[])
 
 
-@router.get("/databases/{database_id}")
-def get_task_database(
-    database_id: uuid.UUID,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Usuario, Depends(get_current_user)],
-):
-    """Obtém detalhes de uma base de tarefas com properties e views do usuário."""
-    database = db.query(TaskDatabase).filter(TaskDatabase.id == database_id).first()
-    if not database:
-        return error_response(
-            code="DATABASE_NOT_FOUND",
-            message="Base de tarefas não encontrada",
-            status_code=404
-        )
-    return success_response(data=database)
-
-
 @router.get("/databases/default")
 def get_default_task_database(
     request: Request,
@@ -82,10 +65,8 @@ def get_default_task_database(
     try:
         database = db.query(TaskDatabase).filter(TaskDatabase.is_default == True).first()
         if not database:
-            # Retornar null ao invés de erro para não quebrar o frontend
             return success_response(data=None, request_id=request_id)
         
-        # Converter para dict para garantir serialização correta
         database_dict = {
             "id": database.id,
             "name": database.name,
@@ -98,10 +79,26 @@ def get_default_task_database(
         
         return success_response(data=database_dict, request_id=request_id)
     except Exception as e:
-        # Em caso de erro (tabela não existe, etc), retornar null
         logger = logging.getLogger(__name__)
         logger.warning(f"Erro ao buscar database padrão: {e}", extra={"request_id": request_id})
         return success_response(data=None, request_id=request_id)
+
+
+@router.get("/databases/{database_id}")
+def get_task_database(
+    database_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Obtém detalhes de uma base de tarefas com properties e views do usuário."""
+    database = db.query(TaskDatabase).filter(TaskDatabase.id == database_id).first()
+    if not database:
+        return error_response(
+            code="DATABASE_NOT_FOUND",
+            message="Base de tarefas não encontrada",
+            status_code=404
+        )
+    return success_response(data=database)
 
 
 @router.post("/databases", response_model=TaskDatabaseResponse, status_code=status.HTTP_201_CREATED)

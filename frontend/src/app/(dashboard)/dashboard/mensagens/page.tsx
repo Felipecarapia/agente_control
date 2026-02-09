@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 type Message = {
   id: string;
   conversation_id: string;
-  author_user_id: number | null;
+  author_user_id: string | null;
   content: string;
   created_at: string;
   edited_at: string | null;
@@ -25,7 +25,7 @@ type Conversation = {
   kind: string;
   created_at: string;
   other_participant_name: string | null;
-  other_participant_id: number | null;
+  other_participant_id: string | null;
   last_message: Message | null;
   unread_count: number;
 };

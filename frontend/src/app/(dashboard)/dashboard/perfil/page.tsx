@@ -13,7 +13,7 @@ import { Edit, Phone, Mail, Calendar } from "lucide-react";
 import { AvatarUpload } from "@/components/profile/AvatarUpload";
 
 interface ProfileData {
-  id: number;
+  id: string;
   email: string;
   nome: string;
   avatar_url?: string | null;
@@ -25,7 +25,7 @@ interface ProfileData {
     sound?: boolean;
     muteCategories?: string[];
   } | null;
-  roles?: Array<{ id: number; key: string; name: string }>;
+  roles?: Array<{ id: string; key: string; name: string }>;
   created_at?: string | null;
 }
 

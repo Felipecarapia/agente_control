@@ -822,7 +822,7 @@ def move_deal(
     request_id = getattr(request.state, "request_id", None)
     
     # Validar body
-    if not data.to_stage_id or data.to_stage_id <= 0:
+    if not data.to_stage_id:
         return error_response(
             code="VALIDATION_ERROR",
             message="to_stage_id é obrigatório e deve ser maior que 0",
