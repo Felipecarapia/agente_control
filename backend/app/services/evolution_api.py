@@ -105,6 +105,8 @@ class EvolutionAPIService:
                 json=payload,
                 headers=self.headers,
             )
+            if response.status_code >= 400:
+                logger.error(f"[WA SEND] Erro {response.status_code}: {response.text[:500]}")
             response.raise_for_status()
             return response.json()
 

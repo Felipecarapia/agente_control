@@ -358,9 +358,9 @@ async def whatsapp_webhook(
                 logger.info(f"[WEBHOOK] Dígitos: full={sender_digits}, local={sender_local}")
 
                 # Buscar conversa ativa
-                # Estratégia 1: Match por LID/remoteJid (mais confiável com Meta Cloud API)
                 conversation = None
 
+                # Estratégia 1: Match por LID/remoteJid exato
                 if remote_jid:
                     conversation = (
                         db.query(LeadConversation)
@@ -373,7 +373,7 @@ async def whatsapp_webhook(
                     if conversation:
                         logger.info(f"[WEBHOOK] ✅ Match por LID/remoteJid: {remote_jid} -> conv={conversation.id}, lead={conversation.lead.nome}")
 
-                # Estratégia 2: Match por telefone (fallback para Baileys/número direto)
+                # Estratégia 2: Match por telefone
                 if not conversation:
                     all_active_convs = (
                         db.query(LeadConversation)
@@ -393,7 +393,6 @@ async def whatsapp_webhook(
                         lead = conv.lead
                         lead_wa_tail = last_n_digits(lead.whatsapp, 8)
                         lead_tel_tail = last_n_digits(lead.telefone, 8)
-                        logger.info(f"[WEBHOOK]   Conv {conv.id}: lead={lead.nome}, wa_tail={lead_wa_tail}, tel_tail={lead_tel_tail}, remote_jid={conv.remote_jid}")
 
                         if sender_tail and (
                             (lead_wa_tail and lead_wa_tail == sender_tail)
@@ -403,13 +402,37 @@ async def whatsapp_webhook(
                             logger.info(f"[WEBHOOK] ✅ Match por telefone! lead={lead.nome}")
                             break
 
+                # Estratégia 3: Match por instância WhatsApp (Meta Cloud API converte phone -> LID)
+                # Se a msg chegou na mesma instância que a conversa usa, e é a mais recente
+                if not conversation and instance:
+                    wa_conn = (
+                        db.query(WhatsAppConnection)
+                        .filter(WhatsAppConnection.instance_name == instance)
+                        .first()
+                    )
+                    if wa_conn:
+                        instance_conv = (
+                            db.query(LeadConversation)
+                            .filter(
+                                LeadConversation.status == "active",
+                                LeadConversation.whatsapp_connection_id == wa_conn.id,
+                            )
+                            .order_by(LeadConversation.started_at.desc())
+                            .first()
+                        )
+                        if instance_conv:
+                            conversation = instance_conv
+                            logger.info(f"[WEBHOOK] ✅ Match por instância! instance={instance}, conv={conversation.id}, lead={conversation.lead.nome}")
+
                 if conversation:
                     logger.info(f"[WEBHOOK] Conversa ativa encontrada: {conversation.id} (lead={conversation.lead_id})")
 
-                    # Salvar o remote_jid (LID ou JID) na conversa para usar nas respostas
-                    if remote_jid and not conversation.remote_jid:
+                    # Sempre atualizar o remote_jid com o LID mais recente
+                    # A Meta pode mudar de phone JID para LID entre envio e recebimento
+                    if remote_jid and conversation.remote_jid != remote_jid:
+                        old_jid = conversation.remote_jid
                         conversation.remote_jid = remote_jid
-                        logger.info(f"[WEBHOOK] remote_jid salvo na conversa: {remote_jid}")
+                        logger.info(f"[WEBHOOK] remote_jid atualizado: {old_jid} -> {remote_jid}")
 
                     # Salvar mensagem do lead
                     lead_msg = LeadMessage(
@@ -452,18 +475,32 @@ async def whatsapp_webhook(
                                 logger.info(f"[WEBHOOK] IA respondeu ({len(reply_text)} chars): {reply_text[:100]}...")
 
                                 # Enviar resposta via WhatsApp
-                                # Usa o remote_jid (LID) se disponível, senão usa o telefone
+                                # Tentar LID primeiro (remoteJid), fallback para telefone do lead
                                 wa_conn = conversation.whatsapp_connection
                                 if wa_conn and wa_conn.instance_name:
-                                    reply_to = conversation.remote_jid or sender_phone
-                                    logger.info(f"[WEBHOOK] Enviando resposta para: {reply_to}")
+                                    lead = conversation.lead
+                                    lead_phone = lead.whatsapp or lead.telefone or sender_phone
+                                    reply_to = remote_jid if ("@lid" in remote_jid) else lead_phone
+                                    logger.info(f"[WEBHOOK] Enviando resposta para: {reply_to} (lid={remote_jid}, lead_phone={lead_phone})")
 
                                     svc_wa = EvolutionAPIService(api_url=wa_conn.api_url, api_key=wa_conn.api_key)
-                                    wa_result = await svc_wa.send_message(
-                                        instance_name=wa_conn.instance_name,
-                                        phone=reply_to,
-                                        text=reply_text,
-                                    )
+                                    try:
+                                        wa_result = await svc_wa.send_message(
+                                            instance_name=wa_conn.instance_name,
+                                            phone=reply_to,
+                                            text=reply_text,
+                                        )
+                                    except Exception as send_err:
+                                        # Se LID falhou, tenta com telefone do lead
+                                        if "@lid" in reply_to and lead_phone != reply_to:
+                                            logger.warning(f"[WEBHOOK] Envio por LID falhou, tentando por telefone: {lead_phone}")
+                                            wa_result = await svc_wa.send_message(
+                                                instance_name=wa_conn.instance_name,
+                                                phone=lead_phone,
+                                                text=reply_text,
+                                            )
+                                        else:
+                                            raise send_err
                                     wa_msg_id = wa_result.get("key", {}).get("id")
 
                                     # Salvar resposta do agente
