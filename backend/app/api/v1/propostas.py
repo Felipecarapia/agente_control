@@ -1,8 +1,11 @@
 import logging
 import secrets
+import logging
+import secrets
+import uuid
 from typing import Annotated, Optional
-from pydantic import ValidationError
 from datetime import date
+from pydantic import ValidationError
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from sqlalchemy.orm import Session, joinedload
@@ -98,8 +101,9 @@ def get_proposta_public(
 
 @router.post("/{proposta_id}/gerar-slug")
 def gerar_slug_proposta(
+
     request: Request,
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -108,15 +112,6 @@ def gerar_slug_proposta(
     Retorna 404 padronizado se proposta não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if proposta_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da proposta deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Proposta).filter(Proposta.id == proposta_id).first()
@@ -159,7 +154,7 @@ MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
 @router.post("/{proposta_id}/upload")
 def upload_proposta_file(
     request: Request,
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     file: Annotated[UploadFile, File()],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -170,15 +165,6 @@ def upload_proposta_file(
     Retorna 400 se tipo de arquivo inválido ou arquivo muito grande.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if proposta_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da proposta deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     logger.info(f"[UPLOAD] Iniciando upload para proposta {proposta_id}", extra={"request_id": request_id})
     logger.info(f"[UPLOAD] Arquivo: {file.filename}, Content-Type: {file.content_type}", extra={"request_id": request_id})
@@ -256,7 +242,7 @@ def upload_proposta_file(
 @router.get("/{proposta_id}")
 def get_proposta(
     request: Request,
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -265,15 +251,6 @@ def get_proposta(
     Retorna 404 padronizado se proposta não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if proposta_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da proposta deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Proposta).options(
@@ -405,7 +382,7 @@ def create_proposta(
 @router.patch("/{proposta_id}")
 def update_proposta(
     request: Request,
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     data: PropostaUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -418,15 +395,6 @@ def update_proposta(
     Retorna 409 se título+cliente duplicado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if proposta_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da proposta deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Proposta).filter(Proposta.id == proposta_id).first()
@@ -530,7 +498,7 @@ def update_proposta(
 @router.delete("/{proposta_id}")
 def delete_proposta(
     request: Request,
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -539,15 +507,6 @@ def delete_proposta(
     Retorna 404 padronizado se proposta não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if proposta_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da proposta deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Proposta).filter(Proposta.id == proposta_id).first()

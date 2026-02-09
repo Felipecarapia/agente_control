@@ -20,8 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Adicionar colunas à tabela propostas existente
-    op.add_column("propostas", sa.Column("deal_id", sa.Integer(), nullable=True))
-    op.add_column("propostas", sa.Column("from_pre_proposal_id", sa.Integer(), nullable=True))
+    op.add_column("propostas", sa.Column("deal_id", postgresql.UUID(as_uuid=True), nullable=True))
+    op.add_column("propostas", sa.Column("from_pre_proposal_id", postgresql.UUID(as_uuid=True), nullable=True))
     op.add_column("propostas", sa.Column("currency", sa.String(length=3), nullable=True, server_default="BRL"))
     op.add_column("propostas", sa.Column("total_value_cents", sa.Integer(), nullable=True))
     op.add_column("propostas", sa.Column("public_token", sa.String(length=64), nullable=True, unique=True))
@@ -29,7 +29,7 @@ def upgrade() -> None:
     op.add_column("propostas", sa.Column("accepted_by_name", sa.String(length=255), nullable=True))
     op.add_column("propostas", sa.Column("accepted_ip", sa.String(length=45), nullable=True))
     op.add_column("propostas", sa.Column("accepted_user_agent", sa.Text(), nullable=True))
-    op.add_column("propostas", sa.Column("updated_by_user_id", sa.Integer(), nullable=True))
+    op.add_column("propostas", sa.Column("updated_by_user_id", postgresql.UUID(as_uuid=True), nullable=True))
     
     # Foreign keys
     op.create_foreign_key("fk_propostas_deal_id", "propostas", "deals", ["deal_id"], ["id"], ondelete="SET NULL")
@@ -44,8 +44,8 @@ def upgrade() -> None:
     # Tabela proposal_sections
     op.create_table(
         "proposal_sections",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("proposal_id", sa.Integer(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("proposal_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("section_key", sa.String(length=50), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("content_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -61,8 +61,8 @@ def upgrade() -> None:
     # Tabela proposal_pricing_plans
     op.create_table(
         "proposal_pricing_plans",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("proposal_id", sa.Integer(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("proposal_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("plan_name", sa.String(length=255), nullable=False),
         sa.Column("plan_summary", sa.Text(), nullable=True),
         sa.Column("includes_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -81,8 +81,8 @@ def upgrade() -> None:
     # Tabela proposal_status_events
     op.create_table(
         "proposal_status_events",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("proposal_id", sa.Integer(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("proposal_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("event_type", sa.String(length=50), nullable=False),
         sa.Column("payload_json", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
@@ -95,7 +95,7 @@ def upgrade() -> None:
     # Tabela email_outbox
     op.create_table(
         "email_outbox",
-        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
         sa.Column("to_email", sa.String(length=255), nullable=False),
         sa.Column("subject", sa.String(length=500), nullable=False),
         sa.Column("html_body", sa.Text(), nullable=False),

@@ -1,8 +1,9 @@
 import logging
+import uuid
 from typing import Annotated
 from pydantic import ValidationError
 
-from fastapi import APIRouter, Depends, Request, UploadFile, File, status
+from fastapi import APIRouter, Depends, Request, UploadFile, File, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -45,7 +46,7 @@ def list_clientes(
 @router.get("/{cliente_id}")
 def get_cliente(
     request: Request,
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -54,15 +55,7 @@ def get_cliente(
     Retorna 404 padronizado se não encontrado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if cliente_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do cliente deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
+
     
     try:
         obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
@@ -164,7 +157,7 @@ def create_cliente(
 @router.patch("/{cliente_id}")
 def update_cliente(
     request: Request,
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     data: ClienteUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -260,7 +253,7 @@ def update_cliente(
 @router.delete("/{cliente_id}")
 def delete_cliente(
     request: Request,
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -295,7 +288,7 @@ def delete_cliente(
 
 @router.post("/{cliente_id}/upload-logo", response_model=ClienteResponse)
 async def upload_logo(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     file: UploadFile = File(...),

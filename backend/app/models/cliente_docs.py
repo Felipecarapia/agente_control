@@ -1,4 +1,7 @@
+import uuid
+
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -9,8 +12,8 @@ class ClienteDocumentoRAG(Base):
     """Documentos para treinamento de bots (RAG)."""
     __tablename__ = "cliente_documentos_rag"
 
-    id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
 
     nome_original = Column(String(500), nullable=False)
     nome_storage = Column(String(500), nullable=False)
@@ -27,8 +30,8 @@ class ClienteImagem(Base):
     """Imagens gerais do cliente."""
     __tablename__ = "cliente_imagens"
 
-    id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
 
     nome_original = Column(String(500), nullable=False)
     nome_storage = Column(String(500), nullable=False)
@@ -46,8 +49,8 @@ class ClienteCronogramaEtapa(Base):
     """Etapas do cronograma operacional do projeto do cliente."""
     __tablename__ = "cliente_cronograma_etapas"
 
-    id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
 
     ordem = Column(Integer, nullable=False, default=0)
     titulo = Column(String(255), nullable=False)
@@ -65,8 +68,8 @@ class ClienteCronogramaItem(Base):
     """Itens individuais de checklist dentro de uma etapa."""
     __tablename__ = "cliente_cronograma_itens"
 
-    id = Column(Integer, primary_key=True, index=True)
-    etapa_id = Column(Integer, ForeignKey("cliente_cronograma_etapas.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    etapa_id = Column(UUID(as_uuid=True), ForeignKey("cliente_cronograma_etapas.id", ondelete="CASCADE"), nullable=False)
 
     ordem = Column(Integer, nullable=False, default=0)
     texto = Column(String(500), nullable=False)

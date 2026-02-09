@@ -1,4 +1,5 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -21,7 +22,7 @@ class UserRole(Base):
     __tablename__ = "user_roles"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
 
     user = relationship("Usuario", back_populates="user_roles")

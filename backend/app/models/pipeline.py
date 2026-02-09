@@ -1,6 +1,7 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Boolean, Numeric, Date, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import UUID
 import enum
 
 from app.core.database import Base
@@ -14,7 +15,7 @@ class Pipeline(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     is_default = Column(Boolean, default=False, nullable=False)
-    created_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -74,7 +75,7 @@ class Deal(Base):
     id = Column(Integer, primary_key=True, index=True)
     pipeline_id = Column(Integer, ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False, index=True)
     stage_id = Column(Integer, ForeignKey("pipeline_stages.id", ondelete="RESTRICT"), nullable=False, index=True)
-    client_id = Column(Integer, ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False, index=True)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     value_cents = Column(Integer, nullable=True)  # Valor em centavos (ex: 100000 = R$ 1.000,00)
     currency = Column(String(3), default="BRL", nullable=False)
@@ -84,9 +85,9 @@ class Deal(Base):
     status = Column(SQLEnum(DealStatus), default=DealStatus.OPEN, nullable=False)
     position_index = Column(Numeric(10, 2), nullable=False, default=0)  # Para ordenação manual
     source = Column(SQLEnum(DealSource), nullable=True)
-    proposal_id = Column(Integer, ForeignKey("propostas.id", ondelete="SET NULL"), nullable=True)  # Integração com Propostas
-    contract_id = Column(Integer, ForeignKey("contratos.id", ondelete="SET NULL"), nullable=True)  # Integração com Contratos
-    created_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="SET NULL"), nullable=True)  # Integração com Propostas
+    contract_id = Column(UUID(as_uuid=True), ForeignKey("contratos.id", ondelete="SET NULL"), nullable=True)  # Integração com Contratos
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -109,7 +110,7 @@ class DealAssignee(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     deal_id = Column(Integer, ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     role = Column(String(20), default="collab", nullable=False)  # owner, collab
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

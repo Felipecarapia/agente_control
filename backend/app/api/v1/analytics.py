@@ -1,5 +1,6 @@
 from typing import Annotated, Optional
 from datetime import date, datetime, timedelta
+import uuid
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -67,7 +68,7 @@ class ForecastItem(BaseModel):
     stage_name: str
 
 class SalesPerformance(BaseModel):
-    user_id: int
+    user_id: uuid.UUID
     user_nome: str
     deals_created: int
     deals_won: int
@@ -170,7 +171,7 @@ def get_inteligencia_vendas(
     start_date: Optional[date] = Query(None, description="Data inicial (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Data final (YYYY-MM-DD)"),
     pipeline_id: Optional[int] = Query(None, description="Filtrar por pipeline"),
-    user_id: Optional[int] = Query(None, description="Filtrar por vendedor"),
+    user_id: Optional[uuid.UUID] = Query(None, description="Filtrar por vendedor"),
     source: Optional[str] = Query(None, description="Filtrar por origem"),
     min_value_cents: Optional[int] = Query(None, description="Valor mínimo em centavos"),
     max_value_cents: Optional[int] = Query(None, description="Valor máximo em centavos"),

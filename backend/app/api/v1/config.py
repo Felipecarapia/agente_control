@@ -1,7 +1,7 @@
 """
 Endpoints de configuração do sistema.
 """
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -17,10 +17,10 @@ router = APIRouter(prefix="/config", tags=["config"])
 
 class EmpresaConfigResponse(BaseModel):
     """Configurações da empresa."""
-    logo_url: str | None = None
-    company_name: str | None = None
-    primary_color: str | None = None
-    secondary_color: str | None = None
+    logo_url: Optional[str] = None
+    company_name: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
 
 
 @router.get("/empresa")

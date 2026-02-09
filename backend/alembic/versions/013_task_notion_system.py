@@ -23,11 +23,11 @@ def upgrade() -> None:
     # ============== 1. Task Databases ==============
     op.create_table(
         "task_databases",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("is_default", sa.Boolean(), nullable=False, server_default="false"),
-        sa.Column("created_by_user_id", sa.Integer(), nullable=True),
+        sa.Column("created_by_user_id", UUID(as_uuid=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=True),
         sa.ForeignKeyConstraint(["created_by_user_id"], ["usuarios.id"], ondelete="SET NULL"),
@@ -39,8 +39,8 @@ def upgrade() -> None:
     # ============== 2. Task Properties ==============
     op.create_table(
         "task_properties",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_database_id", sa.Integer(), nullable=False),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_database_id", UUID(as_uuid=True), nullable=False),
         sa.Column("key", sa.String(100), nullable=False),  # unique per database
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("type", sa.String(50), nullable=False),  # TEXT, NUMBER, SELECT, MULTI_SELECT, DATE, PERSON, CHECKBOX, URL
@@ -57,11 +57,11 @@ def upgrade() -> None:
     op.create_index(op.f("ix_task_properties_task_database_id"), "task_properties", ["task_database_id"], unique=False)
 
     # ============== 3. Adaptar tabela tarefas ==============
-    op.add_column("tarefas", sa.Column("task_database_id", sa.Integer(), nullable=True))
+    op.add_column("tarefas", sa.Column("task_database_id", UUID(as_uuid=True), nullable=True))
     op.add_column("tarefas", sa.Column("context_type", sa.String(50), nullable=True))  # CLIENT, PROJECT, DEAL
-    op.add_column("tarefas", sa.Column("context_id", sa.Integer(), nullable=True))
+    op.add_column("tarefas", sa.Column("context_id", UUID(as_uuid=True), nullable=True))
     op.add_column("tarefas", sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("tarefas", sa.Column("completed_by_user_id", sa.Integer(), nullable=True))
+    op.add_column("tarefas", sa.Column("completed_by_user_id", UUID(as_uuid=True), nullable=True))
     
     # Criar FK para task_database
     op.create_foreign_key(
@@ -82,9 +82,9 @@ def upgrade() -> None:
     # ============== 4. Task Property Values ==============
     op.create_table(
         "task_property_values",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_id", sa.Integer(), nullable=False),
-        sa.Column("property_id", sa.Integer(), nullable=False),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("property_id", UUID(as_uuid=True), nullable=False),
         sa.Column("value_json", JSONB, nullable=True),  # armazenar conforme type
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=True),
         sa.ForeignKeyConstraint(["task_id"], ["tarefas.id"], ondelete="CASCADE"),
@@ -99,9 +99,9 @@ def upgrade() -> None:
     # ============== 5. Task Views ==============
     op.create_table(
         "task_views",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_database_id", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_database_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("user_id", UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("type", sa.String(50), nullable=False),  # LIST, TABLE, KANBAN, CALENDAR, AGENDA
         sa.Column("config_json", JSONB, nullable=True),  # filters, sorts, groupBy, columns, visibleProperties
@@ -119,8 +119,8 @@ def upgrade() -> None:
     # ============== 6. Task Blocks ==============
     op.create_table(
         "task_blocks",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_id", sa.Integer(), nullable=False),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_id", UUID(as_uuid=True), nullable=False),
         sa.Column("type", sa.String(50), nullable=False),  # PARAGRAPH, HEADING, BULLET_LIST, CHECKLIST, QUOTE, DIVIDER, IMAGE, FILE, LINK
         sa.Column("content_json", JSONB, nullable=True),  # conteúdo do bloco
         sa.Column("order_index", sa.Integer(), nullable=False, server_default="0"),
@@ -136,9 +136,9 @@ def upgrade() -> None:
     # ============== 7. Task Comments ==============
     op.create_table(
         "task_comments",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_id", sa.Integer(), nullable=False),
-        sa.Column("author_user_id", sa.Integer(), nullable=True),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("author_user_id", UUID(as_uuid=True), nullable=True),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.ForeignKeyConstraint(["task_id"], ["tarefas.id"], ondelete="CASCADE"),
@@ -152,10 +152,10 @@ def upgrade() -> None:
     # ============== 8. Task Mentions ==============
     op.create_table(
         "task_mentions",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_id", sa.Integer(), nullable=False),
-        sa.Column("mentioned_user_id", sa.Integer(), nullable=False),
-        sa.Column("comment_id", sa.Integer(), nullable=True),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("mentioned_user_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("comment_id", UUID(as_uuid=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.ForeignKeyConstraint(["task_id"], ["tarefas.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["mentioned_user_id"], ["usuarios.id"], ondelete="CASCADE"),
@@ -169,9 +169,9 @@ def upgrade() -> None:
     # ============== 9. Task Attachments ==============
     op.create_table(
         "task_attachments",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_id", sa.Integer(), nullable=False),
-        sa.Column("uploaded_by_user_id", sa.Integer(), nullable=True),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("uploaded_by_user_id", UUID(as_uuid=True), nullable=True),
         sa.Column("file_name", sa.String(255), nullable=False),
         sa.Column("mime_type", sa.String(100), nullable=True),
         sa.Column("size_bytes", sa.BigInteger(), nullable=False),
@@ -188,13 +188,13 @@ def upgrade() -> None:
     # ============== 10. Task Templates ==============
     op.create_table(
         "task_templates",
-        sa.Column("id", sa.Integer(), nullable=False, primary_key=True),
-        sa.Column("task_database_id", sa.Integer(), nullable=False),
+        sa.Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("task_database_id", UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("default_blocks_json", JSONB, nullable=True),  # array de blocks padrão
         sa.Column("default_property_values_json", JSONB, nullable=True),  # valores padrão de properties
-        sa.Column("created_by_user_id", sa.Integer(), nullable=True),
+        sa.Column("created_by_user_id", UUID(as_uuid=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=True),
         sa.ForeignKeyConstraint(["task_database_id"], ["task_databases.id"], ondelete="CASCADE"),

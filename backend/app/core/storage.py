@@ -1,6 +1,7 @@
 """
 Serviço de Storage S3/MinIO para uploads de arquivos.
 """
+from typing import Optional
 import logging
 import uuid
 
@@ -157,7 +158,7 @@ class StorageService:
         except ClientError:
             return False
 
-    def generate_unique_filename(self, original_filename: str, allowed_extensions: set[str] | None = None) -> str:
+    def generate_unique_filename(self, original_filename: str, allowed_extensions: Optional[set[str]] = None) -> str:
         """Gera um nome de arquivo único mantendo a extensão."""
         default_exts = {"jpg", "jpeg", "png", "webp", "gif", "pdf", "doc", "docx", "txt", "csv", "xlsx", "xls", "pptx", "md", "json"}
         allowed = allowed_extensions or default_exts

@@ -1,7 +1,8 @@
-from typing import Annotated, Optional
 import logging
-from pydantic import ValidationError
+import uuid
+from typing import Annotated, Optional
 from datetime import date
+from pydantic import ValidationError
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session, joinedload
@@ -56,7 +57,7 @@ def list_contratos(
 @router.get("/{contrato_id}")
 def get_contrato(
     request: Request,
-    contrato_id: int,
+    contrato_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -65,15 +66,6 @@ def get_contrato(
     Retorna 404 padronizado se contrato não encontrado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if contrato_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do contrato deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Contrato).options(
@@ -218,9 +210,10 @@ def create_contrato(
 
 
 @router.patch("/{contrato_id}")
+@router.patch("/{contrato_id}")
 def update_contrato(
     request: Request,
-    contrato_id: int,
+    contrato_id: uuid.UUID,
     data: ContratoUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -233,15 +226,6 @@ def update_contrato(
     Retorna 409 se número duplicado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if contrato_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do contrato deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Contrato).filter(Contrato.id == contrato_id).first()
@@ -354,9 +338,10 @@ def update_contrato(
 
 
 @router.delete("/{contrato_id}")
+@router.delete("/{contrato_id}")
 def delete_contrato(
     request: Request,
-    contrato_id: int,
+    contrato_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -365,15 +350,6 @@ def delete_contrato(
     Retorna 404 padronizado se contrato não encontrado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if contrato_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do contrato deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Contrato).filter(Contrato.id == contrato_id).first()

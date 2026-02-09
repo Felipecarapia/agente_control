@@ -1,4 +1,5 @@
-from typing import Annotated
+import uuid
+from typing import Annotated, Union
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -13,7 +14,7 @@ security = HTTPBearer(auto_error=False)
 
 def get_current_user(
     db: Annotated[Session, Depends(get_db)],
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    credentials: Annotated[Union[HTTPAuthorizationCredentials, None], Depends(security)],
 ) -> Usuario:
     if not credentials or not credentials.credentials:
         raise HTTPException(
@@ -29,7 +30,7 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     user_id = payload["sub"]
-    user = db.query(Usuario).filter(Usuario.id == int(user_id)).first()
+    user = db.query(Usuario).filter(Usuario.id == uuid.UUID(user_id)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

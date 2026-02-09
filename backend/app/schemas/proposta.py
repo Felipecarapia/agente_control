@@ -1,18 +1,19 @@
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
 
 class PropostaBase(BaseModel):
     titulo: str
-    descricao: str | None = None
-    valor: Decimal | None = None
-    cliente_id: int
-    projeto_id: int | None = None
+    descricao: Optional[str] = None
+    valor: Optional[Decimal] = None
+    cliente_id: uuid.UUID
+    projeto_id: Optional[uuid.UUID] = None
     status: str = "rascunho"
-    validade_ate: date | None = None
+    validade_ate: Optional[date] = None
 
 
 class PropostaCreate(PropostaBase):
@@ -20,37 +21,37 @@ class PropostaCreate(PropostaBase):
 
 
 class PropostaUpdate(BaseModel):
-    titulo: str | None = None
-    descricao: str | None = None
-    valor: Decimal | None = None
-    cliente_id: int | None = None
-    projeto_id: int | None = None
-    status: str | None = None
-    validade_ate: date | None = None
-    landing_content: list[dict[str, Any]] | None = None
+    titulo: Optional[str] = None
+    descricao: Optional[str] = None
+    valor: Optional[Decimal] = None
+    cliente_id: Optional[uuid.UUID] = None
+    projeto_id: Optional[uuid.UUID] = None
+    status: Optional[str] = None
+    validade_ate: Optional[date] = None
+    landing_content: Optional[list[dict[str, Any]]] = None
 
 
 class PropostaResponse(PropostaBase):
-    id: int
-    usuario_id: int | None = None
-    slug: str | None = None
-    landing_content: list[dict[str, Any]] | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    usuario_id: Optional[uuid.UUID] = None
+    slug: Optional[str] = None
+    landing_content: Optional[list[dict[str, Any]]] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class PropostaPublicResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     titulo: str
-    descricao: str | None = None
-    valor: Decimal | None = None
-    validade_ate: date | None = None
+    descricao: Optional[str] = None
+    valor: Optional[Decimal] = None
+    validade_ate: Optional[date] = None
     cliente_nome: str
-    landing_content: list[dict[str, Any]] | None = None
-    slug: str | None = None
+    landing_content: Optional[list[dict[str, Any]]] = None
+    slug: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,20 +1,21 @@
+import uuid
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text, Boolean
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
 from app.core.database import Base
 
 
 class Tarefa(Base):
     __tablename__ = "tarefas"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     titulo = Column(String(255), nullable=False)
     descricao = Column(Text, nullable=True)
-    projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=False)
+    projeto_id = Column(UUID(as_uuid=True), ForeignKey("projetos.id"), nullable=False)
     status = Column(String(50), default="pendente", nullable=False)
     prioridade = Column(String(20), nullable=True)
-    responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    responsavel_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     data_vencimento = Column(Date, nullable=True)
     
     # Campos de recorrência
@@ -22,14 +23,14 @@ class Tarefa(Base):
     recurrence_type = Column(String(20), nullable=True)  # diaria, semanal, mensal
     recurrence_interval = Column(Integer, nullable=True)  # a cada X dias/semanas/meses
     recurrence_end_date = Column(Date, nullable=True)  # até quando gerar tarefas
-    parent_task_id = Column(Integer, ForeignKey("tarefas.id"), nullable=True)  # tarefa original que gerou esta
+    parent_task_id = Column(UUID(as_uuid=True), ForeignKey("tarefas.id"), nullable=True)  # tarefa original que gerou esta
     
     # Novos campos para sistema Notion
     task_database_id = Column(Integer, ForeignKey("task_databases.id", ondelete="SET NULL"), nullable=True, index=True)
     context_type = Column(String(50), nullable=True)  # CLIENT, PROJECT, DEAL
-    context_id = Column(Integer, nullable=True)  # ID do contexto
+    context_id = Column(UUID(as_uuid=True), nullable=True)  # ID do contexto - pode ser client/project/deal (UUID)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    completed_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    completed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -54,8 +55,8 @@ class TarefaAssignee(Base):
     __tablename__ = "tarefa_assignees"
 
     id = Column(Integer, primary_key=True, index=True)
-    tarefa_id = Column(Integer, ForeignKey("tarefas.id", ondelete="CASCADE"), nullable=False, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    tarefa_id = Column(UUID(as_uuid=True), ForeignKey("tarefas.id", ondelete="CASCADE"), nullable=False, index=True)
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     tarefa = relationship("Tarefa", back_populates="assignees")

@@ -1,4 +1,7 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+import uuid
+
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -8,7 +11,7 @@ from app.core.database import Base
 class Cliente(Base):
     __tablename__ = "clientes"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     tipo = Column(String(2), nullable=False, default="pf")  # pf | pj
     nome = Column(String(255), nullable=False)  # nome completo (PF) ou nome fantasia (PJ)
     razao_social = Column(String(255), nullable=True)  # PJ
@@ -27,7 +30,7 @@ class Cliente(Base):
     cidade = Column(String(100), nullable=True)
     estado = Column(String(2), nullable=True)
     logo_url = Column(String(1000), nullable=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

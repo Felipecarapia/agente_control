@@ -1,4 +1,5 @@
 import logging
+import uuid
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
 
@@ -295,7 +296,7 @@ def end_session(
 
 @router.get("/proposals/{proposta_id}/analytics", response_model=FullAnalytics)
 def get_proposal_analytics(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     days: int = 30,
@@ -543,7 +544,7 @@ def get_proposal_analytics(
 
 @router.get("/proposals/{proposta_id}/sessions")
 def list_proposal_sessions(
-    proposta_id: int,
+    proposta_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     skip: int = 0,
@@ -573,8 +574,8 @@ def list_proposal_sessions(
 
 @router.get("/proposals/{proposta_id}/sessions/{session_id}/events")
 def get_session_events(
-    proposta_id: int,
-    session_id: int,
+    proposta_id: uuid.UUID,
+    session_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

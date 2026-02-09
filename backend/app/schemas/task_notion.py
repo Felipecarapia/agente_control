@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import uuid
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
@@ -23,7 +24,7 @@ class TaskDatabaseUpdate(BaseModel):
 
 class TaskDatabaseResponse(TaskDatabaseBase):
     id: int
-    created_by_user_id: Optional[int] = None
+    created_by_user_id: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -111,7 +112,7 @@ class TaskViewUpdate(BaseModel):
 class TaskViewResponse(TaskViewBase):
     id: int
     task_database_id: int
-    user_id: int
+    user_id: uuid.UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -155,13 +156,13 @@ class TaskCommentBase(BaseModel):
 
 class TaskCommentCreate(TaskCommentBase):
     task_id: int
-    mentioned_user_ids: List[int] = Field(default_factory=list)
+    mentioned_user_ids: List[uuid.UUID] = Field(default_factory=list)
 
 
 class TaskCommentResponse(TaskCommentBase):
     id: int
     task_id: int
-    author_user_id: Optional[int] = None
+    author_user_id: Optional[uuid.UUID] = None
     author_nome: Optional[str] = None
     created_at: Optional[datetime] = None
 
@@ -174,7 +175,7 @@ class TaskCommentResponse(TaskCommentBase):
 class TaskMentionResponse(BaseModel):
     id: int
     task_id: int
-    mentioned_user_id: int
+    mentioned_user_id: uuid.UUID
     mentioned_user_nome: Optional[str] = None
     comment_id: Optional[int] = None
     created_at: Optional[datetime] = None
@@ -205,7 +206,7 @@ class TaskAttachmentCreate(BaseModel):
 class TaskAttachmentResponse(TaskAttachmentBase):
     id: int
     task_id: int
-    uploaded_by_user_id: Optional[int] = None
+    uploaded_by_user_id: Optional[uuid.UUID] = None
     uploaded_by_nome: Optional[str] = None
     created_at: Optional[datetime] = None
 
@@ -236,7 +237,7 @@ class TaskTemplateUpdate(BaseModel):
 class TaskTemplateResponse(TaskTemplateBase):
     id: int
     task_database_id: int
-    created_by_user_id: Optional[int] = None
+    created_by_user_id: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -248,25 +249,25 @@ class TaskTemplateResponse(TaskTemplateBase):
 
 class TaskWithNotionResponse(BaseModel):
     """Resposta estendida de tarefa com dados Notion"""
-    id: int
+    id: uuid.UUID
     titulo: str
     descricao: Optional[str] = None
-    projeto_id: int
+    projeto_id: uuid.UUID
     status: str
     prioridade: Optional[str] = None
-    responsavel_id: Optional[int] = None
+    responsavel_id: Optional[uuid.UUID] = None
     data_vencimento: Optional[date] = None
     task_database_id: Optional[int] = None
     context_type: Optional[str] = None
-    context_id: Optional[int] = None
+    context_id: Optional[uuid.UUID] = None
     completed_at: Optional[datetime] = None
-    completed_by_user_id: Optional[int] = None
+    completed_by_user_id: Optional[uuid.UUID] = None
     is_recurring: bool = False
     recurrence_type: Optional[str] = None
     recurrence_interval: Optional[int] = None
     recurrence_end_date: Optional[date] = None
-    parent_task_id: Optional[int] = None
-    assigned_user_ids: List[int] = []
+    parent_task_id: Optional[uuid.UUID] = None
+    assigned_user_ids: List[uuid.UUID] = []
     assigned_users: List[Dict[str, Any]] = []
     property_values: List[TaskPropertyValueResponse] = []
     blocks: List[TaskBlockResponse] = []

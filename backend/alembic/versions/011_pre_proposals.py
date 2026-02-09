@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "011"
-down_revision: Union[str, None] = "96b3890d8c1f"
+down_revision: Union[str, None] = "010"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -22,16 +22,16 @@ def upgrade() -> None:
     # Tabela pre_proposals
     op.create_table(
         "pre_proposals",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("client_id", sa.Integer(), nullable=False),
-        sa.Column("deal_id", sa.Integer(), nullable=True),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("client_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("deal_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("status", sa.String(length=50), nullable=False, server_default="draft"),
         sa.Column("score_total", sa.Integer(), nullable=True),
         sa.Column("temperature", sa.String(length=20), nullable=True),  # cold, warm, hot
         sa.Column("summary", sa.Text(), nullable=True),
         sa.Column("recommendations", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("created_by_user_id", sa.Integer(), nullable=True),
-        sa.Column("updated_by_user_id", sa.Integer(), nullable=True),
+        sa.Column("created_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("updated_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.ForeignKeyConstraint(["client_id"], ["clientes.id"], ondelete="RESTRICT"),
@@ -48,8 +48,8 @@ def upgrade() -> None:
     # Tabela pre_proposal_answers
     op.create_table(
         "pre_proposal_answers",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("pre_proposal_id", sa.Integer(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("pre_proposal_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("step_key", sa.String(length=50), nullable=False),
         sa.Column("field_key", sa.String(length=100), nullable=False),
         sa.Column("answer_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -66,7 +66,7 @@ def upgrade() -> None:
     # Tabela pre_proposal_templates
     op.create_table(
         "pre_proposal_templates",
-        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text("gen_random_uuid()")),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("schema_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("is_default", sa.Boolean(), nullable=False, server_default="false"),

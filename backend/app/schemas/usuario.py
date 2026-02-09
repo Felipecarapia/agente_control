@@ -1,3 +1,5 @@
+from typing import Optional
+import uuid
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
@@ -13,16 +15,16 @@ class UsuarioCreate(UsuarioBase):
 
 
 class UsuarioUpdate(BaseModel):
-    email: EmailStr | None = None
-    nome: str | None = None
-    ativo: bool | None = None
-    password: str | None = None
+    email: Optional[EmailStr] = None
+    nome: Optional[str] = None
+    ativo: Optional[bool] = None
+    password: Optional[str] = None
 
 
 class UsuarioResponse(UsuarioBase):
-    id: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

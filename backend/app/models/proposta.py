@@ -1,5 +1,6 @@
+import uuid
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import JSON, JSONB
+from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -9,17 +10,17 @@ from app.core.database import Base
 class Proposta(Base):
     __tablename__ = "propostas"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     titulo = Column(String(255), nullable=False)
     descricao = Column(Text, nullable=True)
-    valor = Column(Numeric(15, 2), nullable=True)  # Mantido para compatibilidade
-    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
-    projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=True)
+    valor = Column(Numeric(15, 2), nullable=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id"), nullable=False)
+    projeto_id = Column(UUID(as_uuid=True), ForeignKey("projetos.id"), nullable=True)
     deal_id = Column(Integer, ForeignKey("deals.id", ondelete="SET NULL"), nullable=True, index=True)
     from_pre_proposal_id = Column(Integer, ForeignKey("pre_proposals.id", ondelete="SET NULL"), nullable=True, index=True)
     status = Column(String(50), default="rascunho", nullable=False)  # draft, sent, viewed, accepted, rejected, expired
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    updated_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
+    updated_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     validade_ate = Column(Date, nullable=True)
     slug = Column(String(64), unique=True, nullable=True, index=True)
     landing_content = Column(JSON, nullable=True)
@@ -47,7 +48,7 @@ class Proposta(Base):
     pricing_plans = relationship("ProposalPricingPlan", back_populates="proposal", cascade="all, delete-orphan")
     status_events = relationship("ProposalStatusEvent", back_populates="proposal", cascade="all, delete-orphan", order_by="ProposalStatusEvent.created_at.desc()")
     
-    # Tracking (mantido para compatibilidade)
+    # Tracking
     tracking_sessions = relationship("ProposalSession", back_populates="proposta", cascade="all, delete-orphan")
     # Note: ProposalEvent do tracking.py existe separadamente
     analytics_summaries = relationship("ProposalAnalyticsSummary", back_populates="proposta", cascade="all, delete-orphan")
@@ -58,7 +59,7 @@ class ProposalSection(Base):
     __tablename__ = "proposal_sections"
 
     id = Column(Integer, primary_key=True, index=True)
-    proposal_id = Column(Integer, ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
+    proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
     section_key = Column(String(50), nullable=False)  # Ex: "resumo_executivo", "escopo_trabalho"
     title = Column(String(255), nullable=False)
     content_json = Column(JSONB, nullable=False)  # Conteúdo rico (paragraphs, bullets, tables)
@@ -78,7 +79,7 @@ class ProposalPricingPlan(Base):
     __tablename__ = "proposal_pricing_plans"
 
     id = Column(Integer, primary_key=True, index=True)
-    proposal_id = Column(Integer, ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
+    proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
     plan_name = Column(String(255), nullable=False)  # Ex: "Essencial", "Profissional", "Premium"
     plan_summary = Column(Text, nullable=True)
     includes_json = Column(JSONB, nullable=False)  # Lista de itens incluídos
@@ -102,7 +103,7 @@ class ProposalStatusEvent(Base):
     __tablename__ = "proposal_status_events"
 
     id = Column(Integer, primary_key=True, index=True)
-    proposal_id = Column(Integer, ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
+    proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
     event_type = Column(String(50), nullable=False, index=True)  # CREATED, UPDATED, SENT, VIEWED, ACCEPTED, REJECTED, EXPORTED_PDF
     payload_json = Column(JSONB, nullable=True)  # Dados extras do evento
     created_at = Column(DateTime(timezone=True), server_default=func.now())

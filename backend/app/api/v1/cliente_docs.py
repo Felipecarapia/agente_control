@@ -1,5 +1,6 @@
 """Endpoints para Documentos RAG, Imagens e Cronograma do cliente."""
 import logging
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/clientes/{cliente_id}", tags=["cliente-docs"])
 
 
-def _get_cliente(db: Session, cliente_id: int) -> Cliente:
+def _get_cliente(db: Session, cliente_id: uuid.UUID) -> Cliente:
     obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
     if not obj:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
@@ -47,7 +48,7 @@ def _get_cliente(db: Session, cliente_id: int) -> Cliente:
 
 @router.get("/documentos-rag", response_model=list[DocumentoRAGResponse])
 def list_documentos_rag(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -59,7 +60,7 @@ def list_documentos_rag(
 
 @router.post("/documentos-rag/upload", response_model=DocumentoRAGResponse, status_code=status.HTTP_201_CREATED)
 async def upload_documento_rag(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     file: UploadFile = File(...),
@@ -99,8 +100,8 @@ async def upload_documento_rag(
 
 @router.delete("/documentos-rag/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_documento_rag(
-    cliente_id: int,
-    doc_id: int,
+    cliente_id: uuid.UUID,
+    doc_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -130,7 +131,7 @@ def delete_documento_rag(
 
 @router.get("/imagens", response_model=list[ImagemResponse])
 def list_imagens(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -142,7 +143,7 @@ def list_imagens(
 
 @router.post("/imagens/upload", response_model=ImagemResponse, status_code=status.HTTP_201_CREATED)
 async def upload_imagem(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
     file: UploadFile = File(...),
@@ -182,8 +183,8 @@ async def upload_imagem(
 
 @router.patch("/imagens/{img_id}", response_model=ImagemResponse)
 def update_imagem_descricao(
-    cliente_id: int,
-    img_id: int,
+    cliente_id: uuid.UUID,
+    img_id: uuid.UUID,
     data: ImagemUpdateDescricao,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -203,8 +204,8 @@ def update_imagem_descricao(
 
 @router.delete("/imagens/{img_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_imagem(
-    cliente_id: int,
-    img_id: int,
+    cliente_id: uuid.UUID,
+    img_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -233,7 +234,7 @@ def delete_imagem(
 
 @router.get("/cronograma", response_model=list[CronogramaEtapaResponse])
 def list_cronograma(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -245,7 +246,7 @@ def list_cronograma(
 
 @router.post("/cronograma/inicializar", response_model=list[CronogramaEtapaResponse])
 def inicializar_cronograma(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -291,7 +292,7 @@ def inicializar_cronograma(
 
 @router.post("/cronograma/etapas", response_model=CronogramaEtapaResponse, status_code=status.HTTP_201_CREATED)
 def create_etapa(
-    cliente_id: int,
+    cliente_id: uuid.UUID,
     data: CronogramaEtapaCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -324,8 +325,8 @@ def create_etapa(
 
 @router.patch("/cronograma/etapas/{etapa_id}", response_model=CronogramaEtapaResponse)
 def update_etapa(
-    cliente_id: int,
-    etapa_id: int,
+    cliente_id: uuid.UUID,
+    etapa_id: uuid.UUID,
     data: CronogramaEtapaUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -346,8 +347,8 @@ def update_etapa(
 
 @router.delete("/cronograma/etapas/{etapa_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_etapa(
-    cliente_id: int,
-    etapa_id: int,
+    cliente_id: uuid.UUID,
+    etapa_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -366,8 +367,8 @@ def delete_etapa(
 
 @router.patch("/cronograma/itens/{item_id}/toggle", response_model=CronogramaItemResponse)
 def toggle_item(
-    cliente_id: int,
-    item_id: int,
+    cliente_id: uuid.UUID,
+    item_id: uuid.UUID,
     data: CronogramaToggleItem,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -388,8 +389,8 @@ def toggle_item(
 
 @router.post("/cronograma/etapas/{etapa_id}/itens", response_model=CronogramaItemResponse, status_code=status.HTTP_201_CREATED)
 def create_item(
-    cliente_id: int,
-    etapa_id: int,
+    cliente_id: uuid.UUID,
+    etapa_id: uuid.UUID,
     data: CronogramaItemCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -416,8 +417,8 @@ def create_item(
 
 @router.delete("/cronograma/itens/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(
-    cliente_id: int,
-    item_id: int,
+    cliente_id: uuid.UUID,
+    item_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

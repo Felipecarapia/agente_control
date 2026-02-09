@@ -1,3 +1,5 @@
+from typing import Optional
+import uuid
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -5,13 +7,13 @@ from pydantic import BaseModel
 # =================== Documento RAG ===================
 
 class DocumentoRAGResponse(BaseModel):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     nome_original: str
     url: str
-    content_type: str | None = None
-    tamanho_bytes: int | None = None
-    created_at: datetime | None = None
+    content_type: Optional[str] = None
+    tamanho_bytes: Optional[int] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -20,21 +22,21 @@ class DocumentoRAGResponse(BaseModel):
 # =================== Imagem ===================
 
 class ImagemResponse(BaseModel):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     nome_original: str
     url: str
-    content_type: str | None = None
-    tamanho_bytes: int | None = None
-    descricao: str | None = None
-    created_at: datetime | None = None
+    content_type: Optional[str] = None
+    tamanho_bytes: Optional[int] = None
+    descricao: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class ImagemUpdateDescricao(BaseModel):
-    descricao: str | None = None
+    descricao: Optional[str] = None
 
 
 # =================== Cronograma ===================
@@ -42,7 +44,7 @@ class ImagemUpdateDescricao(BaseModel):
 class CronogramaItemBase(BaseModel):
     texto: str
     concluido: bool = False
-    categoria: str | None = None
+    categoria: Optional[str] = None
     ordem: int = 0
 
 
@@ -51,17 +53,17 @@ class CronogramaItemCreate(CronogramaItemBase):
 
 
 class CronogramaItemUpdate(BaseModel):
-    texto: str | None = None
-    concluido: bool | None = None
-    categoria: str | None = None
-    ordem: int | None = None
+    texto: Optional[str] = None
+    concluido: Optional[bool] = None
+    categoria: Optional[str] = None
+    ordem: Optional[int] = None
 
 
 class CronogramaItemResponse(CronogramaItemBase):
-    id: int
-    etapa_id: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    etapa_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -69,8 +71,8 @@ class CronogramaItemResponse(CronogramaItemBase):
 
 class CronogramaEtapaBase(BaseModel):
     titulo: str
-    descricao: str | None = None
-    cor: str | None = "blue"
+    descricao: Optional[str] = None
+    cor: Optional[str] = "blue"
     ordem: int = 0
 
 
@@ -79,18 +81,18 @@ class CronogramaEtapaCreate(CronogramaEtapaBase):
 
 
 class CronogramaEtapaUpdate(BaseModel):
-    titulo: str | None = None
-    descricao: str | None = None
-    cor: str | None = None
-    ordem: int | None = None
+    titulo: Optional[str] = None
+    descricao: Optional[str] = None
+    cor: Optional[str] = None
+    ordem: Optional[int] = None
 
 
 class CronogramaEtapaResponse(CronogramaEtapaBase):
-    id: int
-    cliente_id: int
+    id: uuid.UUID
+    cliente_id: uuid.UUID
     itens: list[CronogramaItemResponse] = []
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

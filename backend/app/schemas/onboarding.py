@@ -1,3 +1,5 @@
+from typing import Optional
+import uuid
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -5,16 +7,16 @@ from pydantic import BaseModel
 # =================== Onboarding ===================
 
 class OnboardingBase(BaseModel):
-    quem_somos: str | None = None
-    o_que_vendemos: str | None = None
-    para_quem_vendemos: str | None = None
-    diferenciais: str | None = None
-    perguntas_frequentes: str | None = None
-    logo_url: str | None = None
-    fotos_urls: str | None = None  # JSON array string
-    redes_sociais: str | None = None  # JSON object string
-    conteudo_base_site: str | None = None
-    conteudo_reutilizavel_bot: str | None = None
+    quem_somos: Optional[str] = None
+    o_que_vendemos: Optional[str] = None
+    para_quem_vendemos: Optional[str] = None
+    diferenciais: Optional[str] = None
+    perguntas_frequentes: Optional[str] = None
+    logo_url: Optional[str] = None
+    fotos_urls: Optional[str] = None  # JSON array string
+    redes_sociais: Optional[str] = None  # JSON object string
+    conteudo_base_site: Optional[str] = None
+    conteudo_reutilizavel_bot: Optional[str] = None
 
 
 class OnboardingCreate(OnboardingBase):
@@ -26,10 +28,10 @@ class OnboardingUpdate(OnboardingBase):
 
 
 class OnboardingResponse(OnboardingBase):
-    id: int
-    cliente_id: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    cliente_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -38,10 +40,10 @@ class OnboardingResponse(OnboardingBase):
 # =================== Meta WhatsApp ===================
 
 class MetaWhatsappBase(BaseModel):
-    nome_aplicativo: str | None = None
-    numero_oficial: str | None = None
-    token_acesso: str | None = None
-    business_manager_id: str | None = None
+    nome_aplicativo: Optional[str] = None
+    numero_oficial: Optional[str] = None
+    token_acesso: Optional[str] = None
+    business_manager_id: Optional[str] = None
 
 
 class MetaWhatsappCreate(MetaWhatsappBase):
@@ -53,10 +55,10 @@ class MetaWhatsappUpdate(MetaWhatsappBase):
 
 
 class MetaWhatsappResponse(MetaWhatsappBase):
-    id: int
-    cliente_id: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    cliente_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -66,10 +68,10 @@ class MetaWhatsappResponse(MetaWhatsappBase):
 
 class ContatoOperacionalBase(BaseModel):
     nome: str
-    cargo: str | None = None
-    email: str | None = None
-    telefone: str | None = None
-    observacao: str | None = None
+    cargo: Optional[str] = None
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    observacao: Optional[str] = None
 
 
 class ContatoOperacionalCreate(ContatoOperacionalBase):
@@ -77,18 +79,18 @@ class ContatoOperacionalCreate(ContatoOperacionalBase):
 
 
 class ContatoOperacionalUpdate(BaseModel):
-    nome: str | None = None
-    cargo: str | None = None
-    email: str | None = None
-    telefone: str | None = None
-    observacao: str | None = None
+    nome: Optional[str] = None
+    cargo: Optional[str] = None
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    observacao: Optional[str] = None
 
 
 class ContatoOperacionalResponse(ContatoOperacionalBase):
-    id: int
-    cliente_id: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    cliente_id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

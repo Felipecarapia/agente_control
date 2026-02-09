@@ -1,3 +1,5 @@
+from typing import Optional
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel
@@ -5,13 +7,13 @@ from pydantic import BaseModel
 
 class ContratoBase(BaseModel):
     numero: str
-    proposta_id: int | None = None
-    cliente_id: int
-    projeto_id: int | None = None
-    valor: Decimal | None = None
-    data_inicio: date | None = None
-    data_fim: date | None = None
-    arquivo_url: str | None = None
+    proposta_id: Optional[uuid.UUID] = None
+    cliente_id: uuid.UUID
+    projeto_id: Optional[uuid.UUID] = None
+    valor: Optional[Decimal] = None
+    data_inicio: Optional[date] = None
+    data_fim: Optional[date] = None
+    arquivo_url: Optional[str] = None
     status: str = "ativo"
 
 
@@ -20,21 +22,21 @@ class ContratoCreate(ContratoBase):
 
 
 class ContratoUpdate(BaseModel):
-    numero: str | None = None
-    proposta_id: int | None = None
-    cliente_id: int | None = None
-    projeto_id: int | None = None
-    valor: Decimal | None = None
-    data_inicio: date | None = None
-    data_fim: date | None = None
-    arquivo_url: str | None = None
-    status: str | None = None
+    numero: Optional[str] = None
+    proposta_id: Optional[uuid.UUID] = None
+    cliente_id: Optional[uuid.UUID] = None
+    projeto_id: Optional[uuid.UUID] = None
+    valor: Optional[Decimal] = None
+    data_inicio: Optional[date] = None
+    data_fim: Optional[date] = None
+    arquivo_url: Optional[str] = None
+    status: Optional[str] = None
 
 
 class ContratoResponse(ContratoBase):
-    id: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

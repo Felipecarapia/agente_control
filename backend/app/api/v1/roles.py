@@ -1,5 +1,6 @@
 from typing import Annotated, Optional
 import logging
+import uuid
 from pydantic import ValidationError
 
 from fastapi import APIRouter, Depends, Request, status
@@ -642,7 +643,7 @@ def update_role_permissions(
 
 @router.get("/users/{user_id}", response_model=dict)
 def get_user_roles(
-    user_id: int,
+    user_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -672,7 +673,7 @@ def get_user_roles(
 
 @router.post("/users/{user_id}/assign", status_code=status.HTTP_204_NO_CONTENT)
 def assign_role(
-    user_id: int,
+    user_id: uuid.UUID,
     data: dict,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -726,7 +727,7 @@ def assign_role(
 
 @router.delete("/users/{user_id}/remove/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_role(
-    user_id: int,
+    user_id: uuid.UUID,
     role_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],

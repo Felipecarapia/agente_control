@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, Optional
 import logging
 from pydantic import ValidationError
@@ -64,7 +65,7 @@ def list_usuarios(
 @router.get("/{usuario_id}")
 def get_usuario(
     request: Request,
-    usuario_id: int,
+    usuario_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
@@ -74,15 +75,6 @@ def get_usuario(
     Retorna 404 padronizado se usuário não encontrado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if usuario_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do usuário deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         user = db.query(Usuario).options(
@@ -200,7 +192,7 @@ def create_usuario(
 @router.patch("/{usuario_id}")
 def update_usuario(
     request: Request,
-    usuario_id: int,
+    usuario_id: uuid.UUID,
     data: UsuarioUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
@@ -213,15 +205,6 @@ def update_usuario(
     Retorna 409 se email duplicado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if usuario_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do usuário deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         user = db.query(Usuario).filter(Usuario.id == usuario_id).first()
@@ -302,7 +285,7 @@ def update_usuario(
 @router.delete("/{usuario_id}")
 def delete_usuario(
     request: Request,
-    usuario_id: int,
+    usuario_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
@@ -312,15 +295,6 @@ def delete_usuario(
     Retorna 404 padronizado se usuário não encontrado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if usuario_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID do usuário deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         user = db.query(Usuario).filter(Usuario.id == usuario_id).first()

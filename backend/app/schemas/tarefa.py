@@ -1,21 +1,22 @@
+import uuid
 from datetime import date, datetime
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
 class TarefaBase(BaseModel):
     titulo: str
-    descricao: str | None = None
-    projeto_id: int
+    descricao: Optional[str] = None
+    projeto_id: uuid.UUID
     status: str = "pendente"
-    prioridade: str | None = None
-    responsavel_id: int | None = None
-    data_vencimento: date | None = None
+    prioridade: Optional[str] = None
+    responsavel_id: Optional[uuid.UUID] = None
+    data_vencimento: Optional[date] = None
     # Campos de recorrência
     is_recurring: bool = False
-    recurrence_type: str | None = None  # diaria, semanal, mensal
-    recurrence_interval: int | None = None  # a cada X dias/semanas/meses
-    recurrence_end_date: date | None = None
+    recurrence_type: Optional[str] = None  # diaria, semanal, mensal
+    recurrence_interval: Optional[int] = None  # a cada X dias/semanas/meses
+    recurrence_end_date: Optional[date] = None
     # Múltiplos usuários atribuídos
     assigned_user_ids: List[int] = []
 
@@ -25,49 +26,39 @@ class TarefaCreate(TarefaBase):
 
 
 class TarefaUpdate(BaseModel):
-    titulo: str | None = None
-    descricao: str | None = None
-    projeto_id: int | None = None
-    status: str | None = None
-    prioridade: str | None = None
-    responsavel_id: int | None = None
-    data_vencimento: date | None = None
-    is_recurring: bool | None = None
-    recurrence_type: str | None = None
-    recurrence_interval: int | None = None
-    recurrence_end_date: date | None = None
-    assigned_user_ids: List[int] | None = None
+    titulo: Optional[str] = None
+    descricao: Optional[str] = None
+    projeto_id: Optional[uuid.UUID] = None
+    status: Optional[str] = None
+    prioridade: Optional[str] = None
+    responsavel_id: Optional[uuid.UUID] = None
+    data_vencimento: Optional[date] = None
+    is_recurring: Optional[bool] = None
+    recurrence_type: Optional[str] = None
+    recurrence_interval: Optional[int] = None
+    recurrence_end_date: Optional[date] = None
+    assigned_user_ids: Optional[List[int]] = None
 
+
+    assigned_users: List['TarefaAssigneeResponse'] = []
+    
+    class Config:
+        from_attributes = True
 
 class TarefaAssigneeResponse(BaseModel):
     id: int
-    usuario_id: int
-    usuario_nome: str | None = None
+    usuario_id: uuid.UUID
+    usuario_nome: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-
-class TarefaResponse(BaseModel):
-    id: int
-    titulo: str
-    descricao: str | None = None
-    projeto_id: int
-    status: str = "pendente"
-    prioridade: str | None = None
-    responsavel_id: int | None = None
-    data_vencimento: date | None = None
-    # Campos de recorrência
-    is_recurring: bool = False
-    recurrence_type: str | None = None
-    recurrence_interval: int | None = None
-    recurrence_end_date: date | None = None
-    parent_task_id: int | None = None
-    # Múltiplos usuários atribuídos
-    assigned_user_ids: List[int] = []
+class TarefaResponse(TarefaBase):
+    id: uuid.UUID
+    parent_task_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     assigned_users: List[TarefaAssigneeResponse] = []
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True

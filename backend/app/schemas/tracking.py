@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Any, Optional
 from pydantic import BaseModel, Field
@@ -67,24 +68,24 @@ class SessionEndPayload(BaseModel):
 # ============== Schemas de resposta ==============
 
 class SessionResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     session_id: str
-    proposta_id: int
+    proposta_id: uuid.UUID
     device_type: Optional[str]
     is_returning: bool
     started_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
 class EventResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     event_type: str
     section_id: Optional[str]
     value: Optional[float]
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -93,7 +94,7 @@ class EventResponse(BaseModel):
 
 class AnalyticsOverview(BaseModel):
     """Visão geral de analytics de uma proposta."""
-    proposta_id: int
+    proposta_id: uuid.UUID
     total_sessions: int
     unique_devices: int
     total_events: int
@@ -148,7 +149,7 @@ class FAQEngagement(BaseModel):
 
 class SessionDetail(BaseModel):
     """Detalhe de uma sessão individual."""
-    id: int
+    id: uuid.UUID
     session_id: str
     device_type: Optional[str]
     browser: Optional[str]
@@ -161,7 +162,7 @@ class SessionDetail(BaseModel):
     total_clicks: int
     is_returning: bool
     exit_intent_detected: bool
-    
+
     class Config:
         from_attributes = True
 

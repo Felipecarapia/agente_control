@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, Optional
 import logging
 
@@ -106,7 +107,7 @@ def leads_stats(
 @router.get("/{lead_id}")
 def get_lead(
     request: Request,
-    lead_id: int,
+    lead_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -198,7 +199,7 @@ def create_lead(
 @router.patch("/{lead_id}")
 def update_lead(
     request: Request,
-    lead_id: int,
+    lead_id: uuid.UUID,
     data: LeadUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -270,7 +271,7 @@ def update_lead(
 @router.delete("/{lead_id}")
 def delete_lead(
     request: Request,
-    lead_id: int,
+    lead_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):

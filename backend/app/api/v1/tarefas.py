@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, Optional
 import logging
 from pydantic import ValidationError
@@ -27,7 +28,7 @@ def list_tarefas(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
-    projeto_id: Optional[int] = Query(None, description="Filtrar por projeto"),
+    projeto_id: Optional[uuid.UUID] = None,
 ):
     """
     Lista todas as tarefas com relacionamentos carregados.
@@ -215,7 +216,7 @@ def get_tarefas_range(
 @router.get("/{tarefa_id}")
 def get_tarefa(
     request: Request,
-    tarefa_id: int,
+    tarefa_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -224,15 +225,6 @@ def get_tarefa(
     Retorna 404 padronizado se tarefa não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if tarefa_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da tarefa deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Tarefa).options(
@@ -416,7 +408,7 @@ def create_tarefa(
 @router.patch("/{tarefa_id}")
 def update_tarefa(
     request: Request,
-    tarefa_id: int,
+    tarefa_id: uuid.UUID,
     data: TarefaUpdate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -429,15 +421,6 @@ def update_tarefa(
     Retorna 409 se título+projeto duplicado.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if tarefa_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da tarefa deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Tarefa).filter(Tarefa.id == tarefa_id).first()
@@ -576,7 +559,7 @@ def update_tarefa(
 @router.delete("/{tarefa_id}")
 def delete_tarefa(
     request: Request,
-    tarefa_id: int,
+    tarefa_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
@@ -585,15 +568,6 @@ def delete_tarefa(
     Retorna 404 padronizado se tarefa não encontrada.
     """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Validar ID
-    if tarefa_id <= 0:
-        return error_response(
-            code="INVALID_ID",
-            message="ID da tarefa deve ser maior que 0",
-            status_code=400,
-            request_id=request_id
-        )
     
     try:
         obj = db.query(Tarefa).filter(Tarefa.id == tarefa_id).first()

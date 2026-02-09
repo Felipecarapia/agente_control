@@ -1,7 +1,10 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Boolean, BigInteger, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Boolean, BigInteger, Date
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.core.database import Base
 
@@ -14,7 +17,7 @@ class TaskDatabase(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     is_default = Column(Boolean, default=False, nullable=False)
-    created_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -72,7 +75,7 @@ class TaskView(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_database_id = Column(Integer, ForeignKey("task_databases.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     type = Column(String(50), nullable=False)  # LIST, TABLE, KANBAN, CALENDAR, AGENDA
     config_json = Column(JSONB, nullable=True)  # filters, sorts, groupBy, columns, visibleProperties
@@ -109,7 +112,7 @@ class TaskComment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tarefas.id", ondelete="CASCADE"), nullable=False, index=True)
-    author_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
+    author_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -124,7 +127,7 @@ class TaskMention(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tarefas.id", ondelete="CASCADE"), nullable=False, index=True)
-    mentioned_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    mentioned_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     comment_id = Column(Integer, ForeignKey("task_comments.id", ondelete="CASCADE"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -139,7 +142,7 @@ class TaskAttachment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tarefas.id", ondelete="CASCADE"), nullable=False, index=True)
-    uploaded_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    uploaded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     file_name = Column(String(255), nullable=False)
     mime_type = Column(String(100), nullable=True)
     size_bytes = Column(BigInteger, nullable=False)
@@ -161,7 +164,7 @@ class TaskTemplate(Base):
     description = Column(Text, nullable=True)
     default_blocks_json = Column(JSONB, nullable=True)  # array de blocks padrão
     default_property_values_json = Column(JSONB, nullable=True)  # valores padrão de properties
-    created_by_user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

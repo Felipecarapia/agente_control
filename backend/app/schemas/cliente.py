@@ -1,3 +1,5 @@
+from typing import Optional
+import uuid
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -5,22 +7,22 @@ from pydantic import BaseModel
 class ClienteBase(BaseModel):
     tipo: str = "pf"  # pf | pj
     nome: str
-    razao_social: str | None = None
-    cpf: str | None = None
-    cnpj: str | None = None
-    rg: str | None = None
-    inscricao_estadual: str | None = None
-    email: str | None = None
-    telefone: str | None = None
-    celular: str | None = None
-    cep: str | None = None
-    endereco: str | None = None
-    numero: str | None = None
-    complemento: str | None = None
-    bairro: str | None = None
-    cidade: str | None = None
-    estado: str | None = None
-    logo_url: str | None = None
+    razao_social: Optional[str] = None
+    cpf: Optional[str] = None
+    cnpj: Optional[str] = None
+    rg: Optional[str] = None
+    inscricao_estadual: Optional[str] = None
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    celular: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
+    numero: Optional[str] = None
+    complemento: Optional[str] = None
+    bairro: Optional[str] = None
+    cidade: Optional[str] = None
+    estado: Optional[str] = None
+    logo_url: Optional[str] = None
 
 
 class ClienteCreate(ClienteBase):
@@ -28,31 +30,31 @@ class ClienteCreate(ClienteBase):
 
 
 class ClienteUpdate(BaseModel):
-    tipo: str | None = None
-    nome: str | None = None
-    razao_social: str | None = None
-    cpf: str | None = None
-    cnpj: str | None = None
-    rg: str | None = None
-    inscricao_estadual: str | None = None
-    email: str | None = None
-    telefone: str | None = None
-    celular: str | None = None
-    cep: str | None = None
-    endereco: str | None = None
-    numero: str | None = None
-    complemento: str | None = None
-    bairro: str | None = None
-    cidade: str | None = None
-    estado: str | None = None
-    logo_url: str | None = None
+    tipo: Optional[str] = None
+    nome: Optional[str] = None
+    razao_social: Optional[str] = None
+    cpf: Optional[str] = None
+    cnpj: Optional[str] = None
+    rg: Optional[str] = None
+    inscricao_estadual: Optional[str] = None
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    celular: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
+    numero: Optional[str] = None
+    complemento: Optional[str] = None
+    bairro: Optional[str] = None
+    cidade: Optional[str] = None
+    estado: Optional[str] = None
+    logo_url: Optional[str] = None
 
 
 class ClienteResponse(ClienteBase):
-    id: int
-    usuario_id: int | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    id: uuid.UUID
+    usuario_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
