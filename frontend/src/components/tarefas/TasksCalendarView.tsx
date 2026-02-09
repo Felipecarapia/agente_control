@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
