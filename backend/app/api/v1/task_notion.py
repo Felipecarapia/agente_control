@@ -1,6 +1,6 @@
 from typing import Annotated, Optional, List, Dict, Any
 from datetime import date, datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
 import logging
@@ -68,15 +68,21 @@ def get_task_database(
 
 @router.get("/databases/default")
 def get_default_task_database(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Obtém a base de tarefas padrão. Retorna null se não existir (não quebra a página)."""
+    """
+    Obtém a base de tarefas padrão. Retorna null se não existir (não quebra a página).
+    Endpoint opcional - não deve retornar erro 422.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
         database = db.query(TaskDatabase).filter(TaskDatabase.is_default == True).first()
         if not database:
             # Retornar null ao invés de erro para não quebrar o frontend
-            return success_response(data=None)
+            return success_response(data=None, request_id=request_id)
         
         # Converter para dict para garantir serialização correta
         database_dict = {
@@ -89,13 +95,12 @@ def get_default_task_database(
             "updated_at": database.updated_at.isoformat() if database.updated_at else None,
         }
         
-        return success_response(data=database_dict)
+        return success_response(data=database_dict, request_id=request_id)
     except Exception as e:
         # Em caso de erro (tabela não existe, etc), retornar null
-        import logging
         logger = logging.getLogger(__name__)
-        logger.warning(f"Erro ao buscar database padrão: {e}")
-        return success_response(data=None)
+        logger.warning(f"Erro ao buscar database padrão: {e}", extra={"request_id": request_id})
+        return success_response(data=None, request_id=request_id)
 
 
 @router.post("/databases", response_model=TaskDatabaseResponse, status_code=status.HTTP_201_CREATED)
@@ -125,15 +130,21 @@ def create_task_database(
 
 @router.get("/databases/default/properties")
 def list_default_task_properties(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
-    """Lista propriedades da base de tarefas padrão. Retorna lista vazia se não existir."""
+    """
+    Lista propriedades da base de tarefas padrão. Retorna lista vazia se não existir.
+    Endpoint opcional - não deve retornar erro 422.
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
     try:
         database = db.query(TaskDatabase).filter(TaskDatabase.is_default == True).first()
         if not database:
             # Retornar lista vazia ao invés de erro
-            return success_response(data=[])
+            return success_response(data=[], request_id=request_id)
         
         properties = db.query(TaskProperty).filter(
             TaskProperty.task_database_id == database.id
@@ -156,13 +167,12 @@ def list_default_task_properties(
             }
             properties_data.append(prop_dict)
         
-        return success_response(data=properties_data)
+        return success_response(data=properties_data, request_id=request_id)
     except Exception as e:
         # Em caso de erro, retornar lista vazia
-        import logging
         logger = logging.getLogger(__name__)
-        logger.warning(f"Erro ao buscar properties do database padrão: {e}")
-        return success_response(data=[])
+        logger.warning(f"Erro ao buscar properties do database padrão: {e}", extra={"request_id": request_id})
+        return success_response(data=[], request_id=request_id)
 
 
 @router.get("/databases/{database_id}/properties", response_model=List[TaskPropertyResponse])

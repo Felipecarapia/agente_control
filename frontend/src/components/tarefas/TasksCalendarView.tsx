@@ -49,11 +49,12 @@ export function TasksCalendarView({
   const projetoMap = Object.fromEntries(projetos.map((p) => [p.id, p.nome]));
   const usuarioMap = Object.fromEntries(usuarios.map((u) => [u.id, u.nome]));
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  // Memoizar cálculos de datas para evitar loops infinitos
+  const monthStart = useMemo(() => startOfMonth(currentMonth), [currentMonth]);
+  const monthEnd = useMemo(() => endOfMonth(currentMonth), [currentMonth]);
+  const calendarStart = useMemo(() => startOfWeek(monthStart, { weekStartsOn: 1 }), [monthStart]);
+  const calendarEnd = useMemo(() => endOfWeek(monthEnd, { weekStartsOn: 1 }), [monthEnd]);
+  const calendarDays = useMemo(() => eachDayOfInterval({ start: calendarStart, end: calendarEnd }), [calendarStart, calendarEnd]);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +85,7 @@ export function TasksCalendarView({
     return () => {
       cancelled = true;
     };
-  }, [currentMonth]);
+  }, [calendarStart, calendarEnd]);
 
   function getTasksForDay(day: Date): Tarefa[] {
     return tasks.filter((t) => {

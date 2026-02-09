@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,8 +32,8 @@ export function TasksAgendaView({
   const projetoMap = Object.fromEntries(projetos.map((p) => [p.id, p.nome]));
   const usuarioMap = Object.fromEntries(usuarios.map((u) => [u.id, u.nome]));
 
-  // Calcular intervalo da semana (7 dias a partir do início da semana)
-  const weekEnd = addDays(currentWeekStart, 6);
+  // Calcular intervalo da semana (7 dias a partir do início da semana) - memoizado para evitar loops
+  const weekEnd = useMemo(() => addDays(currentWeekStart, 6), [currentWeekStart]);
 
   useEffect(() => {
     let cancelled = false;
