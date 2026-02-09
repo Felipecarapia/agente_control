@@ -1,6 +1,7 @@
 """
 Helper para padronizar respostas da API.
 """
+import enum
 import json
 import uuid
 from decimal import Decimal
@@ -13,12 +14,14 @@ from pydantic import BaseModel
 def json_serializer(obj: Any) -> Any:
     """
     Serializador customizado para tipos não nativos do JSON.
-    Converte Decimal, BigInt, DateTime e outros tipos problemáticos.
+    Converte Decimal, BigInt, DateTime, Enum e outros tipos problemáticos.
     """
     from datetime import datetime, date
     
     if isinstance(obj, uuid.UUID):
         return str(obj)
+    if isinstance(obj, enum.Enum):
+        return obj.value
     if isinstance(obj, Decimal):
         return float(obj)
     if isinstance(obj, int) and obj > 2**53 - 1:  # BigInt que excede JavaScript Number.MAX_SAFE_INTEGER

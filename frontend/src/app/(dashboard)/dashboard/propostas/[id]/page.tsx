@@ -61,7 +61,7 @@ function newSectionId(): string {
 export default function EditarPropostaPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id;
+  const id = params.id as string;
   const [form, setForm] = useState(emptyForm);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
