@@ -311,6 +311,9 @@ export default function FunilPage() {
       return;
     }
     
+    // Salvar estado anterior para rollback (antes do try para estar no escopo do catch)
+    const previousKanbanData = kanbanData ? { ...kanbanData } : null;
+    
     try {
       // Atualização otimista
       const deal = currentStage.deals.find((d) => d.id === dealId);
@@ -318,9 +321,6 @@ export default function FunilPage() {
         setActiveType(null);
         return;
       }
-      
-      // Salvar estado anterior para rollback
-      const previousKanbanData = { ...kanbanData };
       
       // Remover deal da stage atual
       const updatedStages = kanbanData.stages.map((s) => {
@@ -358,7 +358,7 @@ export default function FunilPage() {
       await loadKanban();
     } catch (e: any) {
       // Rollback em caso de erro
-      if (kanbanData) {
+      if (previousKanbanData) {
         setKanbanData(previousKanbanData);
       }
       
