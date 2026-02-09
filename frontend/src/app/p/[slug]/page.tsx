@@ -3,7 +3,7 @@ import { ProposalPageClient } from "@/components/propostas/landing/ProposalPageC
 import type { LandingSection } from "@/components/propostas/landing-section-types";
 
 type PropostaPublic = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
   valor: string | number | null;

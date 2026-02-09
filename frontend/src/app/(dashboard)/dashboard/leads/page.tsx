@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 type Lead = {
-  id: number;
+  id: string;
   nome: string;
   email: string | null;
   telefone: string | null;

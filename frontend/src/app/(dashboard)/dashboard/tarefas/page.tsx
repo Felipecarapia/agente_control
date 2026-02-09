@@ -34,16 +34,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
-type Projeto = { id: number; nome: string };
-type Usuario = { id: number; nome: string };
+type Projeto = { id: string; nome: string };
+type Usuario = { id: string; nome: string };
 type Tarefa = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
-  projeto_id: number;
+  projeto_id: string;
   status: string;
   prioridade: string | null;
-  responsavel_id: number | null;
+  responsavel_id: string | null;
   data_vencimento: string | null;
 };
 
@@ -53,15 +53,15 @@ export default function TarefasPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({
     titulo: "",
     descricao: "",
-    projeto_id: 0,
+    projeto_id: "",
     status: "pendente",
     prioridade: "",
-    responsavel_id: 0,
+    responsavel_id: "",
     data_vencimento: "",
   });
 
@@ -92,10 +92,10 @@ export default function TarefasPage() {
     setForm({
       titulo: "",
       descricao: "",
-      projeto_id: projetos[0]?.id ?? 0,
+      projeto_id: projetos[0]?.id ?? "",
       status: "pendente",
       prioridade: "",
-      responsavel_id: 0,
+      responsavel_id: "",
       data_vencimento: "",
     });
     setOpen(true);
@@ -109,7 +109,7 @@ export default function TarefasPage() {
       projeto_id: t.projeto_id,
       status: t.status,
       prioridade: t.prioridade || "",
-      responsavel_id: t.responsavel_id ?? 0,
+      responsavel_id: t.responsavel_id ?? "",
       data_vencimento: t.data_vencimento || "",
     });
     setOpen(true);
@@ -237,7 +237,7 @@ export default function TarefasPage() {
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={form.projeto_id}
-                onChange={(e) => setForm((f) => ({ ...f, projeto_id: Number(e.target.value) }))}
+                onChange={(e) => setForm((f) => ({ ...f, projeto_id: e.target.value }))}
               >
                 {projetos.map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
@@ -271,9 +271,9 @@ export default function TarefasPage() {
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={form.responsavel_id}
-                onChange={(e) => setForm((f) => ({ ...f, responsavel_id: Number(e.target.value) }))}
+                onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}
               >
-                <option value={0}>Nenhum</option>
+                <option value="">Nenhum</option>
                 {usuarios.map((u) => (
                   <option key={u.id} value={u.id}>{u.nome}</option>
                 ))}

@@ -90,8 +90,8 @@ const ORIGEM_OPTIONS = [
 export default function EditarLeadPage() {
   const router = useRouter();
   const params = useParams();
-  const id = Number(params.id);
-  const isNew = isNaN(id) || !id;
+  const id = params.id as string;
+  const isNew = params.id === "novo" || !id;
   const [form, setForm] = useState<LeadForm>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

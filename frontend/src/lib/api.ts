@@ -48,7 +48,7 @@ export function isAuthenticated(): boolean {
 }
 
 export async function uploadPropostaImage(
-  propostaId: number,
+  propostaId: string,
   file: File
 ): Promise<{ url: string }> {
   const token = getToken();

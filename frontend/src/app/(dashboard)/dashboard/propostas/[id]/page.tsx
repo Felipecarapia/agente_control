@@ -27,15 +27,15 @@ import {
 } from "@/components/propostas/landing-section-types";
 import { SectionEditorForm } from "@/components/propostas/SectionEditorForm";
 
-type Cliente = { id: number; nome: string };
-type Projeto = { id: number; nome: string; cliente_id: number };
+type Cliente = { id: string; nome: string };
+type Projeto = { id: string; nome: string; cliente_id: string };
 type Proposta = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
   valor: string | number | null;
-  cliente_id: number;
-  projeto_id: number | null;
+  cliente_id: string;
+  projeto_id: string | null;
   status: string;
   validade_ate: string | null;
   slug: string | null;
@@ -46,8 +46,8 @@ const emptyForm = {
   titulo: "",
   descricao: "",
   valor: "",
-  cliente_id: 0,
-  projeto_id: 0,
+  cliente_id: "",
+  projeto_id: "",
   status: "rascunho",
   validade_ate: "",
 };
@@ -61,7 +61,7 @@ function newSectionId(): string {
 export default function EditarPropostaPage() {
   const router = useRouter();
   const params = useParams();
-  const id = Number(params.id);
+  const id = params.id;
   const [form, setForm] = useState(emptyForm);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
@@ -74,7 +74,7 @@ export default function EditarPropostaPage() {
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     Promise.all([
       api<Proposta>(`/api/v1/propostas/${id}`),
       api<Cliente[]>("/api/v1/clientes"),
@@ -89,7 +89,7 @@ export default function EditarPropostaPage() {
           descricao: p.descricao || "",
           valor: p.valor != null ? String(p.valor) : "",
           cliente_id: p.cliente_id,
-          projeto_id: p.projeto_id ?? 0,
+          projeto_id: p.projeto_id ?? "",
           status: p.status || "rascunho",
           validade_ate: p.validade_ate || "",
         });
@@ -106,7 +106,7 @@ export default function EditarPropostaPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     setLoading(true);
     try {
       await api(`/api/v1/propostas/${id}`, {
@@ -132,7 +132,7 @@ export default function EditarPropostaPage() {
   }
 
   async function saveLanding() {
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     setLoading(true);
     try {
       await api(`/api/v1/propostas/${id}`, {
@@ -187,7 +187,7 @@ export default function EditarPropostaPage() {
   }
 
   async function copyOrGenerateLink() {
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     let currentSlug = slug;
     if (!currentSlug) {
       try {
@@ -309,12 +309,12 @@ export default function EditarPropostaPage() {
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
-                        cliente_id: Number(e.target.value),
-                        projeto_id: 0,
+                        cliente_id: e.target.value,
+                        projeto_id: "",
                       }))
                     }
                   >
-                    <option value={0}>Selecione um cliente</option>
+                    <option value="">Selecione um cliente</option>
                     {clientes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nome}
@@ -328,9 +328,9 @@ export default function EditarPropostaPage() {
                   <select
                     className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={form.projeto_id}
-                    onChange={(e) => setForm((f) => ({ ...f, projeto_id: Number(e.target.value) }))}
+                    onChange={(e) => setForm((f) => ({ ...f, projeto_id: e.target.value }))}
                   >
-                    <option value={0}>Nenhum</option>
+                    <option value="">Nenhum</option>
                     {projetosDoCliente.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nome}

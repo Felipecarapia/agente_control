@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 type Cliente = {
-  id: number;
+  id: string;
   tipo: string;
   nome: string;
   razao_social: string | null;
@@ -65,7 +65,7 @@ const emptyForm = {
 export default function EditarClientePage() {
   const router = useRouter();
   const params = useParams();
-  const id = Number(params.id);
+  const id = params.id as string;
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export default function EditarClientePage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     api<Cliente>(`/api/v1/clientes/${id}`)
       .then((c) => {
         setForm({
@@ -125,7 +125,7 @@ export default function EditarClientePage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     setLoading(true);
     try {
       await api(`/api/v1/clientes/${id}`, {
@@ -455,7 +455,7 @@ type MetaWhatsapp = {
 };
 
 type ContatoOperacional = {
-  id?: number;
+  id?: string;
   nome: string;
   cargo: string;
   email: string;
@@ -511,7 +511,7 @@ const emptyRedes: RedesSociais = {
 
 // ─── Tipos para Docs, Imagens, Cronograma ────────────────
 type DocumentoRAG = {
-  id: number;
+  id: string;
   nome_original: string;
   url: string;
   content_type: string | null;
@@ -520,7 +520,7 @@ type DocumentoRAG = {
 };
 
 type ImagemCliente = {
-  id: number;
+  id: string;
   nome_original: string;
   url: string;
   content_type: string | null;
@@ -530,8 +530,8 @@ type ImagemCliente = {
 };
 
 type CronogramaItem = {
-  id: number;
-  etapa_id: number;
+  id: string;
+  etapa_id: string;
   ordem: number;
   texto: string;
   concluido: boolean;
@@ -539,8 +539,8 @@ type CronogramaItem = {
 };
 
 type CronogramaEtapa = {
-  id: number;
-  cliente_id: number;
+  id: string;
+  cliente_id: string;
   ordem: number;
   titulo: string;
   descricao: string | null;
@@ -574,7 +574,7 @@ function formatBytes(bytes: number | null): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-function OnboardingTab({ clienteId }: { clienteId: number }) {
+function OnboardingTab({ clienteId }: { clienteId: string }) {
   const [subTab, setSubTab] = useState<"info" | "whatsapp" | "contatos" | "docs_rag" | "imagens" | "cronograma">("info");
   const [onboarding, setOnboarding] = useState<OnboardingInfo>(emptyOnboarding);
   const [redes, setRedes] = useState<RedesSociais>(emptyRedes);
@@ -583,7 +583,7 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
   const [docs, setDocs] = useState<DocumentoRAG[]>([]);
   const [imagens, setImagens] = useState<ImagemCliente[]>([]);
   const [etapas, setEtapas] = useState<CronogramaEtapa[]>([]);
-  const [expandedEtapas, setExpandedEtapas] = useState<Set<number>>(new Set());
+  const [expandedEtapas, setExpandedEtapas] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -593,7 +593,7 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
     setTimeout(() => setSaved(null), 3000);
   };
 
-  const toggleEtapaExpanded = (id: number) => {
+  const toggleEtapaExpanded = (id: string) => {
     setExpandedEtapas((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -656,7 +656,7 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
   }, [clienteId]);
 
   useEffect(() => {
-    if (!clienteId || isNaN(clienteId)) return;
+    if (!clienteId) return;
     fetchOnboarding();
     fetchWhatsapp();
     fetchContatos();
@@ -738,7 +738,7 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
     }
   }
 
-  async function deleteContato(contatoId: number) {
+  async function deleteContato(contatoId: string) {
     setSaving(true);
     try {
       await api(`/api/v1/clientes/${clienteId}/onboarding/contatos/${contatoId}`, {
@@ -785,7 +785,7 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
     }
   }
 
-  async function deleteDoc(docId: number) {
+  async function deleteDoc(docId: string) {
     try {
       await api(`/api/v1/clientes/${clienteId}/documentos-rag/${docId}`, { method: "DELETE" });
       setDocs((prev) => prev.filter((d) => d.id !== docId));
@@ -819,7 +819,7 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
     }
   }
 
-  async function deleteImagem(imgId: number) {
+  async function deleteImagem(imgId: string) {
     try {
       await api(`/api/v1/clientes/${clienteId}/imagens/${imgId}`, { method: "DELETE" });
       setImagens((prev) => prev.filter((i) => i.id !== imgId));
@@ -843,7 +843,7 @@ function OnboardingTab({ clienteId }: { clienteId: number }) {
     }
   }
 
-  async function toggleItem(itemId: number, concluido: boolean) {
+  async function toggleItem(itemId: string, concluido: boolean) {
     try {
       await api(`/api/v1/clientes/${clienteId}/cronograma/itens/${itemId}/toggle`, {
         method: "PATCH",

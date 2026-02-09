@@ -33,15 +33,15 @@ const STATUS_LABEL: Record<string, string> = {
   recusada: "Recusada",
 };
 
-type Cliente = { id: number; nome: string };
-type Projeto = { id: number; nome: string };
+type Cliente = { id: string; nome: string };
+type Projeto = { id: string; nome: string };
 type Proposta = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
   valor: string | number | null;
-  cliente_id: number;
-  projeto_id: number | null;
+  cliente_id: string;
+  projeto_id: string | null;
   status: string;
   validade_ate: string | null;
 };
@@ -51,7 +51,7 @@ export default function PropostasPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   async function loadList() {
     setLoading(true);

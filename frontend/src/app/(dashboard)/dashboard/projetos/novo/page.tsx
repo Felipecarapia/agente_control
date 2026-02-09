@@ -19,13 +19,13 @@ const TIPOS = [
   { value: "lancamento", label: "Lançamento" },
 ] as const;
 
-type Cliente = { id: number; nome: string };
+type Cliente = { id: string; nome: string };
 
 const emptyForm = {
   tipo: "desenvolvimento_software" as string,
   nome: "",
   descricao: "",
-  cliente_id: 0,
+  cliente_id: "",
   status: "ativo",
   data_inicio: "",
   data_fim: "",
@@ -161,9 +161,9 @@ export default function NovoProjetoPage() {
                   <select
                     className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={form.cliente_id}
-                    onChange={(e) => setForm((f) => ({ ...f, cliente_id: Number(e.target.value) }))}
+                    onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))}
                   >
-                    <option value={0}>Selecione um cliente</option>
+                    <option value="">Selecione um cliente</option>
                     {clientes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nome}

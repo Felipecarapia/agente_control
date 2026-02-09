@@ -35,7 +35,7 @@ import {
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
 type Usuario = {
-  id: number;
+  id: string;
   email: string;
   nome: string;
   ativo: boolean;
@@ -47,8 +47,8 @@ export default function UsuariosPage() {
   const [list, setList] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ email: "", nome: "", password: "", ativo: true });
 
   async function loadList() {

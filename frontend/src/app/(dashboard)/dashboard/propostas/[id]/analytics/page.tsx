@@ -29,7 +29,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 // Tipos
 interface AnalyticsOverview {
-  proposta_id: number;
+  proposta_id: string;
   total_sessions: number;
   unique_devices: number;
   total_events: number;
@@ -64,7 +64,7 @@ interface DeviceBreakdown {
 }
 
 interface SessionDetail {
-  id: number;
+  id: string;
   session_id: string;
   device_type: string | null;
   browser: string | null;

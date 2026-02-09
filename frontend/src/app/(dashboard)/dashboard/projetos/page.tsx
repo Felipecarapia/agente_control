@@ -33,13 +33,13 @@ const TIPO_LABEL: Record<string, string> = {
   lancamento: "Lançamento",
 };
 
-type Cliente = { id: number; nome: string };
+type Cliente = { id: string; nome: string };
 type Projeto = {
-  id: number;
+  id: string;
   tipo: string;
   nome: string;
   descricao: string | null;
-  cliente_id: number;
+  cliente_id: string;
   status: string;
   data_inicio: string | null;
   data_fim: string | null;
@@ -53,7 +53,7 @@ export default function ProjetosPage() {
   const [list, setList] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   async function loadList() {
     setLoading(true);

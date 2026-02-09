@@ -29,7 +29,7 @@ import {
 } from "@/lib/landing-templates";
 
 type Proposta = {
-  id: number;
+  id: string;
   titulo: string;
   slug: string | null;
   landing_content: LandingSection[] | null;
@@ -43,7 +43,7 @@ function newSectionId(): string {
 
 export default function BuilderPropostaPage() {
   const params = useParams();
-  const id = Number(params.id);
+  const id = params.id;
   const [proposta, setProposta] = useState<Proposta | null>(null);
   const [sections, setSections] = useState<LandingSection[]>([]);
   const [templateId, setTemplateId] = useState<TemplateId>("branco");
@@ -60,7 +60,7 @@ export default function BuilderPropostaPage() {
   }
 
   useEffect(() => {
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     api<Proposta>(`/api/v1/propostas/${id}`)
       .then((p) => {
         setProposta(p);
@@ -128,7 +128,7 @@ export default function BuilderPropostaPage() {
   }
 
   async function saveBuilder() {
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     setLoading(true);
     try {
       await api(`/api/v1/propostas/${id}`, {
@@ -146,7 +146,7 @@ export default function BuilderPropostaPage() {
   }
 
   async function copyOrGenerateLink() {
-    if (!id || isNaN(id) || !proposta) return;
+    if (!id || !proposta) return;
     let currentSlug = proposta.slug;
     if (!currentSlug) {
       try {
