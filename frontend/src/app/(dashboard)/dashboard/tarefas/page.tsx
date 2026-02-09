@@ -45,20 +45,20 @@ import { TaskDrawer } from "@/components/tarefas/TaskDrawer";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Projeto = { id: number; nome: string };
-type Usuario = { 
-  id: number; 
+type Projeto = { id: string; nome: string };
+type Usuario = {
+  id: string;
   nome: string;
-  roles?: Array<{ id: number; key: string; name: string }>;
+  roles?: Array<{ id: string; key: string; name: string }>;
 };
 type Tarefa = {
-  id: number;
+  id: string;
   titulo: string;
   descricao: string | null;
-  projeto_id: number;
+  projeto_id: string;
   status: string;
   prioridade: string | null;
-  responsavel_id: number | null;
+  responsavel_id: string | null;
   data_vencimento: string | null;
   is_recurring?: boolean;
   recurrence_type?: string | null;
@@ -78,13 +78,14 @@ export default function TarefasPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+<<<<<<< HEAD
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [cobrarTaskId, setCobrarTaskId] = useState<number | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [taskDatabase, setTaskDatabase] = useState<any>(null);
   const [taskProperties, setTaskProperties] = useState<any[]>([]);
-  
+
   // Estado de visualização (persistido no localStorage e query params)
   const [view, setView] = useState<TasksView>(() => {
     if (typeof window === "undefined") return "list";
@@ -95,19 +96,23 @@ export default function TarefasPage() {
     const saved = localStorage.getItem("tarefas_view") as TasksView;
     return saved || "list";
   });
+=======
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+>>>>>>> origin/main
   const [form, setForm] = useState({
     titulo: "",
     descricao: "",
-    projeto_id: 0,
+    projeto_id: "",
     status: "pendente",
     prioridade: "",
-    responsavel_id: 0,
+    responsavel_id: "",
     data_vencimento: "",
     is_recurring: false,
     recurrence_type: "diaria",
     recurrence_interval: 1,
     recurrence_end_date: "",
-    assigned_user_ids: [] as number[],
+    assigned_user_ids: [] as string[],
   });
 
   async function load() {
@@ -118,7 +123,7 @@ export default function TarefasPage() {
         api<Projeto[]>("/api/v1/projetos").catch(() => []),
         api<Usuario[]>("/api/v1/usuarios").catch(() => []),
       ]);
-      
+
       // apiClient já extrai data do formato {ok: true, data: [...]}
       setList(Array.isArray(t) ? t : []);
       setProjetos(Array.isArray(p) ? p : []);
@@ -138,7 +143,7 @@ export default function TarefasPage() {
       // Tentar carregar database padrão - se não existir, retorna null silenciosamente
       const db = await api<any>("/api/v1/task-notion/databases/default").catch(() => null);
       const props = await api<any[]>("/api/v1/task-notion/databases/default/properties").catch(() => []);
-      
+
       // Se db for null, não há database padrão (normal se não foi criado ainda)
       if (db) {
         setTaskDatabase(db);
@@ -163,10 +168,10 @@ export default function TarefasPage() {
     setForm({
       titulo: "",
       descricao: "",
-      projeto_id: projetos[0]?.id ?? 0,
+      projeto_id: projetos[0]?.id ?? "",
       status: "pendente",
       prioridade: "",
-      responsavel_id: 0,
+      responsavel_id: "",
       data_vencimento: "",
       is_recurring: false,
       recurrence_type: "diaria",
@@ -185,7 +190,7 @@ export default function TarefasPage() {
       projeto_id: t.projeto_id,
       status: t.status,
       prioridade: t.prioridade || "",
-      responsavel_id: t.responsavel_id ?? 0,
+      responsavel_id: t.responsavel_id ?? "",
       data_vencimento: t.data_vencimento || "",
       is_recurring: t.is_recurring || false,
       recurrence_type: t.recurrence_type || "diaria",
@@ -227,7 +232,7 @@ export default function TarefasPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao salvar tarefa";
-      
+
       if (errorCode === "VALIDATION_ERROR") {
         toast({
           title: "Erro de validação",
@@ -271,7 +276,7 @@ export default function TarefasPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao excluir tarefa";
-      
+
       if (errorCode === "TASK_NOT_FOUND") {
         toast({
           title: "Tarefa não encontrada",
@@ -317,7 +322,7 @@ export default function TarefasPage() {
       );
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao atualizar tarefa";
-      
+
       if (errorCode === "TASK_NOT_FOUND") {
         toast({
           title: "Tarefa não encontrada",
@@ -337,7 +342,7 @@ export default function TarefasPage() {
   function handleViewChange(newView: TasksView) {
     // Não disparar requests duplicados se já está na mesma view
     if (newView === view) return;
-    
+
     setView(newView);
     if (typeof window !== "undefined") {
       localStorage.setItem("tarefas_view", newView);
@@ -357,10 +362,10 @@ export default function TarefasPage() {
     setForm({
       titulo: "",
       descricao: "",
-      projeto_id: projetos[0]?.id ?? 0,
+      projeto_id: projetos[0]?.id ?? "",
       status: "pendente",
       prioridade: "",
-      responsavel_id: 0,
+      responsavel_id: "",
       data_vencimento: dateStr,
       is_recurring: false,
       recurrence_type: "diaria",
@@ -374,9 +379,9 @@ export default function TarefasPage() {
 
   const projetoMap = Object.fromEntries(projetos.map((p) => [p.id, p.nome]));
   const usuarioMap = Object.fromEntries(usuarios.map((u) => [u.id, u.nome]));
-  
+
   // Filtrar usuários do marketing
-  const marketingUsers = usuarios.filter((u) => 
+  const marketingUsers = usuarios.filter((u) =>
     u.roles?.some((r) => r.key === "MARKETING" || r.key === "MARKETING_MANAGER")
   );
 
@@ -482,7 +487,7 @@ export default function TarefasPage() {
                 <ListTodo className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa encontrada</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {projetos.length === 0 
+                  {projetos.length === 0
                     ? "Crie um projeto primeiro para começar a adicionar tarefas."
                     : "Comece criando sua primeira tarefa."}
                 </p>
@@ -494,125 +499,125 @@ export default function TarefasPage() {
                 )}
               </div>
             ) : (
-            <>
-              {/* Cards Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
-                {list.map((t) => (
-                  <Card key={t.id} className="border border-border/60 shadow-md hover:shadow-lg transition-shadow bg-card">
-                    <CardContent className="p-4">
-                      {/* Header */}
-                      <div className="mb-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary flex-shrink-0">
-                            <ListTodo className="h-4 w-4" />
+              <>
+                {/* Cards Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+                  {list.map((t) => (
+                    <Card key={t.id} className="border border-border/60 shadow-md hover:shadow-lg transition-shadow bg-card">
+                      <CardContent className="p-4">
+                        {/* Header */}
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary flex-shrink-0">
+                              <ListTodo className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm leading-tight truncate text-foreground">{t.titulo}</h3>
+                              <p className="text-xs text-muted-foreground">#{t.id}</p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm leading-tight truncate text-foreground">{t.titulo}</h3>
-                            <p className="text-xs text-muted-foreground">#{t.id}</p>
-                          </div>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                            {t.status}
+                          </span>
                         </div>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                          {t.status}
-                        </span>
-                      </div>
 
-                      {/* Divider */}
-                      <div className="border-t border-border/50 my-3" />
+                        {/* Divider */}
+                        <div className="border-t border-border/50 my-3" />
 
-                      {/* Info Compact */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <FolderKanban className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          <p className="text-xs text-foreground truncate flex-1">{projetoMap[t.projeto_id] ?? "-"}</p>
+                        {/* Info Compact */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <FolderKanban className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <p className="text-xs text-foreground truncate flex-1">{projetoMap[t.projeto_id] ?? "-"}</p>
+                          </div>
+                          {t.responsavel_id && (
+                            <div className="flex items-center gap-2">
+                              <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <p className="text-xs text-foreground truncate flex-1">{usuarioMap[t.responsavel_id] ?? "-"}</p>
+                            </div>
+                          )}
+                          {t.data_vencimento && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <p className="text-xs text-foreground">
+                                {new Date(t.data_vencimento).toLocaleDateString("pt-BR")}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        {t.responsavel_id && (
-                          <div className="flex items-center gap-2">
-                            <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <p className="text-xs text-foreground truncate flex-1">{usuarioMap[t.responsavel_id] ?? "-"}</p>
-                          </div>
-                        )}
-                        {t.data_vencimento && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <p className="text-xs text-foreground">
-                              {new Date(t.data_vencimento).toLocaleDateString("pt-BR")}
-                            </p>
-                          </div>
-                        )}
-                      </div>
 
-                      {/* Action Buttons */}
-                      <div className="border-t border-border/50 mt-3 pt-3 flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 px-2" 
-                          onClick={() => openEdit(t)}
-                          title="Editar"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 px-2" 
-                          onClick={() => setCobrarTaskId(t.id)}
-                          title="Cobrar"
-                        >
-                          <Bell className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 px-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" 
-                          onClick={() => setDeleteId(t.id)}
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        {/* Action Buttons */}
+                        <div className="border-t border-border/50 mt-3 pt-3 flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2"
+                            onClick={() => openEdit(t)}
+                            title="Editar"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2"
+                            onClick={() => setCobrarTaskId(t.id)}
+                            title="Cobrar"
+                          >
+                            <Bell className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={() => setDeleteId(t.id)}
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
 
-              {/* Tabela para desktop - oculta */}
-              <div className="hidden overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Projeto</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Responsável</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {list.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell>{t.id}</TableCell>
-                        <TableCell>{t.titulo}</TableCell>
-                        <TableCell>{projetoMap[t.projeto_id] ?? "-"}</TableCell>
-                        <TableCell>{t.status}</TableCell>
-                        <TableCell>{t.responsavel_id ? usuarioMap[t.responsavel_id] ?? "-" : "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteId(t.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                {/* Tabela para desktop - oculta */}
+                <div className="hidden overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Título</TableHead>
+                        <TableHead>Projeto</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead className="w-[100px]">Ações</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
+                    </TableHeader>
+                    <TableBody>
+                      {list.map((t) => (
+                        <TableRow key={t.id}>
+                          <TableCell>{t.id}</TableCell>
+                          <TableCell>{t.titulo}</TableCell>
+                          <TableCell>{projetoMap[t.projeto_id] ?? "-"}</TableCell>
+                          <TableCell>{t.status}</TableCell>
+                          <TableCell>{t.responsavel_id ? usuarioMap[t.responsavel_id] ?? "-" : "-"}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteId(t.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -644,7 +649,7 @@ export default function TarefasPage() {
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={form.projeto_id}
-                onChange={(e) => setForm((f) => ({ ...f, projeto_id: Number(e.target.value) }))}
+                onChange={(e) => setForm((f) => ({ ...f, projeto_id: e.target.value }))}
               >
                 {projetos.map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
@@ -678,9 +683,9 @@ export default function TarefasPage() {
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={form.responsavel_id}
-                onChange={(e) => setForm((f) => ({ ...f, responsavel_id: Number(e.target.value) }))}
+                onChange={(e) => setForm((f) => ({ ...f, responsavel_id: e.target.value }))}
               >
-                <option value={0}>Nenhum</option>
+                <option value="">Nenhum</option>
                 {usuarios.map((u) => (
                   <option key={u.id} value={u.id}>{u.nome}</option>
                 ))}
@@ -694,7 +699,7 @@ export default function TarefasPage() {
                 onChange={(e) => setForm((f) => ({ ...f, data_vencimento: e.target.value }))}
               />
             </div>
-            
+
             {/* Seleção múltipla de usuários (especialmente marketing) */}
             <div className="grid gap-2">
               <Label>Atribuir a usuários (Marketing)</Label>
@@ -744,7 +749,7 @@ export default function TarefasPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Configuração de recorrência */}
             <div className="grid gap-2 border-t pt-4">
               <div className="flex items-center gap-2">
@@ -757,7 +762,7 @@ export default function TarefasPage() {
                   Tarefa recorrente
                 </Label>
               </div>
-              
+
               {form.is_recurring && (
                 <div className="grid gap-3 pl-6 border-l-2 border-primary/20">
                   <div className="grid grid-cols-2 gap-3">
@@ -793,7 +798,7 @@ export default function TarefasPage() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    A tarefa será gerada automaticamente {form.recurrence_type === "diaria" ? "diariamente" : form.recurrence_type === "semanal" ? "semanalmente" : "mensalmente"} 
+                    A tarefa será gerada automaticamente {form.recurrence_type === "diaria" ? "diariamente" : form.recurrence_type === "semanal" ? "semanalmente" : "mensalmente"}
                     {" "}a cada {form.recurrence_interval} {form.recurrence_type === "diaria" ? "dia(s)" : form.recurrence_type === "semanal" ? "semana(s)" : "mês(es)"} até a data final.
                   </p>
                 </div>

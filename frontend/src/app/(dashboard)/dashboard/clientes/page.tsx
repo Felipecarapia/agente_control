@@ -29,7 +29,7 @@ import { Plus, Pencil, Trash2, UserCircle, Mail, Phone, MapPin, Building2 } from
 import { CardSkeleton } from "@/components/ui/card-skeleton";
 
 type Cliente = {
-  id: number;
+  id: string;
   tipo: string;
   nome: string;
   razao_social: string | null;
@@ -44,7 +44,7 @@ export default function ClientesPage() {
   const router = useRouter();
   const [list, setList] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   async function loadList() {
     setLoading(true);

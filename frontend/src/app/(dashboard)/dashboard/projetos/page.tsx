@@ -35,13 +35,13 @@ const TIPO_LABEL: Record<string, string> = {
   lancamento: "Lançamento",
 };
 
-type Cliente = { id: number; nome: string };
+type Cliente = { id: string; nome: string };
 type Projeto = {
-  id: number;
+  id: string;
   tipo: string;
   nome: string;
   descricao: string | null;
-  cliente_id: number;
+  cliente_id: string;
   status: string;
   data_inicio: string | null;
   data_fim: string | null;
@@ -55,8 +55,8 @@ export default function ProjetosPage() {
   const [list, setList] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [cobrarProjectId, setCobrarProjectId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [cobrarProjectId, setCobrarProjectId] = useState<string | null>(null);
 
   async function loadList() {
     setLoading(true);
@@ -65,7 +65,7 @@ export default function ProjetosPage() {
         api<Projeto[]>("/api/v1/projetos").catch(() => []),
         api<Cliente[]>("/api/v1/clientes").catch(() => []),
       ]);
-      
+
       // apiClient já extrai data do formato {ok: true, data: [...]}
       setList(Array.isArray(p) ? p : []);
       setClientes(Array.isArray(c) ? c : []);
@@ -91,7 +91,7 @@ export default function ProjetosPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao excluir projeto";
-      
+
       if (errorCode === "PROJECT_NOT_FOUND") {
         alert("Projeto não encontrado");
       } else {
@@ -198,29 +198,29 @@ export default function ProjetosPage() {
 
                         {/* Action Buttons */}
                         <div className="border-t border-border/50 mt-3 pt-3 flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 h-8 px-2" 
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-8 px-2"
                             asChild
                           >
                             <Link href={`/dashboard/projetos/${p.id}`} className="flex items-center justify-center">
                               <Pencil className="h-3.5 w-3.5" />
                             </Link>
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 px-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground" 
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
                             onClick={() => setCobrarProjectId(p.id)}
                             title="Cobrar membros"
                           >
                             <Bell className="h-3.5 w-3.5" />
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 px-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" 
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                             onClick={() => setDeleteId(p.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />

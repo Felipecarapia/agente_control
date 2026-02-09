@@ -36,13 +36,13 @@ import { Plus, Pencil, Trash2, Shield } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type Role = {
-  id: number;
+  id: string;
   key: string;
   name: string;
 };
 
 type Usuario = {
-  id: number;
+  id: string;
   email: string;
   nome: string;
   ativo: boolean;
@@ -57,10 +57,10 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [rolesOpen, setRolesOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [selectedUserRoles, setSelectedUserRoles] = useState<Set<number>>(new Set());
-  const [editId, setEditId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserRoles, setSelectedUserRoles] = useState<Set<string>>(new Set());
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ email: "", nome: "", password: "", ativo: true });
 
   const [hasPermission, setHasPermission] = useState(true);
@@ -79,7 +79,7 @@ export default function UsuariosPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const status = e?.status || 0;
-      
+
       // Se for 403, usuário não tem permissão
       if (status === 403 || errorCode === "FORBIDDEN") {
         setHasPermission(false);
@@ -129,7 +129,7 @@ export default function UsuariosPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao salvar usuário";
-      
+
       if (errorCode === "VALIDATION_ERROR") {
         alert("Dados inválidos. Verifique os campos obrigatórios.");
       } else if (errorCode === "EMAIL_ALREADY_EXISTS") {
@@ -151,7 +151,7 @@ export default function UsuariosPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao excluir usuário";
-      
+
       if (errorCode === "USER_NOT_FOUND") {
         alert("Usuário não encontrado.");
       } else if (errorCode === "CANNOT_DELETE_SELF") {
@@ -167,7 +167,7 @@ export default function UsuariosPage() {
   async function openRolesModal(user: Usuario) {
     setSelectedUserId(user.id);
     try {
-      const userRolesData = await api<{ user_id: number; roles: Role[] }>(`/api/v1/roles/users/${user.id}`);
+      const userRolesData = await api<{ user_id: string; roles: Role[] }>(`/api/v1/roles/users/${user.id}`);
       setSelectedUserRoles(new Set(userRolesData.roles.map((r) => r.id)));
       setRolesOpen(true);
     } catch (e: any) {
@@ -177,7 +177,7 @@ export default function UsuariosPage() {
     }
   }
 
-  function toggleRole(roleId: number) {
+  function toggleRole(roleId: string) {
     setSelectedUserRoles((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(roleId)) {
@@ -193,9 +193,9 @@ export default function UsuariosPage() {
     if (!selectedUserId) return;
     try {
       // Obter roles atuais do usuário
-      const currentRoles = await api<{ user_id: number; roles: Role[] }>(`/api/v1/roles/users/${selectedUserId}`);
+      const currentRoles = await api<{ user_id: string; roles: Role[] }>(`/api/v1/roles/users/${selectedUserId}`);
       const currentRoleIds = new Set(currentRoles.roles.map((r) => r.id));
-      
+
       // Adicionar novos roles
       for (const roleId of selectedUserRoles) {
         if (!currentRoleIds.has(roleId)) {
@@ -205,7 +205,7 @@ export default function UsuariosPage() {
           });
         }
       }
-      
+
       // Remover roles desmarcados
       for (const roleId of currentRoleIds) {
         if (!selectedUserRoles.has(roleId)) {
@@ -214,14 +214,14 @@ export default function UsuariosPage() {
           });
         }
       }
-      
+
       setRolesOpen(false);
       setSelectedUserId(null);
       loadList();
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao salvar cargos";
-      
+
       if (errorCode === "FORBIDDEN" || e?.status === 403) {
         alert("Você não tem permissão para gerenciar cargos.");
       } else {

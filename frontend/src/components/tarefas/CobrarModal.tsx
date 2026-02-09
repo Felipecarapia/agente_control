@@ -18,7 +18,7 @@ import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
 type Member = {
-  id: number;
+  id: string;
   nome: string;
   email: string;
 };
@@ -44,7 +44,7 @@ const PRESETS = [
 interface CobrarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  taskId: number;
+  taskId: string;
   taskName: string;
 }
 
@@ -55,8 +55,8 @@ export function CobrarModal({ open, onOpenChange, taskId, taskName }: CobrarModa
   const [sending, setSending] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState("PENDING_CHECK");
   const [customMessage, setCustomMessage] = useState("");
-  const [selectedMembers, setSelectedMembers] = useState<Set<number>>(new Set());
-  const [dmRecipient, setDmRecipient] = useState<number | null>(null);
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  const [dmRecipient, setDmRecipient] = useState<string | null>(null);
   const [dmContent, setDmContent] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -114,7 +114,7 @@ export function CobrarModal({ open, onOpenChange, taskId, taskName }: CobrarModa
 
       // Fechar modal imediatamente
       onOpenChange(false);
-      
+
       // Mostrar notificação flutuante
       toast({
         variant: "success",
@@ -131,7 +131,7 @@ export function CobrarModal({ open, onOpenChange, taskId, taskName }: CobrarModa
     }
   }
 
-  async function handleSendDM(userId: number) {
+  async function handleSendDM(userId: string) {
     if (!dmContent.trim()) {
       alert("Digite uma mensagem");
       return;
@@ -149,14 +149,14 @@ export function CobrarModal({ open, onOpenChange, taskId, taskName }: CobrarModa
 
       // Fechar modal imediatamente
       onOpenChange(false);
-      
+
       // Mostrar notificação flutuante
       toast({
         variant: "success",
         title: "Mensagem enviada",
         description: "Sua mensagem direta foi enviada com sucesso.",
       });
-      
+
       setDmRecipient(null);
       setDmContent("");
     } catch (e) {
@@ -168,7 +168,7 @@ export function CobrarModal({ open, onOpenChange, taskId, taskName }: CobrarModa
     }
   }
 
-  function toggleMember(userId: number) {
+  function toggleMember(userId: string) {
     const newSet = new Set(selectedMembers);
     if (newSet.has(userId)) {
       newSet.delete(userId);
@@ -211,158 +211,157 @@ export function CobrarModal({ open, onOpenChange, taskId, taskName }: CobrarModa
 
         {dmRecipient ? (
           <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setDmRecipient(null);
-                      setDmContent("");
-                    }}
-                  >
-                    ← Voltar
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Mensagem direta para{" "}
-                    {members.find((m) => m.id === dmRecipient)?.nome}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <Label>Mensagem</Label>
-                  <Textarea
-                    value={dmContent}
-                    onChange={(e) => setDmContent(e.target.value)}
-                    placeholder="Digite sua mensagem..."
-                    rows={4}
-                    maxLength={2000}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {dmContent.length}/2000 caracteres
-                  </p>
-                </div>
-                <Button
-                  onClick={() => handleSendDM(dmRecipient)}
-                  disabled={sending || !dmContent.trim()}
-                  className="w-full"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Enviar mensagem
-                </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDmRecipient(null);
+                  setDmContent("");
+                }}
+              >
+                ← Voltar
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Mensagem direta para{" "}
+                {members.find((m) => m.id === dmRecipient)?.nome}
+              </span>
+            </div>
+            <div className="space-y-2">
+              <Label>Mensagem</Label>
+              <Textarea
+                value={dmContent}
+                onChange={(e) => setDmContent(e.target.value)}
+                placeholder="Digite sua mensagem..."
+                rows={4}
+                maxLength={2000}
+              />
+              <p className="text-xs text-muted-foreground">
+                {dmContent.length}/2000 caracteres
+              </p>
+            </div>
+            <Button
+              onClick={() => handleSendDM(dmRecipient)}
+              disabled={sending || !dmContent.trim()}
+              className="w-full"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Enviar mensagem
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Template de cobrança</Label>
-                  <div className="grid gap-2">
-                    {PRESETS.map((p) => (
-                      <button
-                        key={p.key}
-                        type="button"
-                        onClick={() => setSelectedPreset(p.key)}
-                        className={`p-3 text-left rounded-lg border transition-colors ${
-                          selectedPreset === p.key
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:bg-muted/50"
-                        }`}
-                      >
-                        <div className="font-medium text-sm">{p.label}</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {p.message.replace("{taskName}", taskName)}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Mensagem personalizada (opcional)</Label>
-                  <Textarea
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    placeholder="Deixe vazio para usar o template selecionado"
-                    rows={3}
-                    maxLength={500}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Membros da tarefa</Label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        if (selectedMembers.size === members.length) {
-                          setSelectedMembers(new Set());
-                        } else {
-                          setSelectedMembers(new Set(members.map((m) => m.id)));
-                        }
-                      }}
-                    >
-                      {selectedMembers.size === members.length ? "Desmarcar todos" : "Selecionar todos"}
-                    </Button>
-                  </div>
-                  {loading ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      Carregando membros...
+            <div className="space-y-2">
+              <Label>Template de cobrança</Label>
+              <div className="grid gap-2">
+                {PRESETS.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setSelectedPreset(p.key)}
+                    className={`p-3 text-left rounded-lg border transition-colors ${selectedPreset === p.key
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50"
+                      }`}
+                  >
+                    <div className="font-medium text-sm">{p.label}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {p.message.replace("{taskName}", taskName)}
                     </div>
-                  ) : members.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
-                      <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Nenhum membro encontrado nesta tarefa</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {members.map((member) => (
-                        <Card key={member.id} className="border-border/80">
-                          <CardContent className="p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
-                                  <User className="h-4 w-4" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">{member.nome}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2 flex-shrink-0">
-                                <Button
-                                  variant={selectedMembers.has(member.id) ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => toggleMember(member.id)}
-                                  className="h-8"
-                                >
-                                  <Bell className="h-3.5 w-3.5 mr-1" />
-                                  Cobrar
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setDmRecipient(member.id)}
-                                  className="h-8"
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                                  DM
-                                </Button>
-                              </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Mensagem personalizada (opcional)</Label>
+              <Textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                placeholder="Deixe vazio para usar o template selecionado"
+                rows={3}
+                maxLength={500}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Membros da tarefa</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (selectedMembers.size === members.length) {
+                      setSelectedMembers(new Set());
+                    } else {
+                      setSelectedMembers(new Set(members.map((m) => m.id)));
+                    }
+                  }}
+                >
+                  {selectedMembers.size === members.length ? "Desmarcar todos" : "Selecionar todos"}
+                </Button>
+              </div>
+              {loading ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Carregando membros...
+                </div>
+              ) : members.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Nenhum membro encontrado nesta tarefa</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {members.map((member) => (
+                    <Card key={member.id} className="border-border/80">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
+                              <User className="h-4 w-4" />
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{member.nome}</p>
+                              <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <Button
+                              variant={selectedMembers.has(member.id) ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => toggleMember(member.id)}
+                              className="h-8"
+                            >
+                              <Bell className="h-3.5 w-3.5 mr-1" />
+                              Cobrar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDmRecipient(member.id)}
+                              className="h-8"
+                            >
+                              <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                              DM
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
+              )}
+            </div>
 
-                {selectedMembers.size > 0 && (
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm font-medium mb-1">Preview da mensagem:</p>
-                    <p className="text-sm text-muted-foreground">{previewMessage}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Será enviada para {selectedMembers.size} membro(s)
-                    </p>
-                  </div>
-                )}
+            {selectedMembers.size > 0 && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-1">Preview da mensagem:</p>
+                <p className="text-sm text-muted-foreground">{previewMessage}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Será enviada para {selectedMembers.size} membro(s)
+                </p>
+              </div>
+            )}
           </div>
         )}
 

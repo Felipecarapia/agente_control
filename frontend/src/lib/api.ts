@@ -15,7 +15,7 @@ export async function api<T>(
 
 // Função específica para upload de imagens de proposta
 export async function uploadPropostaImage(
-  propostaId: number,
+  propostaId: string,
   file: File
 ): Promise<{ url: string }> {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";

@@ -7,7 +7,7 @@ import { API_URL, uploadPropostaImage } from "@/lib/api";
 import { Upload, X } from "lucide-react";
 
 type Props = {
-  propostaId: number;
+  propostaId: string;
   value: string;
   onChange: (url: string) => void;
   label?: string;

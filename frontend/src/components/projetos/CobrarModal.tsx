@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 
 type Member = {
-  id: number;
+  id: string;
   nome: string;
   email: string;
 };
@@ -43,7 +43,7 @@ const PRESETS = [
 interface CobrarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: number;
+  projectId: string;
   projectName: string;
 }
 
@@ -53,8 +53,8 @@ export function CobrarModal({ open, onOpenChange, projectId, projectName }: Cobr
   const [sending, setSending] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState("PENDING_CHECK");
   const [customMessage, setCustomMessage] = useState("");
-  const [selectedMembers, setSelectedMembers] = useState<Set<number>>(new Set());
-  const [dmRecipient, setDmRecipient] = useState<number | null>(null);
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  const [dmRecipient, setDmRecipient] = useState<string | null>(null);
   const [dmContent, setDmContent] = useState("");
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,9 +120,9 @@ export function CobrarModal({ open, onOpenChange, projectId, projectName }: Cobr
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Erro ao enviar";
       console.error("Erro ao enviar cobrança:", e);
-      
+
       let alertMessage = "";
-      
+
       if (errorMessage.includes("403") || errorMessage.includes("Requer")) {
         alertMessage = "❌ Você não tem permissão para enviar cobranças.\n\n";
         alertMessage += "É necessário ter o cargo:\n";
@@ -142,7 +142,7 @@ export function CobrarModal({ open, onOpenChange, projectId, projectName }: Cobr
         alertMessage += "1. A migration foi executada (alembic upgrade head)\n";
         alertMessage += "2. Você tem permissão (ADMIN ou PROJECT_MANAGER)";
       }
-      
+
       setError(alertMessage);
       setTimeout(() => setError(null), 10000); // Limpar erro após 10s
     } finally {
@@ -150,7 +150,7 @@ export function CobrarModal({ open, onOpenChange, projectId, projectName }: Cobr
     }
   }
 
-  async function handleSendDM(userId: number) {
+  async function handleSendDM(userId: string) {
     if (!dmContent.trim()) {
       alert("Digite uma mensagem");
       return;
@@ -181,7 +181,7 @@ export function CobrarModal({ open, onOpenChange, projectId, projectName }: Cobr
     }
   }
 
-  function toggleMember(userId: number) {
+  function toggleMember(userId: string) {
     const newSet = new Set(selectedMembers);
     if (newSet.has(userId)) {
       newSet.delete(userId);
@@ -211,7 +211,7 @@ export function CobrarModal({ open, onOpenChange, projectId, projectName }: Cobr
             <span>{success}</span>
           </div>
         )}
-        
+
         {error && (
           <div className="flex items-start gap-2 p-4 bg-destructive/10 text-destructive border border-destructive/30 rounded-lg">
             <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
@@ -281,11 +281,10 @@ export function CobrarModal({ open, onOpenChange, projectId, projectName }: Cobr
                         key={p.key}
                         type="button"
                         onClick={() => setSelectedPreset(p.key)}
-                        className={`p-3 text-left rounded-lg border transition-colors ${
-                          selectedPreset === p.key
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:bg-muted/50"
-                        }`}
+                        className={`p-3 text-left rounded-lg border transition-colors ${selectedPreset === p.key
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted/50"
+                          }`}
                       >
                         <div className="font-medium text-sm">{p.label}</div>
                         <div className="text-xs text-muted-foreground mt-1">

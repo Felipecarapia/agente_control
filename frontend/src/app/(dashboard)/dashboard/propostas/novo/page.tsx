@@ -11,15 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 
-type Cliente = { id: number; nome: string };
-type Projeto = { id: number; nome: string; cliente_id: number };
+type Cliente = { id: string; nome: string };
+type Projeto = { id: string; nome: string; cliente_id: string };
 
 const emptyForm = {
   titulo: "",
   descricao: "",
   valor: "",
-  cliente_id: 0,
-  projeto_id: 0,
+  cliente_id: "",
+  projeto_id: "",
   status: "rascunho",
   validade_ate: "",
 };
@@ -145,12 +145,12 @@ export default function NovaPropostaPage() {
                 onChange={(e) =>
                   setForm((f) => ({
                     ...f,
-                    cliente_id: Number(e.target.value),
-                    projeto_id: 0,
+                    cliente_id: e.target.value,
+                    projeto_id: "",
                   }))
                 }
               >
-                <option value={0}>Selecione um cliente</option>
+                <option value="">Selecione um cliente</option>
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nome}
@@ -164,9 +164,9 @@ export default function NovaPropostaPage() {
               <select
                 className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={form.projeto_id}
-                onChange={(e) => setForm((f) => ({ ...f, projeto_id: Number(e.target.value) }))}
+                onChange={(e) => setForm((f) => ({ ...f, projeto_id: e.target.value }))}
               >
-                <option value={0}>Nenhum</option>
+                <option value="">Nenhum</option>
                 {projetosDoCliente.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nome}

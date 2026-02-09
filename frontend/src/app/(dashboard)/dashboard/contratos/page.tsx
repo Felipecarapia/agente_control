@@ -12,10 +12,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, FileSignature, User, DollarSign, Calendar, Hash } from "lucide-react";
 
-type Cliente = { id: number; nome: string };
-type Projeto = { id: number; nome: string };
-type Proposta = { id: number; titulo: string };
-type Contrato = { id: number; numero: string; proposta_id: number | null; cliente_id: number; projeto_id: number | null; valor: string; data_inicio: string | null; data_fim: string | null; status: string };
+type Cliente = { id: string; nome: string };
+type Projeto = { id: string; nome: string };
+type Proposta = { id: string; titulo: string };
+type Contrato = { id: string; numero: string; proposta_id: string | null; cliente_id: string; projeto_id: string | null; valor: string; data_inicio: string | null; data_fim: string | null; status: string };
 
 export default function ContratosPage() {
   const [list, setList] = useState<Contrato[]>([]);
@@ -24,9 +24,9 @@ export default function ContratosPage() {
   const [propostas, setPropostas] = useState<Proposta[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [form, setForm] = useState({ numero: "", proposta_id: 0, cliente_id: 0, projeto_id: 0, valor: "", data_inicio: "", data_fim: "", status: "draft" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [form, setForm] = useState({ numero: "", proposta_id: "", cliente_id: "", projeto_id: "", valor: "", data_inicio: "", data_fim: "", status: "ativo" });
 
   async function load() {
     setLoading(true);
@@ -37,7 +37,7 @@ export default function ContratosPage() {
         api<Projeto[]>("/api/v1/projetos").catch(() => []),
         api<Proposta[]>("/api/v1/propostas").catch(() => []),
       ]);
-      
+
       // apiClient já extrai data do formato {ok: true, data: [...]}
       setList(Array.isArray(ct) ? ct : []);
       setClientes(Array.isArray(c) ? c : []);
@@ -57,25 +57,25 @@ export default function ContratosPage() {
 
   function openCreate() {
     setEditId(null);
-    setForm({ numero: "", proposta_id: 0, cliente_id: clientes[0]?.id ?? 0, projeto_id: 0, valor: "", data_inicio: "", data_fim: "", status: "draft" });
+    setForm({ numero: "", proposta_id: "", cliente_id: clientes[0]?.id ?? "", projeto_id: "", valor: "", data_inicio: "", data_fim: "", status: "ativo" });
     setOpen(true);
   }
   function openEdit(item: Contrato) {
     setEditId(item.id);
-    setForm({ numero: item.numero, proposta_id: item.proposta_id ?? 0, cliente_id: item.cliente_id, projeto_id: item.projeto_id ?? 0, valor: String(item.valor ?? ""), data_inicio: item.data_inicio || "", data_fim: item.data_fim || "", status: item.status });
+    setForm({ numero: item.numero, proposta_id: item.proposta_id ?? "", cliente_id: item.cliente_id, projeto_id: item.projeto_id ?? "", valor: String(item.valor ?? ""), data_inicio: item.data_inicio || "", data_fim: item.data_fim || "", status: item.status });
     setOpen(true);
   }
   async function save() {
     try {
-      const body = { 
-        numero: form.numero, 
-        proposta_id: form.proposta_id || null, 
-        cliente_id: form.cliente_id, 
-        projeto_id: form.projeto_id || null, 
-        valor: form.valor ? Number(form.valor) : null, 
-        data_inicio: form.data_inicio || null, 
-        data_fim: form.data_fim || null, 
-        status: form.status 
+      const body = {
+        numero: form.numero,
+        proposta_id: form.proposta_id || null,
+        cliente_id: form.cliente_id,
+        projeto_id: form.projeto_id || null,
+        valor: form.valor ? Number(form.valor) : null,
+        data_inicio: form.data_inicio || null,
+        data_fim: form.data_fim || null,
+        status: form.status
       };
       if (editId) {
         await api(`/api/v1/contratos/${editId}`, { method: "PATCH", body: JSON.stringify(body) });
@@ -87,7 +87,7 @@ export default function ContratosPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao salvar contrato";
-      
+
       if (errorCode === "VALIDATION_ERROR") {
         alert("Dados inválidos. Verifique os campos obrigatórios.");
       } else if (errorCode === "CONTRACT_DUPLICATE") {
@@ -112,7 +112,7 @@ export default function ContratosPage() {
     } catch (e: any) {
       const errorCode = e?.code || "UNKNOWN";
       const errorMsg = e?.message || "Erro ao excluir contrato";
-      
+
       if (errorCode === "CONTRACT_NOT_FOUND") {
         alert("Contrato não encontrado.");
       } else {
@@ -145,7 +145,7 @@ export default function ContratosPage() {
               <FileSignature className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">Nenhum contrato encontrado</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {clientes.length === 0 
+                {clientes.length === 0
                   ? "Crie um cliente primeiro para começar a adicionar contratos."
                   : "Comece criando seu primeiro contrato."}
               </p>
@@ -207,18 +207,18 @@ export default function ContratosPage() {
 
                       {/* Action Buttons */}
                       <div className="border-t border-border/50 mt-3 pt-3 flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1 h-8 px-2" 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-8 px-2"
                           onClick={() => openEdit(item)}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 px-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                           onClick={() => setDeleteId(item.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -271,19 +271,19 @@ export default function ContratosPage() {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2"><Label>Número</Label><Input value={form.numero} onChange={(e) => setForm((f) => ({ ...f, numero: e.target.value }))} /></div>
             <div className="grid gap-2"><Label>Cliente</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.cliente_id} onChange={(e) => setForm((f) => ({ ...f, cliente_id: Number(e.target.value) }))}>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.cliente_id} onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))}>
                 {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div className="grid gap-2"><Label>Proposta (opcional)</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.proposta_id} onChange={(e) => setForm((f) => ({ ...f, proposta_id: Number(e.target.value) }))}>
-                <option value={0}>Nenhuma</option>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.proposta_id} onChange={(e) => setForm((f) => ({ ...f, proposta_id: e.target.value }))}>
+                <option value="">Nenhuma</option>
                 {propostas.map((p) => <option key={p.id} value={p.id}>{p.titulo}</option>)}
               </select>
             </div>
             <div className="grid gap-2"><Label>Projeto (opcional)</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.projeto_id} onChange={(e) => setForm((f) => ({ ...f, projeto_id: Number(e.target.value) }))}>
-                <option value={0}>Nenhum</option>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.projeto_id} onChange={(e) => setForm((f) => ({ ...f, projeto_id: e.target.value }))}>
+                <option value="">Nenhum</option>
                 {projetos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
               </select>
             </div>

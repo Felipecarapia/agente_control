@@ -20,13 +20,13 @@ const TIPOS = [
   { value: "lancamento", label: "Lançamento" },
 ] as const;
 
-type Cliente = { id: number; nome: string };
+type Cliente = { id: string; nome: string };
 type Projeto = {
-  id: number;
+  id: string;
   tipo: string;
   nome: string;
   descricao: string | null;
-  cliente_id: number;
+  cliente_id: string;
   status: string;
   data_inicio: string | null;
   data_fim: string | null;
@@ -40,7 +40,7 @@ const emptyForm = {
   tipo: "desenvolvimento_software" as string,
   nome: "",
   descricao: "",
-  cliente_id: 0,
+  cliente_id: "",
   status: "ativo",
   data_inicio: "",
   data_fim: "",
@@ -53,7 +53,7 @@ const emptyForm = {
 export default function EditarProjetoPage() {
   const router = useRouter();
   const params = useParams();
-  const id = Number(params.id);
+  const id = params.id;
   const [form, setForm] = useState(emptyForm);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function EditarProjetoPage() {
   const [cobrarOpen, setCobrarOpen] = useState(false);
 
   useEffect(() => {
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     Promise.all([
       api<Projeto>(`/api/v1/projetos/${id}`),
       api<Cliente[]>("/api/v1/clientes"),
@@ -96,7 +96,7 @@ export default function EditarProjetoPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!id || isNaN(id)) return;
+    if (!id) return;
     setLoading(true);
     try {
       await api(`/api/v1/projetos/${id}`, {
@@ -245,7 +245,7 @@ export default function EditarProjetoPage() {
                     value={form.cliente_id}
                     onChange={(e) => setForm((f) => ({ ...f, cliente_id: Number(e.target.value) }))}
                   >
-                    <option value={0}>Selecione um cliente</option>
+                    <option value="">Selecione um cliente</option>
                     {clientes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nome}
