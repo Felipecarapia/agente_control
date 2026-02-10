@@ -31,8 +31,15 @@ from app.models.whatsapp import WhatsAppConnection, WhatsAppProvider, WhatsAppCo
 from app.models.agent import AIAgent, AgentConversation, AIAgentProvider, ConversationChannel, ConversationStatus
 from app.models.campaign import (
     Campaign, CampaignLead, CampaignType, CampaignStatus,
-    CampaignLeadSource, CampaignLeadStatus
+    CampaignLeadSource, CampaignLeadStatus,
+    CampaignLeadConversation, CampaignLeadMessage,
+    CampaignConvStatus, CampaignMsgRole, CampaignMsgChannel,
 )
+from app.models.financeiro import (
+    ContaPagar, ContaReceber, CentroCusto, ContaBancaria, DespesaFixa,
+    ContaStatus, ContaCategoria, FormaPagamento, Recorrencia, TipoConta,
+)
+from app.models.rh import Funcionario, TipoContrato
 
 __all__ = [
     "Usuario", "Cliente", "Projeto", "Tarefa", "TarefaAssignee", "Proposta", "ProposalSection", "ProposalPricingPlan", "ProposalStatusEvent", "EmailOutbox",
@@ -60,4 +67,11 @@ __all__ = [
     # Campaigns
     "Campaign", "CampaignLead", "CampaignType", "CampaignStatus",
     "CampaignLeadSource", "CampaignLeadStatus",
+    "CampaignLeadConversation", "CampaignLeadMessage",
+    "CampaignConvStatus", "CampaignMsgRole", "CampaignMsgChannel",
+    # Financeiro
+    "ContaPagar", "ContaReceber", "CentroCusto", "ContaBancaria", "DespesaFixa",
+    "ContaStatus", "ContaCategoria", "FormaPagamento", "Recorrencia", "TipoConta",
+    # RH
+    "Funcionario", "TipoContrato",
 ]

@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.response import success_response, error_response, serialize_data
 from app.models.whatsapp import WhatsAppConnection
 from app.models.lead import Lead, LeadConversation, LeadMessage
+from app.models.campaign import CampaignLead, CampaignLeadConversation, CampaignLeadMessage
 from app.models.agent import AIAgent
 from app.models.usuario import Usuario
 from app.schemas.whatsapp import (
@@ -519,7 +520,185 @@ async def whatsapp_webhook(
 
                     db.commit()
                 else:
-                    logger.info(f"[WEBHOOK] Nenhuma conversa ativa para o telefone {sender_phone} (verificados {len(all_active_convs)} conversas ativas)")
+                    # ── Verificar CampaignLeadConversation ──
+                    campaign_conv = None
+
+                    # Estratégia 1: Match por remote_jid
+                    if remote_jid:
+                        campaign_conv = (
+                            db.query(CampaignLeadConversation)
+                            .filter(
+                                CampaignLeadConversation.status == "active",
+                                CampaignLeadConversation.remote_jid == remote_jid,
+                            )
+                            .first()
+                        )
+                        if campaign_conv:
+                            logger.info(f"[WEBHOOK] ✅ Campaign conv match por LID: {remote_jid} -> conv={campaign_conv.id}")
+
+                    # Estratégia 2: Match por telefone do campaign lead
+                    if not campaign_conv:
+                        all_campaign_convs = (
+                            db.query(CampaignLeadConversation)
+                            .join(CampaignLead, CampaignLead.id == CampaignLeadConversation.campaign_lead_id)
+                            .filter(CampaignLeadConversation.status == "active")
+                            .all()
+                        )
+
+                        def last_n_digits(phone_str: str, n: int = 8) -> str:
+                            digits = re.sub(r"\D", "", phone_str or "")
+                            return digits[-n:] if len(digits) >= n else digits
+
+                        sender_tail = last_n_digits(sender_phone, 8)
+                        for cconv in all_campaign_convs:
+                            cl = cconv.campaign_lead
+                            if cl and cl.phone:
+                                cl_tail = last_n_digits(cl.phone, 8)
+                                if sender_tail and cl_tail and cl_tail == sender_tail:
+                                    campaign_conv = cconv
+                                    logger.info(f"[WEBHOOK] ✅ Campaign conv match por telefone: {cl.business_name}")
+                                    break
+
+                    # Estratégia 3: Match por instância WhatsApp
+                    if not campaign_conv and instance:
+                        wa_conn = (
+                            db.query(WhatsAppConnection)
+                            .filter(WhatsAppConnection.instance_name == instance)
+                            .first()
+                        )
+                        if wa_conn:
+                            campaign_conv = (
+                                db.query(CampaignLeadConversation)
+                                .filter(
+                                    CampaignLeadConversation.status == "active",
+                                    CampaignLeadConversation.whatsapp_connection_id == wa_conn.id,
+                                )
+                                .order_by(CampaignLeadConversation.started_at.desc())
+                                .first()
+                            )
+                            if campaign_conv:
+                                logger.info(f"[WEBHOOK] ✅ Campaign conv match por instância: {instance}")
+
+                    if campaign_conv:
+                        logger.info(f"[WEBHOOK] Campaign conversa encontrada: {campaign_conv.id}")
+
+                        # Atualizar remote_jid
+                        if remote_jid and campaign_conv.remote_jid != remote_jid:
+                            campaign_conv.remote_jid = remote_jid
+
+                        # Salvar mensagem do lead
+                        camp_msg = CampaignLeadMessage(
+                            conversation_id=campaign_conv.id,
+                            role="lead",
+                            content=msg_text,
+                            sent_via="whatsapp",
+                        )
+                        db.add(camp_msg)
+                        campaign_conv.message_count = (campaign_conv.message_count or 0) + 1
+                        db.flush()
+
+                        # Detectar interesse
+                        INTEREST_KEYWORDS = ["sim", "quero", "interesse", "agendar", "orcamento", "orçamento", "gostaria", "preciso", "aceito"]
+                        msg_lower = msg_text.lower()
+                        if any(kw in msg_lower for kw in INTEREST_KEYWORDS):
+                            campaign_conv.interest_detected = True
+                            logger.info(f"[WEBHOOK] 🎯 Interesse detectado! msg='{msg_text[:50]}'")
+
+                        # Auto-conversão: interest_detected + message_count >= 3
+                        if campaign_conv.interest_detected and campaign_conv.message_count >= 3:
+                            if campaign_conv.status != "converted":
+                                campaign_conv.status = "converted"
+                                cl = campaign_conv.campaign_lead
+                                if cl and cl.status != "converted":
+                                    from app.models.lead import Lead as CRMLead
+                                    crm_lead = CRMLead(
+                                        nome=cl.business_name,
+                                        email=cl.email,
+                                        telefone=cl.phone,
+                                        whatsapp=cl.phone,
+                                        empresa=cl.business_name,
+                                        cidade=cl.city,
+                                        estado=cl.state,
+                                        site=cl.website,
+                                        origem="campanha",
+                                        origem_detalhe=f"Campanha outreach (auto-convertido)",
+                                        status="novo",
+                                        temperatura="quente",
+                                    )
+                                    db.add(crm_lead)
+                                    cl.status = "converted"
+                                    logger.info(f"[WEBHOOK] 🔄 Lead auto-convertido: {cl.business_name}")
+
+                        # Gerar resposta IA
+                        agent = campaign_conv.agent
+                        if agent:
+                            openai_key = settings.OPENAI_API_KEY or ""
+                            if openai_key:
+                                try:
+                                    prev_msgs = (
+                                        db.query(CampaignLeadMessage)
+                                        .filter(CampaignLeadMessage.conversation_id == campaign_conv.id)
+                                        .order_by(CampaignLeadMessage.created_at)
+                                        .all()
+                                    )
+                                    history = []
+                                    for pm in prev_msgs:
+                                        role = "assistant" if pm.role == "agent" else "user"
+                                        history.append({"role": role, "content": pm.content})
+
+                                    svc_ai = OpenAIAgentService(api_key=openai_key)
+                                    ai_result = await svc_ai.create_chat_completion(
+                                        system_prompt=agent.system_prompt,
+                                        messages=history,
+                                        model=agent.model,
+                                        temperature=agent.temperature,
+                                        max_tokens=agent.max_tokens,
+                                    )
+                                    reply_text = ai_result["response"]
+                                    logger.info(f"[WEBHOOK] Campaign IA respondeu ({len(reply_text)} chars)")
+
+                                    wa_conn = campaign_conv.whatsapp_connection
+                                    if wa_conn and wa_conn.instance_name:
+                                        cl = campaign_conv.campaign_lead
+                                        cl_phone = cl.phone if cl else sender_phone
+                                        reply_to = remote_jid if ("@lid" in remote_jid) else cl_phone
+                                        logger.info(f"[WEBHOOK] Campaign enviando resposta para: {reply_to}")
+
+                                        svc_wa = EvolutionAPIService(api_url=wa_conn.api_url, api_key=wa_conn.api_key)
+                                        try:
+                                            wa_result = await svc_wa.send_message(
+                                                instance_name=wa_conn.instance_name,
+                                                phone=reply_to,
+                                                text=reply_text,
+                                            )
+                                        except Exception as send_err:
+                                            if "@lid" in reply_to and cl_phone != reply_to:
+                                                wa_result = await svc_wa.send_message(
+                                                    instance_name=wa_conn.instance_name,
+                                                    phone=cl_phone,
+                                                    text=reply_text,
+                                                )
+                                            else:
+                                                raise send_err
+
+                                        wa_msg_id = wa_result.get("key", {}).get("id")
+                                        agent_msg = CampaignLeadMessage(
+                                            conversation_id=campaign_conv.id,
+                                            role="agent",
+                                            content=reply_text,
+                                            sent_via="whatsapp",
+                                            whatsapp_message_id=wa_msg_id,
+                                        )
+                                        db.add(agent_msg)
+                                        campaign_conv.message_count = (campaign_conv.message_count or 0) + 1
+                                        logger.info(f"[WEBHOOK] Campaign resposta enviada e salva!")
+
+                                except Exception as ai_err:
+                                    logger.error(f"[WEBHOOK] Campaign IA erro: {ai_err}", exc_info=True)
+
+                        db.commit()
+                    else:
+                        logger.info(f"[WEBHOOK] Nenhuma conversa ativa (Lead ou Campaign) para o telefone {sender_phone}")
 
         else:
             logger.info(f"[WEBHOOK] Evento não tratado: {event}")

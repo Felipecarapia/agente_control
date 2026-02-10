@@ -1,7 +1,7 @@
 import uuid
 import enum
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, Enum as SQLEnum
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -95,3 +95,66 @@ class CampaignLead(Base):
     contacted_at = Column(DateTime(timezone=True), nullable=True)
 
     campaign = relationship("Campaign", back_populates="leads")
+    conversations = relationship("CampaignLeadConversation", back_populates="campaign_lead", cascade="all, delete-orphan")
+
+
+class CampaignConvStatus(str, enum.Enum):
+    ACTIVE = "active"
+    CLOSED = "closed"
+    CONVERTED = "converted"
+
+
+class CampaignMsgRole(str, enum.Enum):
+    AGENT = "agent"
+    LEAD = "lead"
+    SYSTEM = "system"
+
+
+class CampaignMsgChannel(str, enum.Enum):
+    WHATSAPP = "whatsapp"
+    WEB = "web"
+
+
+class CampaignLeadConversation(Base):
+    """Conversa de outreach IA com um campaign lead."""
+    __tablename__ = "campaign_lead_conversations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    campaign_lead_id = Column(UUID(as_uuid=True), ForeignKey("campaign_leads.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("ai_agents.id", ondelete="SET NULL"), nullable=True)
+    whatsapp_connection_id = Column(UUID(as_uuid=True), ForeignKey("whatsapp_connections.id", ondelete="SET NULL"), nullable=True)
+    remote_jid = Column(String(255), nullable=True)
+    status = Column(
+        SQLEnum(CampaignConvStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=20),
+        nullable=False, default=CampaignConvStatus.ACTIVE
+    )
+    message_count = Column(Integer, nullable=False, default=0)
+    interest_detected = Column(Boolean, nullable=False, default=False)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+
+    campaign_lead = relationship("CampaignLead", back_populates="conversations")
+    agent = relationship("AIAgent")
+    whatsapp_connection = relationship("WhatsAppConnection")
+    messages = relationship("CampaignLeadMessage", back_populates="conversation", cascade="all, delete-orphan", order_by="CampaignLeadMessage.created_at")
+
+
+class CampaignLeadMessage(Base):
+    """Mensagem individual dentro de uma conversa de outreach."""
+    __tablename__ = "campaign_lead_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("campaign_lead_conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(
+        SQLEnum(CampaignMsgRole, values_callable=lambda x: [e.value for e in x], native_enum=False, length=20),
+        nullable=False
+    )
+    content = Column(Text, nullable=False)
+    sent_via = Column(
+        SQLEnum(CampaignMsgChannel, values_callable=lambda x: [e.value for e in x], native_enum=False, length=20),
+        nullable=False, default=CampaignMsgChannel.WHATSAPP
+    )
+    whatsapp_message_id = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    conversation = relationship("CampaignLeadConversation", back_populates="messages")

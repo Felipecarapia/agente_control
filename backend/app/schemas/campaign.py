@@ -78,3 +78,47 @@ class ProspectingResultResponse(BaseModel):
     total_found: int
     new_leads: int
     message: str
+
+
+# ----------  Campaign Lead Conversations  ----------
+
+class CampaignLeadMessageResponse(BaseModel):
+    id: uuid.UUID
+    conversation_id: uuid.UUID
+    role: str
+    content: str
+    sent_via: str
+    whatsapp_message_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CampaignLeadConversationResponse(BaseModel):
+    id: uuid.UUID
+    campaign_lead_id: uuid.UUID
+    agent_id: Optional[uuid.UUID] = None
+    whatsapp_connection_id: Optional[uuid.UUID] = None
+    remote_jid: Optional[str] = None
+    status: str
+    message_count: int = 0
+    interest_detected: bool = False
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    messages: List[CampaignLeadMessageResponse] = []
+    # Dados do campaign lead embutidos para conveniência
+    business_name: Optional[str] = None
+    phone: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StartOutreachRequest(BaseModel):
+    delay_seconds: int = 15  # intervalo entre mensagens (padrão 15s)
+
+
+class StartOutreachResponse(BaseModel):
+    queued: int
+    message: str

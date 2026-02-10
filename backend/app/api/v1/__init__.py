@@ -31,6 +31,8 @@ from app.api.v1.config import router as config_router
 from app.api.v1.whatsapp import router as whatsapp_router
 from app.api.v1.agents import router as agents_router
 from app.api.v1.campaigns import router as campaigns_router
+from app.api.v1.financeiro import router as financeiro_router
+from app.api.v1.rh import router as rh_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -64,3 +66,5 @@ api_router.include_router(config_router)
 api_router.include_router(whatsapp_router)
 api_router.include_router(agents_router)
 api_router.include_router(campaigns_router)
+api_router.include_router(financeiro_router)
+api_router.include_router(rh_router)

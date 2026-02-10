@@ -101,6 +101,23 @@ def run_seed() -> None:
             ("funil", "read", "Visualizar Funil", "Permite visualizar pipeline e deals"),
             ("funil", "update", "Editar Deals", "Permite editar deals e movê-los entre etapas"),
             ("funil", "delete", "Excluir Deals", "Permite excluir deals"),
+            
+            # Financeiro — Contas a Pagar
+            ("contas_pagar", "create", "Criar Contas a Pagar", "Permite criar novas contas a pagar"),
+            ("contas_pagar", "read", "Visualizar Contas a Pagar", "Permite visualizar contas a pagar"),
+            ("contas_pagar", "update", "Editar Contas a Pagar", "Permite editar contas a pagar"),
+            ("contas_pagar", "delete", "Excluir Contas a Pagar", "Permite excluir contas a pagar"),
+            ("contas_pagar", "pay", "Pagar Contas", "Permite marcar contas como pagas"),
+            
+            # Financeiro — Contas a Receber
+            ("contas_receber", "create", "Criar Contas a Receber", "Permite criar novas contas a receber"),
+            ("contas_receber", "read", "Visualizar Contas a Receber", "Permite visualizar contas a receber"),
+            ("contas_receber", "update", "Editar Contas a Receber", "Permite editar contas a receber"),
+            ("contas_receber", "delete", "Excluir Contas a Receber", "Permite excluir contas a receber"),
+            ("contas_receber", "receive", "Receber Contas", "Permite marcar contas como recebidas"),
+            
+            # Financeiro — Resumo
+            ("financeiro", "read", "Visualizar Resumo Financeiro", "Permite visualizar o resumo financeiro geral"),
         ]
         
         for module, action, name, description in permissions_data:

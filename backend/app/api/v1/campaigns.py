@@ -1,22 +1,31 @@
+import asyncio
 import uuid
 import logging
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Request, Query, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Query, status
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
 from app.api.deps import get_current_user
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.core.response import success_response, error_response, serialize_data
-from app.models.campaign import Campaign, CampaignLead
+from app.models.campaign import (
+    Campaign, CampaignLead, CampaignLeadConversation, CampaignLeadMessage,
+)
 from app.models.lead import Lead
+from app.models.agent import AIAgent
+from app.models.whatsapp import WhatsAppConnection
 from app.models.usuario import Usuario
 from app.schemas.campaign import (
     CampaignCreate,
     CampaignUpdate,
+    StartOutreachRequest,
 )
 from app.services.google_search import GoogleSearchService
+from app.services.evolution_api import EvolutionAPIService
+from app.services.openai_agent import OpenAIAgentService
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -365,3 +374,341 @@ def convert_lead_to_crm(
         logger.error(f"Erro ao converter lead: {e}", exc_info=True)
         db.rollback()
         return error_response(code="CONVERT_ERROR", message=str(e), status_code=500, request_id=request_id)
+
+
+# ──────────────────── Outreach IA ────────────────────
+
+async def _start_single_conversation(
+    campaign_id: uuid.UUID,
+    campaign_lead_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    wa_conn_id: uuid.UUID,
+) -> dict:
+    """Lógica interna para iniciar uma conversa com um campaign lead. Usa sessão própria."""
+    db = SessionLocal()
+    try:
+        campaign_lead = db.query(CampaignLead).filter(CampaignLead.id == campaign_lead_id).first()
+        if not campaign_lead or not campaign_lead.phone:
+            return {"error": "Lead sem telefone"}
+
+        agent = db.query(AIAgent).filter(AIAgent.id == agent_id).first()
+        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == wa_conn_id).first()
+        if not agent or not wa_conn:
+            return {"error": "Agente ou conexão não encontrados"}
+
+        # Verificar se já existe conversa ativa
+        existing = (
+            db.query(CampaignLeadConversation)
+            .filter(
+                CampaignLeadConversation.campaign_lead_id == campaign_lead_id,
+                CampaignLeadConversation.status == "active",
+            )
+            .first()
+        )
+        if existing:
+            return {"error": "Já existe conversa ativa", "conversation_id": str(existing.id)}
+
+        # Gerar mensagem com IA
+        openai_key = settings.OPENAI_API_KEY or ""
+        if not openai_key:
+            return {"error": "OPENAI_API_KEY não configurada"}
+
+        lead_context = (
+            f"Dados do lead para prospecção:\n"
+            f"- Nome do negócio: {campaign_lead.business_name}\n"
+            f"- Categoria: {campaign_lead.category or 'Não informada'}\n"
+            f"- Cidade: {campaign_lead.city or 'Não informada'}, {campaign_lead.state or ''}\n"
+            f"- Telefone: {campaign_lead.phone}\n"
+            f"- Website: {campaign_lead.website or 'Não informado'}\n\n"
+            f"Gere uma mensagem inicial de prospecção para enviar via WhatsApp. "
+            f"Seja profissional, educado e direto. A mensagem deve ser curta (máximo 3 parágrafos)."
+        )
+
+        svc_ai = OpenAIAgentService(api_key=openai_key)
+        ai_result = await svc_ai.create_chat_completion(
+            system_prompt=agent.system_prompt,
+            messages=[{"role": "user", "content": lead_context}],
+            model=agent.model,
+            temperature=agent.temperature,
+            max_tokens=agent.max_tokens,
+        )
+        message_text = ai_result["response"]
+        logger.info(f"[OUTREACH] Mensagem gerada para {campaign_lead.business_name}: {message_text[:80]}...")
+
+        # Enviar via WhatsApp
+        svc_wa = EvolutionAPIService(api_url=wa_conn.api_url, api_key=wa_conn.api_key)
+        wa_result = await svc_wa.send_message(
+            instance_name=wa_conn.instance_name,
+            phone=campaign_lead.phone,
+            text=message_text,
+        )
+        wa_msg_id = wa_result.get("key", {}).get("id")
+        wa_remote_jid = wa_result.get("key", {}).get("remoteJid", "")
+        logger.info(f"[OUTREACH] Enviado! msg_id={wa_msg_id}, remoteJid={wa_remote_jid}")
+
+        # Criar conversa e mensagem
+        conversation = CampaignLeadConversation(
+            campaign_lead_id=campaign_lead_id,
+            agent_id=agent_id,
+            whatsapp_connection_id=wa_conn_id,
+            remote_jid=wa_remote_jid or None,
+            status="active",
+            message_count=1,
+        )
+        db.add(conversation)
+        db.flush()
+
+        msg = CampaignLeadMessage(
+            conversation_id=conversation.id,
+            role="agent",
+            content=message_text,
+            sent_via="whatsapp",
+            whatsapp_message_id=wa_msg_id,
+        )
+        db.add(msg)
+
+        campaign_lead.status = "contacted"
+        campaign_lead.contacted_at = datetime.now(timezone.utc)
+
+        db.commit()
+        logger.info(f"[OUTREACH] Conversa {conversation.id} criada para lead {campaign_lead.business_name}")
+        return {"conversation_id": str(conversation.id), "business_name": campaign_lead.business_name}
+
+    except Exception as e:
+        logger.error(f"[OUTREACH] Erro ao iniciar conversa com lead {campaign_lead_id}: {e}", exc_info=True)
+        db.rollback()
+        return {"error": str(e)}
+    finally:
+        db.close()
+
+
+@router.post("/{campaign_id}/leads/{lead_id}/start-conversation")
+async def start_conversation(
+    request: Request,
+    campaign_id: uuid.UUID,
+    lead_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Inicia uma conversa de outreach IA com um campaign lead individual."""
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        campaign_lead = (
+            db.query(CampaignLead)
+            .filter(CampaignLead.id == lead_id, CampaignLead.campaign_id == campaign_id)
+            .first()
+        )
+        if not campaign_lead:
+            return error_response(code="NOT_FOUND", message="Lead da campanha não encontrado", status_code=404, request_id=request_id)
+
+        if not campaign_lead.phone:
+            return error_response(code="NO_PHONE", message="Lead não possui telefone cadastrado", status_code=400, request_id=request_id)
+
+        # Buscar campanha para pegar agente e conexão WhatsApp
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        if not campaign:
+            return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
+
+        # Priorizar agente da campanha, senão usar primeiro ativo
+        agent = None
+        if campaign.agent_id:
+            agent = db.query(AIAgent).filter(AIAgent.id == campaign.agent_id).first()
+        if not agent:
+            agent = (
+                db.query(AIAgent)
+                .filter(AIAgent.is_active == True, AIAgent.whatsapp_connection_id.isnot(None))
+                .first()
+            )
+        if not agent:
+            return error_response(code="NO_AGENT", message="Nenhum agente de IA ativo encontrado.", status_code=400, request_id=request_id)
+
+        # Priorizar conexão da campanha, senão do agente
+        wa_conn_id = campaign.whatsapp_connection_id or agent.whatsapp_connection_id
+        if not wa_conn_id:
+            return error_response(code="NO_WA", message="Nenhuma conexão WhatsApp configurada.", status_code=400, request_id=request_id)
+
+        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == wa_conn_id).first()
+        if not wa_conn or wa_conn.status != "connected":
+            return error_response(code="WA_NOT_CONNECTED", message="Conexão WhatsApp não está conectada.", status_code=400, request_id=request_id)
+
+        result = await _start_single_conversation(
+            campaign_id=campaign_id,
+            campaign_lead_id=lead_id,
+            agent_id=agent.id,
+            wa_conn_id=wa_conn.id,
+        )
+
+        if "error" in result:
+            return error_response(code="OUTREACH_ERROR", message=result["error"], status_code=400, request_id=request_id)
+
+        return success_response(data=result, request_id=request_id)
+
+    except Exception as e:
+        logger.error(f"[OUTREACH] Erro: {e}", exc_info=True)
+        return error_response(code="OUTREACH_ERROR", message=str(e), status_code=500, request_id=request_id)
+
+
+@router.get("/{campaign_id}/conversations")
+def list_campaign_conversations(
+    request: Request,
+    campaign_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Lista todas as conversas de outreach de uma campanha, com mensagens."""
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        # Buscar campaign leads desta campanha
+        lead_ids = [
+            cl.id for cl in
+            db.query(CampaignLead.id).filter(CampaignLead.campaign_id == campaign_id).all()
+        ]
+        if not lead_ids:
+            return success_response(data=[], request_id=request_id)
+
+        conversations = (
+            db.query(CampaignLeadConversation)
+            .options(joinedload(CampaignLeadConversation.messages), joinedload(CampaignLeadConversation.campaign_lead))
+            .filter(CampaignLeadConversation.campaign_lead_id.in_(lead_ids))
+            .order_by(desc(CampaignLeadConversation.started_at))
+            .all()
+        )
+
+        result = []
+        for conv in conversations:
+            conv_data = serialize_data(conv)
+            conv_data["messages"] = [serialize_data(m) for m in conv.messages]
+            conv_data["business_name"] = conv.campaign_lead.business_name if conv.campaign_lead else None
+            conv_data["phone"] = conv.campaign_lead.phone if conv.campaign_lead else None
+            conv_data["lead_status"] = conv.campaign_lead.status if conv.campaign_lead else None
+            result.append(conv_data)
+
+        return success_response(data=result, request_id=request_id)
+
+    except Exception as e:
+        logger.error(f"Erro ao listar conversas da campanha: {e}", exc_info=True)
+        return success_response(data=[], request_id=request_id)
+
+
+async def _batch_outreach(
+    campaign_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    wa_conn_id: uuid.UUID,
+    lead_ids: list,
+    delay_seconds: int,
+):
+    """Background task: envia mensagens em lote com delay entre cada envio."""
+    for i, lead_id in enumerate(lead_ids):
+        logger.info(f"[BATCH_OUTREACH] Processando lead {i+1}/{len(lead_ids)}: {lead_id}")
+        try:
+            result = await _start_single_conversation(
+                campaign_id=campaign_id,
+                campaign_lead_id=lead_id,
+                agent_id=agent_id,
+                wa_conn_id=wa_conn_id,
+            )
+            if "error" in result:
+                logger.warning(f"[BATCH_OUTREACH] Erro no lead {lead_id}: {result['error']}")
+            else:
+                logger.info(f"[BATCH_OUTREACH] ✅ {result.get('business_name')} OK")
+        except Exception as e:
+            logger.error(f"[BATCH_OUTREACH] Erro no lead {lead_id}: {e}", exc_info=True)
+
+        # Aguardar delay entre mensagens (exceto na última)
+        if i < len(lead_ids) - 1:
+            logger.info(f"[BATCH_OUTREACH] Aguardando {delay_seconds}s...")
+            await asyncio.sleep(delay_seconds)
+
+    logger.info(f"[BATCH_OUTREACH] ✅ Lote concluído! {len(lead_ids)} leads processados")
+
+
+@router.post("/{campaign_id}/start-outreach")
+async def start_outreach(
+    request: Request,
+    campaign_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+    background_tasks: BackgroundTasks = None,
+    data: Optional[StartOutreachRequest] = None,
+):
+    """Inicia outreach em lote: envia mensagens para leads com status 'found', um por vez com delay."""
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        if not campaign:
+            return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
+
+        # Buscar agente
+        agent = None
+        if campaign.agent_id:
+            agent = db.query(AIAgent).filter(AIAgent.id == campaign.agent_id).first()
+        if not agent:
+            agent = (
+                db.query(AIAgent)
+                .filter(AIAgent.is_active == True, AIAgent.whatsapp_connection_id.isnot(None))
+                .first()
+            )
+        if not agent:
+            return error_response(code="NO_AGENT", message="Nenhum agente de IA ativo encontrado.", status_code=400, request_id=request_id)
+
+        wa_conn_id = campaign.whatsapp_connection_id or agent.whatsapp_connection_id
+        if not wa_conn_id:
+            return error_response(code="NO_WA", message="Nenhuma conexão WhatsApp configurada.", status_code=400, request_id=request_id)
+
+        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == wa_conn_id).first()
+        if not wa_conn or wa_conn.status != "connected":
+            return error_response(code="WA_NOT_CONNECTED", message="Conexão WhatsApp não está conectada.", status_code=400, request_id=request_id)
+
+        # Buscar leads com status "found" que ainda não têm conversa
+        found_leads = (
+            db.query(CampaignLead)
+            .filter(
+                CampaignLead.campaign_id == campaign_id,
+                CampaignLead.status == "found",
+                CampaignLead.phone.isnot(None),
+                CampaignLead.phone != "",
+            )
+            .all()
+        )
+
+        # Filtrar os que não têm conversa ativa
+        lead_ids_to_contact = []
+        for lead in found_leads:
+            has_conv = (
+                db.query(CampaignLeadConversation)
+                .filter(CampaignLeadConversation.campaign_lead_id == lead.id)
+                .first()
+            )
+            if not has_conv:
+                lead_ids_to_contact.append(lead.id)
+
+        if not lead_ids_to_contact:
+            return success_response(
+                data={"queued": 0, "message": "Nenhum lead novo para contactar."},
+                request_id=request_id,
+            )
+
+        delay_seconds = data.delay_seconds if data else 15
+
+        # Iniciar em background
+        asyncio.ensure_future(
+            _batch_outreach(
+                campaign_id=campaign_id,
+                agent_id=agent.id,
+                wa_conn_id=wa_conn.id,
+                lead_ids=lead_ids_to_contact,
+                delay_seconds=delay_seconds,
+            )
+        )
+
+        return success_response(
+            data={
+                "queued": len(lead_ids_to_contact),
+                "message": f"Outreach iniciado! {len(lead_ids_to_contact)} leads serão contatados com intervalo de {delay_seconds}s.",
+            },
+            request_id=request_id,
+        )
+
+    except Exception as e:
+        logger.error(f"[OUTREACH] Erro ao iniciar outreach: {e}", exc_info=True)
+        return error_response(code="OUTREACH_ERROR", message=str(e), status_code=500, request_id=request_id)
