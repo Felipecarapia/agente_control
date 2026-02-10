@@ -120,7 +120,7 @@ export function NotificationBell() {
     }
   }
 
-  async function markAsRead(recipientId: number) {
+  async function markAsRead(recipientId: string) {
     try {
       await api("/api/v1/notifications/read", {
         method: "POST",

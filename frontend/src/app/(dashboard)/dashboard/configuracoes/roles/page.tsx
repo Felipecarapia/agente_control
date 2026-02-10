@@ -254,7 +254,7 @@ export default function RolesPage() {
     }
   }
 
-  function togglePermission(permissionId: number) {
+  function togglePermission(permissionId: string) {
     setSelectedPermissions((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(permissionId)) {

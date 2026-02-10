@@ -126,7 +126,7 @@ export default function NotificacoesPage() {
     }
   }
 
-  async function markAsRead(recipientId: number) {
+  async function markAsRead(recipientId: string) {
     try {
       await api("/api/v1/notifications/read", {
         method: "POST",
@@ -161,7 +161,7 @@ export default function NotificacoesPage() {
     }
   }
 
-  async function togglePin(recipientId: number) {
+  async function togglePin(recipientId: string) {
     try {
       const data = await api<{ pinned: boolean }>(
         `/api/v1/notifications/pin/${recipientId}`,
@@ -179,7 +179,7 @@ export default function NotificacoesPage() {
     }
   }
 
-  async function archive(recipientId: number) {
+  async function archive(recipientId: string) {
     try {
       await api("/api/v1/notifications/archive", {
         method: "POST",
