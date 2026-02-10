@@ -456,16 +456,18 @@ def update_proposta(
                 return error_response(
                     code="PROJECT_NOT_FOUND",
                     message=f"Projeto com ID {update_data['projeto_id']} não encontrado",
-                    status_code=404,
                     request_id=request_id
                 )
         
         # Atualizar campos
+        logger.info(f"Updating proposal {proposta_id} with data: {update_data}", extra={"request_id": request_id})
         for k, v in update_data.items():
+            logger.info(f"Setting {k} = {v}", extra={"request_id": request_id})
             setattr(obj, k, v)
         
         db.commit()
         db.refresh(obj)
+        logger.info(f"Proposal {proposta_id} updated successfully. landing_content: {obj.landing_content}", extra={"request_id": request_id})
         
         # Recarregar com relacionamentos
         obj = db.query(Proposta).options(

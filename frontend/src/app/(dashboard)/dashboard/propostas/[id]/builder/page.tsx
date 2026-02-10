@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Link2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, Link2, ExternalLink, Copy } from "lucide-react";
 import {
   defaultSectionData,
   SECTION_TYPE_LABELS,
@@ -51,6 +51,10 @@ export default function BuilderPropostaPage() {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [propostas, setPropostas] = useState<Proposta[]>([]);
+  const [loadingPropostas, setLoadingPropostas] = useState(false);
+  const [copyingTo, setCopyingTo] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
@@ -135,18 +139,22 @@ export default function BuilderPropostaPage() {
 
   async function saveBuilder() {
     if (!id) return;
+    console.log("Saving proposal with ID:", id);
+    console.log("Sections to save:", sections);
     setLoading(true);
     try {
+      const payload = { landing_content: sections };
+      console.log("Payload being sent:", JSON.stringify(payload, null, 2));
       await api(`/api/v1/propostas/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ landing_content: sections }),
+        body: JSON.stringify(payload),
       });
       setEditIndex(null);
       showNotice("success", "Página salva.");
     } catch (err: any) {
       const errorCode = err?.code || "UNKNOWN";
       const errorMsg = err?.message || "Erro ao salvar página";
-      
+
       if (errorCode === "PROPOSAL_NOT_FOUND") {
         showNotice("error", "Proposta não encontrada.");
       } else {
@@ -170,7 +178,7 @@ export default function BuilderPropostaPage() {
       } catch (err: any) {
         const errorCode = err?.code || "UNKNOWN";
         const errorMsg = err?.message || "Erro ao gerar link";
-        
+
         if (errorCode === "PROPOSAL_NOT_FOUND") {
           showNotice("error", "Proposta não encontrada.");
         } else if (errorCode === "SLUG_GENERATION_FAILED") {
@@ -181,13 +189,13 @@ export default function BuilderPropostaPage() {
         return;
       }
     }
-    
+
     // Proteger contra SSR: só usar window/navigator no client
     if (typeof window === "undefined" || typeof navigator === "undefined") {
       showNotice("error", "Link gerado, mas não foi possível copiar automaticamente.");
       return;
     }
-    
+
     const url = `${window.location.origin}/p/${currentSlug}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -195,6 +203,36 @@ export default function BuilderPropostaPage() {
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
       showNotice("error", "Não foi possível copiar o link.");
+    }
+  }
+
+  async function loadPropostas() {
+    setLoadingPropostas(true);
+    try {
+      const data = await api<Proposta[]>("/api/v1/propostas");
+      // Filtrar a proposta atual
+      setPropostas(data.filter(p => p.id !== id));
+    } catch (err) {
+      showNotice("error", "Erro ao carregar propostas.");
+    } finally {
+      setLoadingPropostas(false);
+    }
+  }
+
+  async function copyToProposal(targetId: string) {
+    setCopyingTo(targetId);
+    try {
+      await api(`/api/v1/propostas/${targetId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ landing_content: sections }),
+      });
+      showNotice("success", "Conteúdo copiado com sucesso!");
+      setCopyModalOpen(false);
+    } catch (err: any) {
+      const errorMsg = err?.message || "Erro ao copiar conteúdo";
+      showNotice("error", errorMsg);
+    } finally {
+      setCopyingTo(null);
     }
   }
 
@@ -268,29 +306,59 @@ export default function BuilderPropostaPage() {
             <Save className="mr-2 h-4 w-4" />
             {loading ? "Salvando..." : "Salvar"}
           </Button>
-          <Button asChild size="sm" variant="secondary">
-            <a
-              href={proposta.slug ? `/p/${proposta.slug}` : "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              Visualizar
-              <ExternalLink className="h-4 w-4" />
-            </a>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={async () => {
+              try {
+                // Buscar dados atualizados da proposta para garantir que temos o slug correto
+                const freshData = await api<Proposta>(`/api/v1/propostas/${id}`);
+                let slug = freshData.slug;
+
+                // Se ainda não tiver slug, gerar um novo
+                if (!slug) {
+                  const res = await api<{ slug: string }>(`/api/v1/propostas/${id}/gerar-slug`, {
+                    method: "POST",
+                  });
+                  slug = res.slug;
+                }
+
+                // Atualizar o estado local
+                setProposta((p) => (p ? { ...p, slug } : null));
+
+                // Abrir a visualização
+                window.open(`/p/${slug}`, "_blank");
+              } catch (err: any) {
+                showNotice("error", "Erro ao abrir visualização.");
+              }
+            }}
+          >
+            Visualizar
+            <ExternalLink className="ml-2 h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+            onClick={() => {
+              setCopyModalOpen(true);
+              loadPropostas();
+            }}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Copiar em novo
           </Button>
         </div>
       </header>
 
       {notice && (
         <div
-          className={`shrink-0 border-b px-4 py-2 text-sm ${
-            notice.type === "success"
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-              : notice.type === "error"
+          className={`shrink-0 border-b px-4 py-2 text-sm ${notice.type === "success"
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+            : notice.type === "error"
               ? "border-red-500/30 bg-red-500/10 text-red-200"
               : "border-slate-600 bg-slate-800 text-slate-200"
-          }`}
+            }`}
         >
           {notice.message}
         </div>
@@ -365,6 +433,63 @@ export default function BuilderPropostaPage() {
             </Button>
             <Button type="button" onClick={saveBuilder} disabled={loading}>
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy to Proposal Modal */}
+      <Dialog open={copyModalOpen} onOpenChange={setCopyModalOpen}>
+        <DialogContent className="max-w-2xl border-slate-700 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">Copiar conteúdo para outra proposta</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {loadingPropostas ? (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-slate-400">Carregando propostas...</p>
+              </div>
+            ) : propostas.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-slate-400">Nenhuma outra proposta disponível</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {propostas.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-750 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <h4 className="font-medium text-white">{p.titulo}</h4>
+                      {p.slug && (
+                        <p className="text-xs text-slate-400 mt-1">/p/{p.slug}</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                      onClick={() => copyToProposal(p.id)}
+                      disabled={copyingTo === p.id}
+                    >
+                      {copyingTo === p.id ? (
+                        "Copiando..."
+                      ) : (
+                        <>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Copiar para esta
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCopyModalOpen(false)}>
+              Cancelar
             </Button>
           </DialogFooter>
         </DialogContent>

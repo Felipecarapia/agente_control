@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import {
   X,
+  ChevronDown,
   Save,
   Plus,
   Trash2,
@@ -79,6 +80,7 @@ type TaskWithNotion = {
   prioridade: string | null;
   data_vencimento: string | null;
   responsavel_id: string | null;
+  projeto_id: string | null;  // Adicionado
   is_recurring: boolean;
   property_values: Array<{
     id: string;
@@ -117,9 +119,11 @@ export function TaskDrawer({
   const [prioridade, setPrioridade] = useState<string>("none");
   const [dataVencimento, setDataVencimento] = useState<string>("");
   const [responsavelId, setResponsavelId] = useState<string | null>(null);
+  const [projetoId, setProjetoId] = useState<string>(""); // Adicionado
   const [isRecurring, setIsRecurring] = useState(false);
   const [blocks, setBlocks] = useState<TaskBlock[]>([]);
   const [propertyValues, setPropertyValues] = useState<Record<string, any>>({});
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
     if (open && taskId) {
@@ -141,63 +145,100 @@ export function TaskDrawer({
       setStatus(data.status);
       setPrioridade(data.prioridade || "none");
       setDataVencimento(data.data_vencimento || "");
+      setDataVencimento(data.data_vencimento || "");
       setResponsavelId(data.responsavel_id);
+      setProjetoId(data.projeto_id || ""); // Adicionado
       setIsRecurring(data.is_recurring);
       setBlocks(data.blocks || []);
-      
+
       // Carregar property values
       const values: Record<string, any> = {};
       data.property_values.forEach((pv) => {
         values[pv.property_id] = pv.value_json;
       });
       setPropertyValues(values);
-    } catch (e) {
-      console.error("Erro ao carregar tarefa:", e);
+    } catch (e: any) {
+      console.error("Erro ao carregar tarefa:", e.response?.data || e.message || e);
     } finally {
       setLoading(false);
     }
   }
 
   async function saveTask() {
-    if (!taskId) return;
+    if (!title.trim()) {
+      alert("O título é obrigatório");
+      return;
+    }
+
     setSaving(true);
     try {
-      // Salvar dados básicos
-      await api(`/api/v1/tarefas/${taskId}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          titulo: title,
-          status,
-          prioridade: prioridade && prioridade !== "none" ? prioridade : null,
-          data_vencimento: dataVencimento || null,
-          responsavel_id: responsavelId,
-          is_recurring: isRecurring,
-        }),
-      });
+      let currentTaskId = taskId;
 
-      // Salvar blocks
-      await api(`/api/v1/task-notion/tasks/${taskId}/blocks`, {
-        method: "PUT",
-        body: JSON.stringify(blocks),
-      });
+      const payload = {
+        titulo: title,
+        status,
+        prioridade: prioridade && prioridade !== "none" ? prioridade : null,
+        data_vencimento: dataVencimento || null,
+        responsavel_id: responsavelId,
+        projeto_id: projetoId || null, // Permite null se vazio
+        is_recurring: isRecurring,
+      };
+
+      // Removida validação obrigatória de projeto
+
+
+      if (currentTaskId) {
+        // Edição
+        await api(`/api/v1/tarefas/${currentTaskId}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // Criação
+        const newTask = await api<{ id: string }>(`/api/v1/tarefas`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        currentTaskId = newTask.id;
+      }
+
+      if (!currentTaskId) {
+        throw new Error("ID da tarefa não retornado");
+      }
+
+      // Salvar blocks (se houver)
+      if (blocks.length > 0) {
+        await api(`/api/v1/task-notion/tasks/${currentTaskId}/blocks`, {
+          method: "PUT",
+          body: JSON.stringify(blocks),
+        });
+      }
 
       // Salvar property values
-      for (const [propertyId, valueJson] of Object.entries(propertyValues)) {
-        await api(`/api/v1/task-notion/property-values`, {
+      const propertyPromises = Object.entries(propertyValues).map(([propertyId, valueJson]) => {
+        // O formato do value_json deve ser encapsulado corretamente
+        // Como o updatePropertyValue já seta o value como { value: ... } ou direto?
+        // No renderProperty: updatePropertyValue(id, { value: e.target.value })
+        // Então valueJson já é um objeto { value: ... }
+        return api(`/api/v1/task-notion/property-values`, {
           method: "POST",
           body: JSON.stringify({
-            task_id: taskId,
+            task_id: currentTaskId,
             property_id: propertyId,
             value_json: valueJson,
           }),
         });
+      });
+
+      if (propertyPromises.length > 0) {
+        await Promise.all(propertyPromises);
       }
 
       onSave?.();
       onOpenChange(false);
     } catch (e) {
       console.error("Erro ao salvar tarefa:", e);
-      alert("Erro ao salvar tarefa");
+      alert("Erro ao salvar tarefa. Verifique o console.");
     } finally {
       setSaving(false);
     }
@@ -271,8 +312,8 @@ export function TaskDrawer({
         const selectedValues = Array.isArray(currentValue)
           ? currentValue
           : currentValue
-          ? [currentValue]
-          : [];
+            ? [currentValue]
+            : [];
         return (
           <div className="space-y-2">
             {multiOptions.map((opt: string) => (
@@ -330,6 +371,10 @@ export function TaskDrawer({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="sr-only">Carregando Tarefa</SheetTitle>
+            <SheetDescription className="sr-only">Aguarde enquanto os detalhes são carregados.</SheetDescription>
+          </SheetHeader>
           <div className="flex items-center justify-center py-12">
             <p className="text-muted-foreground">Carregando...</p>
           </div>
@@ -342,6 +387,8 @@ export function TaskDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
+          <SheetTitle className="sr-only">Detalhes da Tarefa</SheetTitle>
+          <SheetDescription className="sr-only">Visualize e edite os detalhes da tarefa</SheetDescription>
           <div className="flex items-center gap-2">
             <Input
               value={title}
@@ -393,6 +440,22 @@ export function TaskDrawer({
             </div>
 
             <div className="space-y-2">
+              <Label>Projeto</Label>
+              <Select value={projetoId || ""} onValueChange={setProjetoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um projeto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projetos.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label>Data de Vencimento</Label>
               <Input
                 type="date"
@@ -418,25 +481,47 @@ export function TaskDrawer({
             </div>
           </div>
 
-          {/* Propriedades customizáveis */}
-          {properties.length > 0 && (
-            <div className="space-y-4 border-t pt-4">
-              <h3 className="font-semibold text-sm">Propriedades</h3>
-              {properties.map((property) => (
-                <div key={property.id} className="space-y-2">
-                  <Label>{property.name}</Label>
-                  {renderProperty(property)}
+          {/* Propriedades customizáveis (Filtradas e Colapsáveis) */}
+          {properties.filter((p) => !["status", "prioridade"].includes(p.key.toLowerCase())).length > 0 && (
+            <div className="space-y-2 pt-4 border-t border-border/50">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full flex items-center justify-between p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground group h-auto"
+                onClick={() => setShowMore(!showMore)}
+              >
+                <div className="flex flex-col items-start gap-1">
+                  <span className="font-medium text-xs uppercase tracking-wide">Mais Detalhes</span>
+                  <span className="text-[10px] text-muted-foreground/70 font-normal">
+                    {showMore ? "Clique para ocultar" : "Clique para ver campos adicionais"}
+                  </span>
                 </div>
-              ))}
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showMore ? "rotate-180" : ""}`} />
+              </Button>
+
+              {showMore && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 fade-in duration-200 pt-2">
+                  {properties
+                    .filter((p) => !["status", "prioridade"].includes(p.key.toLowerCase()))
+                    .map((property) => (
+                      <div key={property.id} className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          {property.name}
+                        </Label>
+                        {renderProperty(property)}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
           {/* Editor de blocos */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="font-semibold text-sm">Conteúdo</h3>
-            <BlockEditor 
-              blocks={blocks.map(b => ({ ...b, id: b.id || "" }))} 
-              onChange={(newBlocks) => setBlocks(newBlocks.map(b => ({ ...b, id: b.id || "" })))} 
+            <BlockEditor
+              blocks={blocks.map(b => ({ ...b, id: b.id || "" }))}
+              onChange={(newBlocks) => setBlocks(newBlocks.map(b => ({ ...b, id: b.id || "" })))}
             />
           </div>
 
@@ -449,7 +534,7 @@ export function TaskDrawer({
               </h3>
               <TaskAttachments
                 taskId={task.id}
-                attachments={task.attachments}
+                attachments={task.attachments || []}
                 onUploadComplete={loadTask}
               />
             </div>
@@ -464,7 +549,7 @@ export function TaskDrawer({
               </h3>
               <TaskComments
                 taskId={task.id}
-                comments={task.comments}
+                comments={task.comments || []}
                 usuarios={usuarios}
                 onCommentAdded={loadTask}
               />

@@ -1,563 +1,200 @@
-from typing import Annotated, Optional
-from datetime import date, datetime, timedelta
-import uuid
-from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, case, extract, text
-from sqlalchemy.sql import select
-from pydantic import BaseModel
-import logging
+from sqlalchemy import text, func, case, extract
+from datetime import datetime, timedelta
 
-logger = logging.getLogger(__name__)
-
+from app.core.database import get_db, SessionLocal
 from app.api.deps import get_current_user
-from app.core.database import get_db
 from app.models.usuario import Usuario
-from app.models.pipeline import (
-    Deal, DealStatus, DealStageHistory, PipelineStage, Pipeline, DealAssignee
-)
-from app.models.cliente import Cliente
-from app.models.pre_proposta import PreProposta
-from app.models.proposta import Proposta
+from app.models.tarefa import Tarefa, TarefaAssignee
+from app.models.task_event import TaskEvent
 
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+router = APIRouter(prefix="/analytics", tags=["Analytics & Performance"])
 
-# ============== Schemas ==============
-
-class StageMetric(BaseModel):
-    stage_id: uuid.UUID
-    stage_name: str
-    order_index: int
-    volume: int
-    conversion_rate: float
-    avg_time_days: Optional[float]
-    total_value_cents: int
-    avg_value_cents: Optional[int]
-    variation_percentage: Optional[float]
-
-class SankeyNode(BaseModel):
-    id: str
-    name: str
-    value: int
-    color: Optional[str] = None
-
-class SankeyLink(BaseModel):
-    source: str
-    target: str
-    value: int
-    conversion_rate: float
-    color: Optional[str] = None
-
-class Insight(BaseModel):
-    type: str  # bottleneck, stuck, low_conversion, high_value_loss
-    severity: str  # info, warning, critical
-    title: str
-    message: str
-    stage_id: Optional[uuid.UUID] = None
-    stage_name: Optional[str] = None
-    value_cents: Optional[int] = None
-    suggestion: Optional[str] = None
-
-class ForecastItem(BaseModel):
-    deal_id: uuid.UUID
-    title: str
-    value_cents: int
-    probability: float
-    expected_close_date: Optional[date]
-    stage_name: str
-
-class SalesPerformance(BaseModel):
-    user_id: uuid.UUID
-    user_nome: str
-    deals_created: int
-    deals_won: int
-    deals_lost: int
-    conversion_rate: float
-    total_revenue_cents: int
-    avg_deal_value_cents: Optional[int]
-    avg_time_to_close_days: Optional[float]
-    deals_by_stage: dict[str, int]
-
-class SegmentAnalysis(BaseModel):
-    segment_name: str
-    volume: int
-    conversion_rate: float
-    avg_value_cents: Optional[int]
-    total_value_cents: int
-
-class InteligenciaVendasResponse(BaseModel):
-    # Funil Sankey
-    sankey_nodes: list[SankeyNode]
-    sankey_links: list[SankeyLink]
-    
-    # Métricas por etapa
-    stage_metrics: list[StageMetric]
-    
-    # Insights automáticos
-    insights: list[Insight]
-    
-    # Forecast
-    forecast_total_cents: int
-    forecast_items: list[ForecastItem]
-    
-    # Performance
-    sales_performance: list[SalesPerformance]
-    
-    # Segmentação
-    segment_analysis: list[SegmentAnalysis]
-    
-    # Período
-    period_start: date
-    period_end: date
-    previous_period_start: date
-    previous_period_end: date
-
-# ============== Funções auxiliares ==============
-
-def calculate_stage_time(db: Session, deal_id: uuid.UUID, stage_id: uuid.UUID) -> Optional[float]:
-    """Calcula tempo médio em dias que um deal ficou em uma etapa."""
-    history = db.query(DealStageHistory).filter(
-        DealStageHistory.deal_id == deal_id,
-        DealStageHistory.to_stage_id == stage_id
-    ).order_by(DealStageHistory.moved_at.asc()).all()
-    
-    if not history:
-        return None
-    
-    # Encontrar quando entrou e quando saiu (ou agora se ainda está)
-    current_deal = db.query(Deal).filter(Deal.id == deal_id).first()
-    if not current_deal:
-        return None
-    
-    entered_at = history[0].moved_at
-    
-    # Se ainda está nesta etapa, usar updated_at do deal
-    if current_deal.stage_id == stage_id:
-        left_at = current_deal.updated_at or datetime.now()
-    else:
-        # Encontrar quando saiu
-        next_history = db.query(DealStageHistory).filter(
-            DealStageHistory.deal_id == deal_id,
-            DealStageHistory.from_stage_id == stage_id
-        ).order_by(DealStageHistory.moved_at.asc()).first()
-        
-        if next_history:
-            left_at = next_history.moved_at
-        else:
-            left_at = current_deal.updated_at or datetime.now()
-    
-    delta = left_at - entered_at
-    return delta.total_seconds() / 86400  # Converter para dias
-
-def get_funnel_stages() -> list[dict]:
-    """Define as etapas do funil de vendas."""
-    return [
-        {"id": "lead", "name": "Lead", "color": "#3B82F6"},
-        {"id": "pre_proposta", "name": "Pré-Proposta", "color": "#8B5CF6"},
-        {"id": "proposta", "name": "Proposta", "color": "#EC4899"},
-        {"id": "negociacao", "name": "Negociação", "color": "#F59E0B"},
-        {"id": "fechado", "name": "Fechado", "color": "#10B981"},
-        {"id": "perdido", "name": "Perdido", "color": "#EF4444"},
-    ]
-
-# ============== Endpoint principal ==============
-
-@router.get("/inteligencia-vendas")
-def get_inteligencia_vendas(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Usuario, Depends(get_current_user)],
-    start_date: Optional[date] = Query(None, description="Data inicial (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="Data final (YYYY-MM-DD)"),
-    pipeline_id: Optional[int] = Query(None, description="Filtrar por pipeline"),
-    user_id: Optional[uuid.UUID] = Query(None, description="Filtrar por vendedor"),
-    source: Optional[str] = Query(None, description="Filtrar por origem"),
-    min_value_cents: Optional[int] = Query(None, description="Valor mínimo em centavos"),
-    max_value_cents: Optional[int] = Query(None, description="Valor máximo em centavos"),
+@router.get("/actions-bank")
+def get_actions_bank(
+    range_days: int = Query(30, description="Dias para considerar em métricas de performance"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
-    Retorna análise completa de inteligência de vendas.
-    Calcula funil, métricas, insights, forecast e performance.
-    Retorna dados vazios se houver erro (não quebra o sistema).
+    Retorna dados consolidados para o Banco de Ações:
+    - Lista de usuários com KPIs de tarefas pendentes
+    - Top 5 tarefas prioritárias por usuário
+    - Scores de eficiência
     """
-    from app.core.response import success_response, error_response
     
-    request_id = getattr(request.state, "request_id", None)
+    # 1. Buscar métricas de usuários (SQL Otimizado)
+    # Agrega por usuário: Total Pendentes, Atrasadas, Média de Idade (Aging), Carga Ponderada
+    # Considera apenas usuários ativos
     
-    # Período anterior para comparação (calcular antes de usar)
-    period_days = (end_date - start_date).days
-    previous_end = start_date - timedelta(days=1)
-    previous_start = previous_end - timedelta(days=period_days)
+    sql_users = text("""
+    SELECT 
+        u.id, 
+        u.nome, 
+        u.email,
+        'Member' as role,
+        COUNT(t.id) FILTER (WHERE t.status NOT IN ('concluida', 'cancelada')) as total_pending,
+        COUNT(t.id) FILTER (WHERE t.status NOT IN ('concluida', 'cancelada') AND t.data_vencimento < NOW()) as overdue_count,
+        COALESCE(AVG(EXTRACT(DAY FROM NOW() - t.created_at)) FILTER (WHERE t.status NOT IN ('concluida', 'cancelada')), 0) as avg_timing_days,
+        SUM(
+            CASE 
+                WHEN t.prioridade = 'urgente' THEN 5 
+                WHEN t.prioridade = 'alta' THEN 3 
+                WHEN t.prioridade = 'media' THEN 2 
+                ELSE 1 
+            END
+        ) FILTER (WHERE t.status NOT IN ('concluida', 'cancelada')) as weighted_load,
+        COUNT(t.id) FILTER (WHERE t.status = 'concluida' AND t.completed_at > NOW() - INTERVAL '30 days') as recent_completed
+    FROM usuarios u
+    LEFT JOIN tarefas t ON t.responsavel_id = u.id
+    WHERE u.ativo = true
+    GROUP BY u.id, u.nome, u.email
+    ORDER BY overdue_count DESC, weighted_load DESC
+    """)
     
-    # Validar datas
-    if not end_date:
-        end_date = date.today()
-    if not start_date:
-        start_date = end_date - timedelta(days=90)
+    users_result = db.execute(sql_users).fetchall()
     
-    if start_date > end_date:
-        return error_response(
-            code="INVALID_DATE_RANGE",
-            message="Data inicial deve ser anterior à data final",
-            status_code=400,
-            request_id=request_id
-        )
+    dashboard_data = []
     
-    # Validar valores
-    if min_value_cents is not None and max_value_cents is not None:
-        if min_value_cents > max_value_cents:
-            return error_response(
-                code="INVALID_VALUE_RANGE",
-                message="Valor mínimo deve ser menor ou igual ao valor máximo",
-                status_code=400,
-                request_id=request_id
-            )
+    # 2. Para cada usuário, buscar as top 5 tarefas críticas
+    # Isso evita trazer todas as tarefas e sobrecarregar o JSON
+    # Poderia ser feito com WINDOW FUNCTION no SQL acima, mas aqui fica mais legível para manutenção
     
-    # Validar pipeline_id se fornecido
-    if pipeline_id is not None:
-        if not pipeline_id:
-            return error_response(
-                code="INVALID_PIPELINE_ID",
-                message="ID do pipeline é inválido",
-                status_code=400,
-                request_id=request_id
-            )
-        pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
-        if not pipeline:
-            # Se pipeline_id foi fornecido mas não existe, retornar empty state com requiresSetup
-            return success_response(
-                data=InteligenciaVendasResponse(
-                    sankey_nodes=[],
-                    sankey_links=[],
-                    stage_metrics=[],
-                    insights=[],
-                    forecast_total_cents=0,
-                    forecast_items=[],
-                    sales_performance=[],
-                    segment_analysis=[],
-                    period_start=start_date,
-                    period_end=end_date,
-                    previous_period_start=previous_start,
-                    previous_period_end=previous_end
-                ),
-                meta={
-                    "requiresSetup": True,
-                    "message": f"Pipeline com ID {pipeline_id} não encontrado. Selecione um pipeline válido ou crie um pipeline padrão."
-                },
-                request_id=request_id
-            )
-    
-    try:
-        # ============== 1. FUNIL VISUAL (Sankey) ==============
+    for row in users_result:
+        user_id = row.id
         
-        # Se não há pipeline_id, usar pipeline padrão ou retornar empty state
-        target_pipeline = None
-        if pipeline_id:
-            target_pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+        # Query Top 5 Tasks
+        tasks = db.query(Tarefa).filter(
+            Tarefa.responsavel_id == user_id,
+            Tarefa.status.notin_(['concluida', 'cancelada'])
+        ).order_by(
+            case(
+                (Tarefa.prioridade == 'urgente', 1),
+                (Tarefa.prioridade == 'alta', 2),
+                (Tarefa.prioridade == 'media', 3),
+                else_=4
+            ),
+            Tarefa.data_vencimento.asc().nullslast()
+        ).limit(5).all()
+        
+        # Serializar tarefas
+        tasks_data = []
+        for t in tasks:
+            tasks_data.append({
+                "id": str(t.id),
+                "titulo": t.titulo,
+                "status": t.status,
+                "prioridade": t.prioridade,
+                "vencimento": t.data_vencimento.isoformat() if t.data_vencimento else None,
+                "projeto": t.projeto.nome if t.projeto else "Sem Projeto", # Assume lazy load ok for 5 items
+                "timing": (datetime.now().date() - t.created_at.date()).days if t.created_at else 0
+            })
+            
+        # Calcular Efficiency Score (0-100)
+        # Score baseado em tarefas concluídas vs total de tarefas
+        # Penalidades por tarefas atrasadas e aging
+        total_tasks = (row.total_pending or 0) + (row.recent_completed or 0)
+        
+        if total_tasks > 0:
+            # Base: percentual de tarefas concluídas
+            completion_rate = ((row.recent_completed or 0) / total_tasks) * 100
+            
+            # Penalidades
+            overdue_penalty = (row.overdue_count or 0) * 10  # -10% por tarefa atrasada
+            timing_penalty = min((row.avg_timing_days or 0) * 2, 30)  # -2% por dia, max -30%
+            
+            score = completion_rate - overdue_penalty - timing_penalty
         else:
-            # Buscar pipeline padrão
-            target_pipeline = db.query(Pipeline).filter(Pipeline.is_default == True).first()
+            # Sem tarefas = 0%
+            score = 0
         
-        # Se não há pipeline, retornar empty state
-        if not target_pipeline:
-            return success_response(
-                data=InteligenciaVendasResponse(
-                    sankey_nodes=[],
-                    sankey_links=[],
-                    stage_metrics=[],
-                    insights=[],
-                    forecast_total_cents=0,
-                    forecast_items=[],
-                    sales_performance=[],
-                    segment_analysis=[],
-                    period_start=start_date,
-                    period_end=end_date,
-                    previous_period_start=previous_start,
-                    previous_period_end=previous_end
-                ),
-                meta={
-                    "requiresSetup": True,
-                    "message": "Nenhum pipeline encontrado. Crie um pipeline padrão para visualizar o funil de vendas."
-                },
-                request_id=request_id
-            )
+        score = max(0, min(100, score))  # Limit 0-100
         
-        # Buscar stages do pipeline ordenadas
-        stages = db.query(PipelineStage).filter(
-            PipelineStage.pipeline_id == target_pipeline.id
-        ).order_by(PipelineStage.order_index).all()
-        
-        if not stages:
-            return success_response(
-                data=InteligenciaVendasResponse(
-                    sankey_nodes=[],
-                    sankey_links=[],
-                    stage_metrics=[],
-                    insights=[],
-                    forecast_total_cents=0,
-                    forecast_items=[],
-                    sales_performance=[],
-                    segment_analysis=[],
-                    period_start=start_date,
-                    period_end=end_date,
-                    previous_period_start=previous_start,
-                    previous_period_end=previous_end
-                ),
-                meta={
-                    "requiresSetup": True,
-                    "message": f"Pipeline '{target_pipeline.name}' não possui etapas configuradas."
-                }
-            )
-        
-        # Construir query base de deals
-        deals_base_query = db.query(Deal).filter(
-            Deal.pipeline_id == target_pipeline.id,
-            Deal.created_at >= datetime.combine(start_date, datetime.min.time()),
-            Deal.created_at <= datetime.combine(end_date, datetime.max.time())
-        )
-        
-        # Aplicar filtros
-        if user_id:
-            deals_base_query = deals_base_query.join(DealAssignee, Deal.id == DealAssignee.deal_id).filter(
-                DealAssignee.user_id == user_id
-            )
-        if source:
-            deals_base_query = deals_base_query.filter(Deal.source == source)
-        if min_value_cents:
-            deals_base_query = deals_base_query.filter(Deal.value_cents >= min_value_cents)
-        if max_value_cents:
-            deals_base_query = deals_base_query.filter(Deal.value_cents <= max_value_cents)
-        
-        # Contar deals por stage (deals que passaram ou estão atualmente nesta stage)
-        stage_volumes = {}
-        for stage in stages:
-            # Contar deals que estão atualmente nesta stage
-            current_count = deals_base_query.filter(Deal.stage_id == stage.id).count()
-            
-            # Contar deals que passaram por esta stage (usando histórico)
-            # Buscar deals que tiveram movimentação para esta stage no período
-            history_count = db.query(func.count(func.distinct(DealStageHistory.deal_id))).filter(
-                DealStageHistory.to_stage_id == stage.id,
-                DealStageHistory.moved_at >= datetime.combine(start_date, datetime.min.time()),
-                DealStageHistory.moved_at <= datetime.combine(end_date, datetime.max.time())
-            ).join(Deal, DealStageHistory.deal_id == Deal.id).filter(
-                Deal.pipeline_id == target_pipeline.id
-            )
-            
-            # Aplicar mesmos filtros
-            if user_id:
-                history_count = history_count.join(DealAssignee, Deal.id == DealAssignee.deal_id).filter(
-                    DealAssignee.user_id == user_id
-                )
-            if source:
-                history_count = history_count.filter(Deal.source == source)
-            if min_value_cents:
-                history_count = history_count.filter(Deal.value_cents >= min_value_cents)
-            if max_value_cents:
-                history_count = history_count.filter(Deal.value_cents <= max_value_cents)
-            
-            history_total = history_count.scalar() or 0
-            
-            # Volume = máximo entre deals atuais e deals que passaram por aqui
-            stage_volumes[stage.id] = max(current_count, history_total)
-        
-        # Criar nós Sankey a partir das stages reais
-        sankey_nodes = []
-        for stage in stages:
-            volume = stage_volumes.get(stage.id, 0)
-            # Adicionar todos os nós (mesmo com volume 0 para mostrar o funil completo)
-            sankey_nodes.append(SankeyNode(
-                id=f"stage_{stage.id}",
-                name=stage.name,
-                value=volume,
-                color=stage.color or "#3B82F6"
-            ))
-        
-        # Calcular transições reais usando DealStageHistory
-        # Para cada par de stages consecutivas, contar quantos deals passaram de uma para outra
-        sankey_links = []
-        transitions_map: dict[tuple[int, int], int] = {}
-        
-        try:
-            # Buscar todas as transições no período
-            transitions_query = db.query(
-                DealStageHistory.from_stage_id,
-                DealStageHistory.to_stage_id,
-                func.count(func.distinct(DealStageHistory.deal_id)).label('count')
-            ).filter(
-                DealStageHistory.moved_at >= datetime.combine(start_date, datetime.min.time()),
-                DealStageHistory.moved_at <= datetime.combine(end_date, datetime.max.time()),
-                DealStageHistory.from_stage_id.isnot(None)  # Ignorar primeira entrada (sem from_stage)
-            ).join(Deal, DealStageHistory.deal_id == Deal.id).filter(
-                Deal.pipeline_id == target_pipeline.id
-            )
-            
-            # Aplicar filtros
-            if user_id:
-                transitions_query = transitions_query.join(DealAssignee, Deal.id == DealAssignee.deal_id).filter(
-                    DealAssignee.user_id == user_id
-                )
-            if source:
-                transitions_query = transitions_query.filter(Deal.source == source)
-            if min_value_cents:
-                transitions_query = transitions_query.filter(Deal.value_cents >= min_value_cents)
-            if max_value_cents:
-                transitions_query = transitions_query.filter(Deal.value_cents <= max_value_cents)
-            
-            transitions_query = transitions_query.group_by(
-                DealStageHistory.from_stage_id,
-                DealStageHistory.to_stage_id
-            )
-            
-            transitions_results = transitions_query.all()
-            
-            for from_stage_id, to_stage_id, count in transitions_results:
-                if from_stage_id and to_stage_id:
-                    transitions_map[(from_stage_id, to_stage_id)] = count
-        except Exception as e:
-            logger.warning(f"Erro ao calcular transições (pode ser normal se não houver histórico): {e}")
-            # Continuar sem transições reais, usar fallback
-        
-        # Criar links baseados nas transições reais
-        for i in range(len(stages) - 1):
-            current_stage = stages[i]
-            next_stage = stages[i + 1]
-            
-            current_volume = stage_volumes.get(current_stage.id, 0)
-            
-            # Buscar transição real
-            transition_count = transitions_map.get((current_stage.id, next_stage.id), 0)
-            
-            # Se não há transição real, usar lógica de fallback
-            if transition_count == 0:
-                # Se há volume na próxima etapa, assumir que veio da atual
-                next_volume = stage_volumes.get(next_stage.id, 0)
-                if current_volume > 0 and next_volume > 0:
-                    # Assumir que pelo menos alguns deals passaram
-                    transition_count = min(current_volume, next_volume)
-            
-            # Criar link se houver transição
-            if transition_count > 0 and current_volume > 0:
-                conversion_rate = (transition_count / current_volume) * 100 if current_volume > 0 else 0
-                
-                # Cor da conversão
-                if conversion_rate >= 50:
-                    link_color = "#10B981"  # verde
-                elif conversion_rate >= 30:
-                    link_color = "#F59E0B"  # amarelo
-                elif conversion_rate > 0:
-                    link_color = "#EF4444"  # vermelho
-                else:
-                    link_color = "#94A3B8"  # cinza (sem conversão)
-                
-                sankey_links.append(SankeyLink(
-                    source=f"stage_{current_stage.id}",
-                    target=f"stage_{next_stage.id}",
-                    value=transition_count,
-                    conversion_rate=conversion_rate,
-                    color=link_color
-                ))
-        
-        # Adicionar links para WON e LOST se existirem
-        won_stage = next((s for s in stages if s.key == "WON"), None)
-        lost_stage = next((s for s in stages if s.key == "LOST"), None)
-        
-        # Buscar última etapa antes de WON/LOST
-        negotiation_stage = None
-        for stage in reversed(stages):
-            if stage.key not in ["WON", "LOST"]:
-                negotiation_stage = stage
-                break
-        
-        if negotiation_stage:
-            neg_volume = stage_volumes.get(negotiation_stage.id, 0)
-            
-            if won_stage and neg_volume > 0:
-                # Buscar transição real
-                won_transition = transitions_map.get((negotiation_stage.id, won_stage.id), 0)
-                won_volume = stage_volumes.get(won_stage.id, 0)
-                
-                if won_transition > 0 or won_volume > 0:
-                    transition_value = won_transition if won_transition > 0 else won_volume
-                    conversion_rate = (transition_value / neg_volume) * 100 if neg_volume > 0 else 0
-                    sankey_links.append(SankeyLink(
-                        source=f"stage_{negotiation_stage.id}",
-                        target=f"stage_{won_stage.id}",
-                        value=transition_value,
-                        conversion_rate=conversion_rate,
-                        color="#10B981"
-                    ))
-            
-            if lost_stage and neg_volume > 0:
-                # Buscar transição real
-                lost_transition = transitions_map.get((negotiation_stage.id, lost_stage.id), 0)
-                lost_volume = stage_volumes.get(lost_stage.id, 0)
-                
-                if lost_transition > 0 or lost_volume > 0:
-                    transition_value = lost_transition if lost_transition > 0 else lost_volume
-                    conversion_rate = (transition_value / neg_volume) * 100 if neg_volume > 0 else 0
-                    sankey_links.append(SankeyLink(
-                        source=f"stage_{negotiation_stage.id}",
-                        target=f"stage_{lost_stage.id}",
-                        value=transition_value,
-                        conversion_rate=conversion_rate,
-                        color="#EF4444"
-                    ))
-        
-        # Retornar resposta
-        return success_response(
-            data=InteligenciaVendasResponse(
-                sankey_nodes=sankey_nodes,
-                sankey_links=sankey_links,
-                stage_metrics=[],
-                insights=[],
-                forecast_total_cents=0,
-                forecast_items=[],
-                sales_performance=[],
-                segment_analysis=[],
-                period_start=start_date,
-                period_end=end_date,
-                previous_period_start=previous_start,
-                previous_period_end=previous_end
-            ),
-            meta={
-                "pipeline_id": target_pipeline.id,
-                "pipeline_name": target_pipeline.name,
-                "filters_applied": {
-                    "start_date": str(start_date),
-                    "end_date": str(end_date),
-                    "pipeline_id": pipeline_id,
-                    "user_id": user_id,
-                    "source": source,
-                    "min_value_cents": min_value_cents,
-                    "max_value_cents": max_value_cents,
-                }
+        user_data = {
+            "user": {
+                "id": str(row.id),
+                "nome": row.nome,
+                "email": row.email,
+                "role": row.role,
+                "avatar": None # Frontend gera cor pelo nome
             },
-            request_id=request_id
-        )
-    except Exception as e:
-        logger.error(f"Erro ao calcular inteligência de vendas: {str(e)}", exc_info=True)
-        # Retornar dados vazios em vez de quebrar o sistema
-        from app.core.response import success_response
-        return success_response(
-            data=InteligenciaVendasResponse(
-                sankey_nodes=[],
-                sankey_links=[],
-                stage_metrics=[],
-                insights=[],
-                forecast_total_cents=0,
-                forecast_items=[],
-                sales_performance=[],
-                segment_analysis=[],
-                period_start=start_date,
-                period_end=end_date,
-                previous_period_start=previous_start,
-                previous_period_end=previous_end
-            ),
-            meta={
-                "error": str(e),
-                "message": "Erro ao calcular dados. Verifique os logs do servidor."
-            }
-        )
+            "kpis": {
+                "total_pending": row.total_pending or 0,
+                "overdue_count": row.overdue_count or 0,
+                "avg_timing": round(row.avg_timing_days or 0, 1),
+                "weighted_load": row.weighted_load or 0,
+                "recent_completed": row.recent_completed or 0,
+                "efficiency_score": round(score)
+            },
+            "top_tasks": tasks_data
+        }
+        dashboard_data.append(user_data)
+        
+    # 3. Sumário Geral
+    total_pending = sum(d['kpis']['total_pending'] for d in dashboard_data)
+    total_overdue = sum(d['kpis']['overdue_count'] for d in dashboard_data)
+    avg_score = sum(d['kpis']['efficiency_score'] for d in dashboard_data) / len(dashboard_data) if dashboard_data else 0
+    
+    return {
+        "summary": {
+            "total_pending": total_pending,
+            "total_overdue": total_overdue,
+            "avg_efficiency": round(avg_score)
+        },
+        "users": dashboard_data
+    }
 
+@router.get("/performance")
+def get_performance_charts(
+    range_days: int = Query(30),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Retorna dados para gráficos de performance:
+    - Burndown/Produtividade (Concluídas por dia)
+    - Aging Buckets
+    - Status Distribution
+    """
+    start_date = datetime.now() - timedelta(days=range_days)
+    
+    # 1. Produtividade Diária (Completed Tasks)
+    # Agrupa por data de conclusão
+    daily_completed = db.query(
+        func.date_trunc('day', Tarefa.completed_at).label('date'),
+        func.count(Tarefa.id).label('count')
+    ).filter(
+        Tarefa.status == 'concluida',
+        Tarefa.completed_at >= start_date
+    ).group_by(text('1')).order_by(text('1')).all()
+    
+    chart_productivity = [
+        {"date": row.date.strftime('%Y-%m-%d'), "completed": row.count}
+        for row in daily_completed
+    ]
+    
+    # 2. Aging Distribution (Buckets)
+    # < 3 dias, 3-7 dias, 7-14 dias, 15+ dias
+    timing_sql = text("""
+    SELECT 
+        CASE 
+            WHEN extract(day from now() - created_at) < 3 THEN '0-2d'
+            WHEN extract(day from now() - created_at) BETWEEN 3 AND 7 THEN '3-7d'
+            WHEN extract(day from now() - created_at) BETWEEN 8 AND 14 THEN '8-14d'
+            ELSE '15d+'
+        END as bucket,
+        COUNT(*) as count
+    FROM tarefas
+    WHERE status NOT IN ('concluida', 'cancelada')
+    GROUP BY bucket
+    ORDER BY bucket
+    """)
+    timing_buckets = db.execute(timing_sql).fetchall()
+    chart_timing = [{"bucket": row.bucket, "count": row.count} for row in timing_buckets]
+    
+    return {
+        "productivity_trend": chart_productivity,
+        "timing_distribution": chart_timing
+    }

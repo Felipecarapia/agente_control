@@ -347,6 +347,13 @@ def create_tarefa(
         db.add(obj)
         db.flush()  # Para obter o ID
         
+        # Log Evento de Criação
+        # try:
+        #     from app.services.task_event_service import log_task_event
+        #     log_task_event(db, obj.id, current_user.id, "CREATE", to_value=obj.status, meta={"titulo": obj.titulo})
+        # except Exception:
+        #     pass
+        
         # Criar assignees se houver
         if assigned_user_ids:
             for user_id in assigned_user_ids:
@@ -504,9 +511,20 @@ def update_tarefa(
                     assignee = TarefaAssignee(tarefa_id=tarefa_id, usuario_id=user_id)
                     db.add(assignee)
         
+        # Capturar estado anterior
+        old_status = obj.status
+
         # Atualizar outros campos
         for k, v in update_data.items():
             setattr(obj, k, v)
+            
+        # Log Evento de mudança de status
+        # if obj.status != old_status:
+        #     try:
+        #         from app.services.task_event_service import log_task_event
+        #         log_task_event(db, obj.id, current_user.id, "STATUS_CHANGE", from_value=old_status, to_value=obj.status)
+        #     except Exception:
+        #         pass
         
         db.commit()
         
@@ -614,6 +632,23 @@ def toggle_tarefa_status(
                 status_code=404,
                 request_id=request_id
             )
+        # Regra de Negócio: Apenas responsável ou Admin/Gerente pode alterar status
+        is_responsible = obj.responsavel_id == current_user.id
+        is_admin = False
+        # Nota: user_roles é carregado lazy se a sessão estiver ativa
+        if current_user.user_roles:
+            for ur in current_user.user_roles:
+                if ur.role and ur.role.key in ['ADMIN', 'PROJECT_MANAGER']:
+                    is_admin = True
+                    break
+        
+        if not (is_responsible or is_admin):
+            return error_response(
+                code="FORBIDDEN",
+                message="Permissão negada. Apenas o responsável ou administradores podem alterar o status.",
+                status_code=403,
+                request_id=request_id
+            )
         
         # Alternar status
         if obj.status == "concluida":
@@ -662,3 +697,53 @@ def toggle_tarefa_status(
             status_code=500,
             request_id=request_id
         )
+
+@router.get("/{tarefa_id}/notion")
+def get_tarefa_notion_details(
+    request: Request,
+    tarefa_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """
+    Retorna tarefa com detalhes avançados (Blocos, Properties).
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
+    # 1. Buscar Tarefa Base
+    obj = db.query(Tarefa).options(
+        joinedload(Tarefa.projeto),
+        joinedload(Tarefa.responsavel),
+        selectinload(Tarefa.assignees).joinedload(TarefaAssignee.usuario)
+    ).filter(Tarefa.id == tarefa_id).first()
+    
+    if not obj:
+        return error_response(
+            code="TASK_NOT_FOUND",
+            message=f"Tarefa {tarefa_id} não encontrada",
+            status_code=404,
+            request_id=request_id
+        )
+
+    # Serializar
+    data = serialize_data(obj)
+    
+    # 2. Buscar Blocos e Properties (Lazy Load Manual para evitar ciclo de models)
+    try:
+        from app.models.task_notion import TaskBlock, TaskPropertyValue
+        
+        blocks = db.query(TaskBlock).filter(TaskBlock.task_id == tarefa_id).order_by(TaskBlock.position).all()
+        data['blocks'] = [serialize_data(b) for b in blocks]
+        
+        props = db.query(TaskPropertyValue).filter(TaskPropertyValue.task_id == tarefa_id).all()
+        data['property_values'] = [serialize_data(p) for p in props]
+        
+    except Exception as e:
+         # print(f"Erro ao carregar blocks/props: {e}")
+         data['blocks'] = []
+         data['property_values'] = []
+
+    # Campo extra
+    data['is_recurring'] = False
+
+    return success_response(data=data, request_id=request_id)

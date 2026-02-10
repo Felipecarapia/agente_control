@@ -12,7 +12,7 @@ class Tarefa(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     titulo = Column(String(255), nullable=False)
     descricao = Column(Text, nullable=True)
-    projeto_id = Column(UUID(as_uuid=True), ForeignKey("projetos.id"), nullable=False)
+    projeto_id = Column(UUID(as_uuid=True), ForeignKey("projetos.id"), nullable=True)
     status = Column(String(50), default="pendente", nullable=False)
     prioridade = Column(String(20), nullable=True)
     responsavel_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)

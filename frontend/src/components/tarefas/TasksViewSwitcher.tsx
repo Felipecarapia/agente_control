@@ -1,10 +1,10 @@
 "use client";
 
-import { List, Calendar as CalendarIcon, CalendarDays, LayoutGrid, Table2 } from "lucide-react";
+import { List, Calendar as CalendarIcon, CalendarDays, LayoutGrid, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type TasksView = "list" | "agenda" | "calendar" | "kanban" | "table";
+export type TasksView = "list" | "agenda" | "calendar" | "kanban" | "table" | "analytics";
 
 interface TasksViewSwitcherProps {
   view: TasksView;
@@ -63,16 +63,16 @@ export function TasksViewSwitcher({ view, onViewChange }: TasksViewSwitcherProps
         <span className="hidden sm:inline">Kanban</span>
       </Button>
       <Button
-        variant={view === "table" ? "default" : "ghost"}
+        variant={view === "analytics" ? "default" : "ghost"}
         size="sm"
-        onClick={() => onViewChange("table")}
+        onClick={() => onViewChange("analytics")}
         className={cn(
           "flex items-center gap-2",
-          view === "table" && "bg-background shadow-sm"
+          view === "analytics" && "bg-background shadow-sm"
         )}
       >
-        <Table2 className="h-4 w-4" />
-        <span className="hidden sm:inline">Tabela</span>
+        <BarChart2 className="h-4 w-4" />
+        <span className="hidden sm:inline">Performance</span>
       </Button>
     </div>
   );

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LayoutDashboard, Users, FolderKanban, ListTodo, FileText, FileSignature } from "lucide-react";
+import { ProductivityWidget } from "@/components/productivity/ProductivityWidget";
+import { OverdueTasksMonitor } from "@/components/productivity/OverdueTasksMonitor";
 
 const modules = [
   { href: "/dashboard/clientes", label: "Clientes", icon: Users, count: "—" },
@@ -21,7 +23,16 @@ export default function DashboardPage() {
       transition={{ duration: 0.3 }}
       className="space-y-4 lg:space-y-6"
     >
+      {/* Monitor de Tarefas Atrasadas (invisível, apenas notifica) */}
+      <OverdueTasksMonitor />
+
       <p className="text-muted-foreground text-sm">Visão geral do CRM. Use o menu para acessar os módulos.</p>
+
+      {/* Widget de Produtividade */}
+      <div className="mb-6">
+        <ProductivityWidget />
+      </div>
+
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((m) => {
           const Icon = m.icon;

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class TarefaBase(BaseModel):
     titulo: str
     descricao: Optional[str] = None
-    projeto_id: uuid.UUID
+    projeto_id: Optional[uuid.UUID] = None
     status: str = "pendente"
     prioridade: Optional[str] = None
     responsavel_id: Optional[uuid.UUID] = None

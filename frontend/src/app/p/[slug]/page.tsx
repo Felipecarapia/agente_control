@@ -14,12 +14,34 @@ type PropostaPublic = {
 };
 
 async function getPropostaBySlug(slug: string): Promise<PropostaPublic | null> {
-  // Server Component: usa BACKEND_URL diretamente (não há Mixed Content no servidor)
-  // Se não tiver BACKEND_URL, tenta NEXT_PUBLIC_API_URL como fallback
-  const base = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const res = await fetch(`${base}/api/v1/propostas/public/${slug}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    // Server Component: usa BACKEND_URL diretamente (não há Mixed Content no servidor)
+    // Se não tiver BACKEND_URL, tenta NEXT_PUBLIC_API_URL como fallback
+    const base = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${base}/api/v1/propostas/public/${slug}`, {
+      cache: "no-store",
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!res.ok) {
+      console.error(`Failed to fetch proposal: ${res.status} ${res.statusText}`);
+      return null;
+    }
+
+    const json = await res.json();
+
+    // O backend retorna { ok: true, data: {...} }
+    if (json.ok && json.data) {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching proposal:', error);
+    return null;
+  }
 }
 
 export default async function PropostaLandingPage({
