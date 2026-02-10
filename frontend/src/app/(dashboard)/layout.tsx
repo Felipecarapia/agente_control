@@ -29,6 +29,14 @@ import {
   Bot,
   Megaphone,
   MessageSquareMore,
+  DollarSign,
+  CreditCard,
+  Wallet,
+  BarChart3,
+  Repeat,
+  Building2,
+  FolderTree,
+  UsersRound,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationToastManager } from "@/components/notifications/NotificationToast";
@@ -69,6 +77,25 @@ const navGroups = [
     ],
   },
   {
+    title: "Financeiro",
+    desc: "Gestão financeira completa",
+    items: [
+      { href: "/dashboard/financeiro", label: "Relatórios", icon: BarChart3 },
+      { href: "/dashboard/financeiro/contas-pagar", label: "Contas a Pagar", icon: CreditCard },
+      { href: "/dashboard/financeiro/contas-receber", label: "Contas a Receber", icon: Wallet },
+      { href: "/dashboard/financeiro/despesas-fixas", label: "Despesas Fixas", icon: Repeat },
+      { href: "/dashboard/financeiro/contas-bancarias", label: "Contas Bancárias", icon: Building2 },
+      { href: "/dashboard/financeiro/centros-custo", label: "Centros de Custo", icon: FolderTree },
+    ],
+  },
+  {
+    title: "RH",
+    desc: "Recursos humanos",
+    items: [
+      { href: "/dashboard/rh", label: "Funcionários", icon: UsersRound },
+    ],
+  },
+  {
     title: "Configurações",
     desc: "Administração",
     items: [
@@ -92,6 +119,13 @@ const pathToTitle: Record<string, string> = {
   "/dashboard/contratos": "Contratos",
   "/dashboard/agentes": "Agentes de IA",
   "/dashboard/campanhas": "Campanhas",
+  "/dashboard/financeiro": "Relatórios Financeiros",
+  "/dashboard/financeiro/contas-pagar": "Contas a Pagar",
+  "/dashboard/financeiro/contas-receber": "Contas a Receber",
+  "/dashboard/financeiro/despesas-fixas": "Despesas Fixas",
+  "/dashboard/financeiro/contas-bancarias": "Contas Bancárias",
+  "/dashboard/financeiro/centros-custo": "Centros de Custo",
+  "/dashboard/rh": "Recursos Humanos",
   "/dashboard/configuracoes/usuarios": "Usuários",
   "/dashboard/configuracoes/roles": "Roles e Permissões",
   "/dashboard/configuracoes/whatsapp": "WhatsApp",
@@ -108,6 +142,8 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/dashboard/mensagens")) return "Mensagens";
   if (pathname.startsWith("/dashboard/agentes")) return "Agentes de IA";
   if (pathname.startsWith("/dashboard/campanhas")) return "Campanhas";
+  if (pathname.startsWith("/dashboard/financeiro")) return "Financeiro";
+  if (pathname.startsWith("/dashboard/rh")) return "Recursos Humanos";
   if (pathname.startsWith("/dashboard/configuracoes/whatsapp")) return "WhatsApp";
   if (pathname.startsWith("/dashboard/configuracoes/roles")) return "Roles e Permissões";
   if (pathname.startsWith("/dashboard/configuracoes")) return "Configurações";
@@ -242,8 +278,13 @@ export default function DashboardLayout({
               <p className="sidebar-section-desc px-3">{group.desc}</p>
               <ul className="mt-2 space-y-0.5">
                 {group.items.map((item) => {
-                  const active =
-                    pathname === item.href || pathname.startsWith(item.href + "/");
+                  // Verificar se há outro item no grupo que é mais específico
+                  const hasMoreSpecific = group.items.some(
+                    (other) => other.href !== item.href && other.href.startsWith(item.href + "/") && (pathname === other.href || pathname.startsWith(other.href + "/"))
+                  );
+                  const active = hasMoreSpecific
+                    ? false
+                    : pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
                   return (
                     <li key={item.href}>

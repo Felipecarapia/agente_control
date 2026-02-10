@@ -60,6 +60,10 @@ const MODULE_LABELS: Record<string, string> = {
   notificacoes: "Notificações",
   mensagens: "Mensagens",
   roles: "Roles e Permissões",
+  funil: "Funil de Vendas",
+  contas_pagar: "Contas a Pagar",
+  contas_receber: "Contas a Receber",
+  financeiro: "Financeiro",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -70,6 +74,8 @@ const ACTION_LABELS: Record<string, string> = {
   nudge: "Cobrar",
   upload: "Upload",
   send: "Enviar",
+  pay: "Pagar",
+  receive: "Receber",
 };
 
 export default function RolesPage() {
@@ -78,17 +84,17 @@ export default function RolesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<number>>(new Set());
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ key: "", name: "" });
   
   // Estados para CRUD de Permissões
   const [allPermissionsList, setAllPermissionsList] = useState<Permission[]>([]);
   const [permissionOpen, setPermissionOpen] = useState(false);
-  const [permissionEditId, setPermissionEditId] = useState<number | null>(null);
-  const [permissionDeleteId, setPermissionDeleteId] = useState<number | null>(null);
+  const [permissionEditId, setPermissionEditId] = useState<string | null>(null);
+  const [permissionDeleteId, setPermissionDeleteId] = useState<string | null>(null);
   const [permissionForm, setPermissionForm] = useState({
     module: "",
     action: "",
