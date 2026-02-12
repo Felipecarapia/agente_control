@@ -1,6 +1,6 @@
 from app.models.usuario import Usuario
 from app.models.cliente import Cliente
-from app.models.projeto import Projeto
+from app.models.projeto import Projeto, ProjectExpense, ExpenseCategory
 from app.models.tarefa import Tarefa, TarefaAssignee
 from app.models.task_notion import (
     TaskDatabase, TaskProperty, TaskPropertyValue, TaskView,
@@ -42,7 +42,7 @@ from app.models.financeiro import (
 from app.models.rh import Funcionario, TipoContrato
 
 __all__ = [
-    "Usuario", "Cliente", "Projeto", "Tarefa", "TarefaAssignee", "Proposta", "ProposalSection", "ProposalPricingPlan", "ProposalStatusEvent", "EmailOutbox",
+    "Usuario", "Cliente", "Projeto", "ProjectExpense", "ExpenseCategory", "Tarefa", "TarefaAssignee", "Proposta", "ProposalSection", "ProposalPricingPlan", "ProposalStatusEvent", "EmailOutbox",
     "PreProposta", "PrePropostaAnswer", "PrePropostaTemplate",
     "Contrato",
     "ProposalSession", "ProposalEventLegacy", "ProposalAnalyticsSummary",
