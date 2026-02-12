@@ -34,6 +34,7 @@ from app.api.v1.campaigns import router as campaigns_router
 from app.api.v1.financeiro import router as financeiro_router
 from app.api.v1.rh import router as rh_router
 from app.api.v1.productivity import router as productivity_router
+from app.api.v1.dashboard_projects import router as dashboard_projects_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -70,3 +71,4 @@ api_router.include_router(campaigns_router)
 api_router.include_router(financeiro_router)
 api_router.include_router(rh_router)
 api_router.include_router(productivity_router, prefix="/productivity", tags=["productivity"])
+api_router.include_router(dashboard_projects_router, prefix="/dashboard")
