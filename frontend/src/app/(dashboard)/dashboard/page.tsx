@@ -1,11 +1,15 @@
+
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LayoutDashboard, Users, FolderKanban, ListTodo, FileText, FileSignature } from "lucide-react";
 import { ProductivityWidget } from "@/components/productivity/ProductivityWidget";
 import { OverdueTasksMonitor } from "@/components/productivity/OverdueTasksMonitor";
+import { ProjectDashboardV2 } from "@/components/dashboard/v2/ProjectDashboardV2";
+import { Button } from "@/components/ui/button";
 
 const modules = [
   { href: "/dashboard/clientes", label: "Clientes", icon: Users, count: "—" },
@@ -16,6 +20,13 @@ const modules = [
 ];
 
 export default function DashboardPage() {
+  // Toggle state
+  const [isV2, setIsV2] = useState(true);
+
+  if (isV2) {
+    return <ProjectDashboardV2 onToggleVersion={() => setIsV2(false)} />;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -23,6 +34,13 @@ export default function DashboardPage() {
       transition={{ duration: 0.3 }}
       className="space-y-4 lg:space-y-6"
     >
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-2xl font-bold tracking-tight">Visão Geral</h2>
+        <Button variant="outline" size="sm" onClick={() => setIsV2(true)}>
+          Testar Novo Dashboard
+        </Button>
+      </div>
+
       {/* Monitor de Tarefas Atrasadas (invisível, apenas notifica) */}
       <OverdueTasksMonitor />
 

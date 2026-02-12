@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ProjectFinancials } from "@/components/projetos/financials/ProjectFinancials";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -688,7 +689,7 @@ export default function ProjetosPage() {
 
       {/* Details Sheet */}
       <Sheet open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-auto">
+        <SheetContent className="w-full sm:max-w-3xl overflow-auto">
           {selectedProject && (
             <>
               <SheetHeader className="mb-6">
@@ -755,6 +756,11 @@ export default function ProjetosPage() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Financials Section */}
+                <div className="bg-gradient-to-br from-background to-muted/20 rounded-xl p-4 space-y-3 border">
+                  <ProjectFinancials projectId={selectedProject.id} />
                 </div>
 
                 <div className="space-y-2">
