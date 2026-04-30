@@ -10,6 +10,8 @@ from app.core.database import Base
 
 class Contrato(Base):
     __tablename__ = "contratos"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     numero = Column(String(100), nullable=False)

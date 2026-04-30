@@ -9,6 +9,8 @@ from app.core.database import Base
 
 class Proposta(Base):
     __tablename__ = "propostas"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     titulo = Column(String(255), nullable=False)
@@ -57,6 +59,8 @@ class Proposta(Base):
 class ProposalSection(Base):
     """Seções editáveis da proposta"""
     __tablename__ = "proposal_sections"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -77,6 +81,8 @@ class ProposalSection(Base):
 class ProposalPricingPlan(Base):
     """Planos de preço da proposta"""
     __tablename__ = "proposal_pricing_plans"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -101,6 +107,8 @@ class ProposalPricingPlan(Base):
 class ProposalStatusEvent(Base):
     """Eventos de status da proposta (CREATED, SENT, VIEWED, ACCEPTED, etc)"""
     __tablename__ = "proposal_status_events"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("propostas.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -118,6 +126,8 @@ class ProposalStatusEvent(Base):
 class EmailOutbox(Base):
     """Fila de e-mails para envio transacional"""
     __tablename__ = "email_outbox"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     to_email = Column(String(255), nullable=False, index=True)

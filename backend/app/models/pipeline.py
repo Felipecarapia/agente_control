@@ -12,6 +12,8 @@ from app.core.database import Base
 class Pipeline(Base):
     """Pipeline de vendas (ex: Vendas, Parcerias, Retenção)"""
     __tablename__ = "pipelines"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), nullable=False)
@@ -29,6 +31,8 @@ class Pipeline(Base):
 class PipelineStage(Base):
     """Etapas/Colunas do pipeline (ex: Lead, Contato, Proposta, Negociação)"""
     __tablename__ = "pipeline_stages"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     pipeline_id = Column(UUID(as_uuid=True), ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -73,6 +77,8 @@ class DealSource(str, enum.Enum):
 class Deal(Base):
     """Oportunidade/Deal (card do Kanban)"""
     __tablename__ = "deals"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     pipeline_id = Column(UUID(as_uuid=True), ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -109,6 +115,8 @@ class Deal(Base):
 class DealAssignee(Base):
     """Responsáveis atribuídos a um Deal"""
     __tablename__ = "deal_assignees"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -127,6 +135,8 @@ class DealAssignee(Base):
 class DealTag(Base):
     """Tags para categorizar deals"""
     __tablename__ = "deal_tags"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(100), nullable=False, unique=True)
@@ -139,6 +149,8 @@ class DealTag(Base):
 class DealTagLink(Base):
     """Relação entre Deal e Tag"""
     __tablename__ = "deal_tag_links"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -160,6 +172,8 @@ class DealActivityType(str, enum.Enum):
 class DealActivity(Base):
     """Atividades/Tarefas de follow-up do Deal"""
     __tablename__ = "deal_activities"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -177,6 +191,8 @@ class DealActivity(Base):
 class DealNote(Base):
     """Comentários/Notas dentro do Deal"""
     __tablename__ = "deal_notes"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -191,6 +207,8 @@ class DealNote(Base):
 class DealStageHistory(Base):
     """Histórico de movimentação do Deal entre etapas (auditoria)"""
     __tablename__ = "deal_stage_history"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True)

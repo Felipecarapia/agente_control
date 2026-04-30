@@ -8,6 +8,8 @@ from app.core.database import Base
 
 class Tarefa(Base):
     __tablename__ = "tarefas"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     titulo = Column(String(255), nullable=False)
@@ -53,6 +55,8 @@ class Tarefa(Base):
 class TarefaAssignee(Base):
     """Tabela para atribuir múltiplos usuários a uma tarefa"""
     __tablename__ = "tarefa_assignees"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     tarefa_id = Column(UUID(as_uuid=True), ForeignKey("tarefas.id", ondelete="CASCADE"), nullable=False, index=True)

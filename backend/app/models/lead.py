@@ -28,6 +28,8 @@ class LeadConversationStatus(str, enum.Enum):
 class Lead(Base):
     """Cadastro de leads."""
     __tablename__ = "leads"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
@@ -96,6 +98,8 @@ class Lead(Base):
 class LeadConversation(Base):
     """Conversa de prospecção IA vinculada a um lead."""
     __tablename__ = "lead_conversations"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -118,6 +122,8 @@ class LeadConversation(Base):
 class LeadMessage(Base):
     """Mensagem individual dentro de uma conversa lead/agente."""
     __tablename__ = "lead_messages"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("lead_conversations.id", ondelete="CASCADE"), nullable=False, index=True)

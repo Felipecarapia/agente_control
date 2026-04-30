@@ -16,6 +16,8 @@ class ExpenseCategory(str, enum.Enum):
 
 class ProjectExpense(Base):
     __tablename__ = "project_expenses"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projetos.id"), nullable=False, index=True)
@@ -34,6 +36,8 @@ class ProjectExpense(Base):
 
 class Projeto(Base):
     __tablename__ = "projetos"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     tipo = Column(String(50), default="desenvolvimento_software", nullable=False)  # desenvolvimento_software, marketing, infoproduto, lancamento

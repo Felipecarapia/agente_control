@@ -72,6 +72,8 @@ class TipoConta(str, enum.Enum):
 class CentroCusto(Base):
     """Centros de custo para classificação financeira."""
     __tablename__ = "centros_custo"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     nome = Column(String(255), nullable=False)
@@ -87,6 +89,8 @@ class CentroCusto(Base):
 class ContaBancaria(Base):
     """Contas bancárias da empresa."""
     __tablename__ = "contas_bancarias"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     nome_banco = Column(String(255), nullable=False)
@@ -109,6 +113,8 @@ class ContaBancaria(Base):
 class DespesaFixa(Base):
     """Despesas fixas recorrentes (gera contas a pagar mensalmente)."""
     __tablename__ = "despesas_fixas"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     descricao = Column(String(500), nullable=False)
@@ -141,6 +147,8 @@ class DespesaFixa(Base):
 class ContaPagar(Base):
     """Contas a pagar (despesas/obrigações)."""
     __tablename__ = "contas_pagar"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     descricao = Column(String(500), nullable=False)
@@ -189,6 +197,8 @@ class ContaPagar(Base):
 class ContaReceber(Base):
     """Contas a receber (receitas/créditos)."""
     __tablename__ = "contas_receber"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     descricao = Column(String(500), nullable=False)

@@ -17,12 +17,25 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=TokenResponse)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     try:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"TENTATIVA DE LOGIN - Email: {data.email}, Senha digitada: {data.password}")
+        
         user = db.query(Usuario).filter(Usuario.email == data.email).first()
-        if not user or not verify_password(data.password, user.hashed_password):
+        if not user:
+            logger.warning(f"Usuário não encontrado: {data.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Email ou senha inválidos",
             )
+        
+        if not verify_password(data.password, user.hashed_password):
+            logger.warning(f"Senha incorreta para usuário: {data.email}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha inválidos",
+            )
+
         if not user.ativo:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

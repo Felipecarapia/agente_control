@@ -40,6 +40,8 @@ from app.models.financeiro import (
     ContaStatus, ContaCategoria, FormaPagamento, Recorrencia, TipoConta,
 )
 from app.models.rh import Funcionario, TipoContrato
+from app.models.tenant import Tenant, PlanType
+from app.models.productivity import UserProductivityMetric
 
 __all__ = [
     "Usuario", "Cliente", "Projeto", "ProjectExpense", "ExpenseCategory", "Tarefa", "TarefaAssignee", "Proposta", "ProposalSection", "ProposalPricingPlan", "ProposalStatusEvent", "EmailOutbox",
@@ -74,4 +76,7 @@ __all__ = [
     "ContaStatus", "ContaCategoria", "FormaPagamento", "Recorrencia", "TipoConta",
     # RH
     "Funcionario", "TipoContrato",
+    # Tenant
+    "Tenant", "PlanType",
+    "UserProductivityMetric",
 ]

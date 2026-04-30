@@ -10,6 +10,8 @@ from app.core.database import Base
 
 class Cliente(Base):
     __tablename__ = "clientes"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     tipo = Column(String(2), nullable=False, default="pf")  # pf | pj

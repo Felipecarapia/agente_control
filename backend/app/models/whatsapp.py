@@ -23,6 +23,8 @@ class WhatsAppConnectionStatus(str, enum.Enum):
 class WhatsAppConnection(Base):
     """Conexão WhatsApp (Evolution API ou API Oficial Meta)"""
     __tablename__ = "whatsapp_connections"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), nullable=False)

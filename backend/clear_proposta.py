@@ -1,0 +1,13 @@
+import psycopg2, sys
+sys.stdout.reconfigure(encoding='utf-8')
+conn = psycopg2.connect(host='78.142.242.97', port=5432, database='sistemaxi-crm', user='fortis', password='Fortis2107')
+cur = conn.cursor()
+cur.execute("UPDATE propostas SET landing_content = NULL, updated_at = NOW() WHERE id = '40e7d7f2-10d8-4223-8e4c-c6c24df4edf7'")
+conn.commit()
+print(f'Rows updated: {cur.rowcount}')
+cur.execute("SELECT id, titulo, landing_content FROM propostas WHERE id = '40e7d7f2-10d8-4223-8e4c-c6c24df4edf7'")
+row = cur.fetchone()
+print(f'landing_content agora: {row[2]}')
+cur.close()
+conn.close()
+print('OK - proposta limpa com sucesso!')

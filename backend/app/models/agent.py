@@ -27,6 +27,8 @@ class ConversationStatus(str, enum.Enum):
 class AIAgent(Base):
     """Agente de IA configurável para atendimento e automação"""
     __tablename__ = "ai_agents"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), nullable=False)
@@ -57,6 +59,8 @@ class AIAgent(Base):
 class AgentConversation(Base):
     """Histórico de conversas do agente"""
     __tablename__ = "agent_conversations"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     agent_id = Column(UUID(as_uuid=True), ForeignKey("ai_agents.id", ondelete="CASCADE"), nullable=False, index=True)

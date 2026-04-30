@@ -41,6 +41,8 @@ class CampaignLeadStatus(str, enum.Enum):
 class Campaign(Base):
     """Campanha de marketing/prospecção"""
     __tablename__ = "campaigns"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), nullable=False)
@@ -70,6 +72,8 @@ class Campaign(Base):
 class CampaignLead(Base):
     """Lead encontrado por uma campanha de prospecção"""
     __tablename__ = "campaign_leads"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -118,6 +122,8 @@ class CampaignMsgChannel(str, enum.Enum):
 class CampaignLeadConversation(Base):
     """Conversa de outreach IA com um campaign lead."""
     __tablename__ = "campaign_lead_conversations"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     campaign_lead_id = Column(UUID(as_uuid=True), ForeignKey("campaign_leads.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -142,6 +148,8 @@ class CampaignLeadConversation(Base):
 class CampaignLeadMessage(Base):
     """Mensagem individual dentro de uma conversa de outreach."""
     __tablename__ = "campaign_lead_messages"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("campaign_lead_conversations.id", ondelete="CASCADE"), nullable=False, index=True)
