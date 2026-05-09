@@ -124,92 +124,53 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
-          <p className="text-muted-foreground text-sm">Gerencie seus leads e oportunidades</p>
+          <h2 className="font-bold text-foreground" style={{ fontSize: "1.4rem", letterSpacing: "-0.035em" }}>Leads</h2>
+          <p className="text-muted-foreground text-sm mt-0.5">Gerencie seus leads e oportunidades de negócio</p>
         </div>
-        <Button asChild className="gap-2">
+        <Button asChild size="sm" className="gap-2">
           <Link href="/dashboard/leads/novo">
-            <Plus className="h-4 w-4" />
-            Novo Lead
+            <Plus className="h-3.5 w-3.5" /> Novo Lead
           </Link>
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {[
+          { label: "Total",    value: stats.total,    icon: Users,   accent: "hsl(var(--foreground))" },
+          { label: "Novos",    value: stats.novos,    icon: Target,  accent: "#60a5fa" },
+          { label: "Quentes",  value: stats.quentes,  icon: Flame,   accent: "#f87171" },
+          { label: "Ganhos",   value: stats.ganhos,   icon: Trophy,  accent: "#34d399" },
+          { label: "Perdidos", value: stats.perdidos, icon: XCircle, accent: "#f87171" },
+        ].map((s, i) => (
+          <motion.div key={s.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+            <div className="rounded-xl border border-border/60 bg-card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-medium text-muted-foreground">{s.label}</p>
+                <s.icon className="w-3.5 h-3.5" style={{ color: s.accent }} />
+              </div>
+              <p className="text-2xl font-bold" style={{ letterSpacing: "-0.04em" }}>{s.value}</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <Target className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.novos}</p>
-              <p className="text-xs text-muted-foreground">Novos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-              <Flame className="h-5 w-5 text-red-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.quentes}</p>
-              <p className="text-xs text-muted-foreground">Quentes</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <Trophy className="h-5 w-5 text-green-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.ganhos}</p>
-              <p className="text-xs text-muted-foreground">Ganhos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-              <XCircle className="h-5 w-5 text-red-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.perdidos}</p>
-              <p className="text-xs text-muted-foreground">Perdidos</p>
-            </div>
-          </CardContent>
-        </Card>
+          </motion.div>
+        ))}
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-2">
         <form onSubmit={handleSearch} className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            className="pl-10"
+            className="pl-9 h-9 text-sm"
             placeholder="Buscar por nome, email, empresa ou telefone..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
           />
         </form>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2">
           <select
-            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="h-9 rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground focus:outline-none"
             value={filterTemp}
-            onChange={(e) => setFilterTemp(e.target.value)}
+            onChange={e => setFilterTemp(e.target.value)}
           >
             <option value="">Temperatura</option>
             <option value="frio">Frio</option>
@@ -218,9 +179,9 @@ export default function LeadsPage() {
             <option value="cliente">Cliente</option>
           </select>
           <select
-            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="h-9 rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground focus:outline-none"
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={e => setFilterStatus(e.target.value)}
           >
             <option value="">Status</option>
             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
@@ -228,9 +189,8 @@ export default function LeadsPage() {
             ))}
           </select>
           {(filterTemp || filterStatus) && (
-            <Button variant="ghost" size="sm" onClick={() => { setFilterTemp(""); setFilterStatus(""); }} className="gap-1 text-xs">
-              <Filter className="h-3.5 w-3.5" />
-              Limpar
+            <Button variant="ghost" size="sm" onClick={() => { setFilterTemp(""); setFilterStatus(""); }} className="h-9 gap-1 text-xs">
+              <Filter className="h-3.5 w-3.5" /> Limpar
             </Button>
           )}
         </div>
@@ -238,89 +198,65 @@ export default function LeadsPage() {
 
       {/* Lista */}
       {loading ? (
-        <div className="py-20 text-center text-muted-foreground">Carregando...</div>
+        <div className="space-y-2">
+          {[1,2,3,4].map(i => <div key={i} className="h-20 rounded-xl border border-border/50 bg-card animate-pulse" />)}
+        </div>
       ) : leads.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <Target className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhum lead encontrado</h3>
-            <p className="text-muted-foreground text-sm mb-6">Comece cadastrando seu primeiro lead.</p>
-            <Button asChild className="gap-2">
-              <Link href="/dashboard/leads/novo">
-                <Plus className="h-4 w-4" />
-                Novo Lead
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-20 rounded-xl border border-dashed border-border/60">
+          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+            <Target className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <h3 className="font-semibold mb-1">Nenhum lead encontrado</h3>
+          <p className="text-muted-foreground text-sm mb-5">Comece cadastrando seu primeiro lead.</p>
+          <Button asChild size="sm" className="gap-2">
+            <Link href="/dashboard/leads/novo"><Plus className="h-3.5 w-3.5" /> Novo Lead</Link>
+          </Button>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {leads.map((lead) => {
+        <div className="space-y-2">
+          {leads.map((lead, i) => {
             const temp = TEMP_CONFIG[lead.temperatura] || TEMP_CONFIG.frio;
             const statusCfg = STATUS_CONFIG[lead.status] || STATUS_CONFIG.novo;
             const TempIcon = temp.icon;
             return (
-              <Link key={lead.id} href={`/dashboard/leads/${lead.id}`}>
-                <Card className="hover:shadow-md transition-all hover:border-primary/20 cursor-pointer group">
-                  <CardContent className="p-4 md:p-5">
-                    <div className="flex items-center gap-4">
-                      {/* Temperatura Badge */}
-                      <div className={`shrink-0 h-12 w-12 rounded-xl border flex items-center justify-center ${temp.bg}`}>
-                        <TempIcon className={`h-5 w-5 ${temp.color}`} />
-                      </div>
-
-                      {/* Info principal */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className="font-semibold text-sm truncate">{lead.nome}</h3>
-                          <span className={`shrink-0 h-2 w-2 rounded-full ${statusCfg.color}`} title={statusCfg.label} />
-                          <span className="text-xs text-muted-foreground hidden sm:inline">{statusCfg.label}</span>
-                          {lead.score !== null && lead.score > 0 && (
-                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                              {lead.score} pts
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          {lead.empresa && (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="h-3 w-3" />
-                              {lead.empresa}
-                            </span>
-                          )}
-                          {lead.email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {lead.email}
-                            </span>
-                          )}
-                          {(lead.whatsapp || lead.telefone) && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {lead.whatsapp || lead.telefone}
-                            </span>
-                          )}
-                          {lead.origem && (
-                            <span className="flex items-center gap-1">
-                              <TrendingUp className="h-3 w-3" />
-                              {ORIGEM_LABELS[lead.origem] || lead.origem}
-                            </span>
-                          )}
-                          {lead.created_at && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(lead.created_at).toLocaleDateString("pt-BR")}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Arrow */}
-                      <ChevronRight className="h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
+              <motion.div
+                key={lead.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+              >
+                <Link href={`/dashboard/leads/${lead.id}`}>
+                  <div className="flex items-center gap-4 p-4 rounded-xl border border-border/60 bg-card hover:border-foreground/15 hover:bg-muted/20 transition-all duration-200 group cursor-pointer">
+                    {/* Temp icon */}
+                    <div className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `hsl(var(--muted))` }}>
+                      <TempIcon className={`h-4 w-4 ${temp.color}`} />
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+
+                    {/* Main info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="font-semibold text-sm truncate">{lead.nome}</h3>
+                        <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${statusCfg.color}`} />
+                        <span className="text-[11px] text-muted-foreground hidden sm:inline">{statusCfg.label}</span>
+                        {lead.score !== null && lead.score > 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-foreground/8 text-foreground/60">
+                            {lead.score}pts
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                        {lead.empresa && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{lead.empresa}</span>}
+                        {lead.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{lead.email}</span>}
+                        {(lead.whatsapp || lead.telefone) && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{lead.whatsapp || lead.telefone}</span>}
+                        {lead.origem && <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />{ORIGEM_LABELS[lead.origem] || lead.origem}</span>}
+                        {lead.created_at && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(lead.created_at).toLocaleDateString("pt-BR")}</span>}
+                      </div>
+                    </div>
+
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors shrink-0" />
+                  </div>
+                </Link>
+              </motion.div>
             );
           })}
         </div>

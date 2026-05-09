@@ -44,7 +44,7 @@ export function ProposalPageClient({ slug, sections }: ProposalPageClientProps) 
         )}
       </main>
       <footer className="border-t px-6 py-6 text-center text-sm text-muted-foreground">
-        Proposta gerada pelo Sistemaxi CRM
+        Proposta gerada pelo Control.IA
       </footer>
     </div>
   );

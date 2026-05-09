@@ -36,9 +36,13 @@ from app.api.v1.rh import router as rh_router
 from app.api.v1.productivity import router as productivity_router
 from app.api.v1.dashboard_projects import router as dashboard_projects_router
 from app.api.v1.admin_tenants import router as admin_tenants_router
+from app.api.v1.tenant_management import router as tenant_management_router
+from app.api.admin.router import router as admin_onboarding_router
 
 api_router = APIRouter()
 api_router.include_router(admin_tenants_router)
+api_router.include_router(tenant_management_router)
+api_router.include_router(admin_onboarding_router)
 api_router.include_router(auth_router)
 api_router.include_router(usuarios_router)
 api_router.include_router(clientes_router)

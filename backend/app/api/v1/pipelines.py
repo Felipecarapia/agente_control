@@ -42,7 +42,13 @@ def list_pipelines(
     Retorna sempre 200 com lista vazia se não houver pipelines.
     """
     try:
-        pipelines = db.query(Pipeline).order_by(Pipeline.is_default.desc(), Pipeline.name).all()
+        tenant_id = current_user.tenant_id
+        pipelines = (
+            db.query(Pipeline)
+            .filter(Pipeline.tenant_id == tenant_id)
+            .order_by(Pipeline.is_default.desc(), Pipeline.name)
+            .all()
+        )
         # Se não houver pipelines, retornar lista vazia (não erro)
         return success_response(data=pipelines if pipelines else [])
     except Exception as e:
@@ -60,7 +66,7 @@ def get_pipeline(
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Obtém um pipeline específico."""
-    pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+    pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.tenant_id).first()
     if not pipeline:
         return error_response(
             code="PIPELINE_NOT_FOUND",
@@ -85,11 +91,11 @@ def bootstrap_pipeline(
     
     try:
         # Verificar se já existe ao menos um pipeline
-        existing_pipeline = db.query(Pipeline).first()
+        existing_pipeline = db.query(Pipeline).filter(Pipeline.tenant_id == current_user.tenant_id).first()
         
         if existing_pipeline:
             # Já existe pipeline - retornar o primeiro (ou o padrão se houver)
-            default_pipeline = db.query(Pipeline).filter(Pipeline.is_default == True).first()
+            default_pipeline = db.query(Pipeline).filter(Pipeline.is_default == True, Pipeline.tenant_id == current_user.tenant_id).first()
             pipeline = default_pipeline or existing_pipeline
             
             return success_response(
@@ -107,6 +113,7 @@ def bootstrap_pipeline(
             name="Vendas",
             description="Pipeline padrão de vendas",
             is_default=True,
+            tenant_id=current_user.tenant_id,
             created_by_user_id=current_user.id
         )
         db.add(pipeline)
@@ -131,6 +138,7 @@ def bootstrap_pipeline(
             
             if not existing_stage:
                 stage = PipelineStage(
+                    tenant_id=current_user.tenant_id,
                     pipeline_id=pipeline.id,
                     name=name,
                     key=key,
@@ -174,12 +182,13 @@ def create_pipeline(
     """Cria um novo pipeline (apenas ADMIN)."""
     if data.is_default:
         # Remover default de outros pipelines
-        db.query(Pipeline).filter(Pipeline.is_default == True).update({"is_default": False})
+        db.query(Pipeline).filter(Pipeline.is_default == True, Pipeline.tenant_id == current_user.tenant_id).update({"is_default": False})
     
     pipeline = Pipeline(
         name=data.name,
         description=data.description,
         is_default=data.is_default,
+        tenant_id=current_user.tenant_id,
         created_by_user_id=current_user.id
     )
     db.add(pipeline)
@@ -196,13 +205,13 @@ def update_pipeline(
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
     """Atualiza um pipeline (apenas ADMIN)."""
-    pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+    pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.tenant_id).first()
     if not pipeline:
         raise HTTPException(status_code=404, detail="Pipeline não encontrado")
     
     if data.is_default is not None and data.is_default:
         # Remover default de outros pipelines
-        db.query(Pipeline).filter(Pipeline.is_default == True, Pipeline.id != pipeline_id).update({"is_default": False})
+        db.query(Pipeline).filter(Pipeline.is_default == True, Pipeline.id != pipeline_id, Pipeline.tenant_id == current_user.tenant_id).update({"is_default": False})
     
     for k, v in data.model_dump(exclude_unset=True).items():
         setattr(pipeline, k, v)
@@ -219,12 +228,12 @@ def delete_pipeline(
     current_user: Annotated[Usuario, Depends(require_role(ROLE_ADMIN))],
 ):
     """Deleta um pipeline (apenas ADMIN)."""
-    pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+    pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.tenant_id).first()
     if not pipeline:
         raise HTTPException(status_code=404, detail="Pipeline não encontrado")
     
     # Verificar se tem deals
-    deal_count = db.query(Deal).filter(Deal.pipeline_id == pipeline_id).count()
+    deal_count = db.query(Deal).filter(Deal.pipeline_id == pipeline_id, Deal.tenant_id == current_user.tenant_id).count()
     if deal_count > 0:
         raise HTTPException(
             status_code=400,
@@ -360,4 +369,3 @@ def reorder_stages(
         })
     
     db.commit()
-

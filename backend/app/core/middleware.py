@@ -7,6 +7,9 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.context import set_current_tenant_id
+from app.core.security import decode_token
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,6 +65,27 @@ class ContentTypeValidationMiddleware(BaseHTTPMiddleware):
                         },
                         headers={"X-Request-ID": request_id} if request_id else {}
                     )
+        
+        response = await call_next(request)
+        return response
+
+
+class TenantContextMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware que extrai o tenant_id do JWT e define no ContextVar.
+    Isso permite que qualquer parte do código acesse o tenant_id sem passá-lo explicitamente.
+    """
+    
+    async def dispatch(self, request: Request, call_next):
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            payload = decode_token(token)
+            if payload and "tenant_id" in payload:
+                tenant_id = payload["tenant_id"]
+                # Definir no ContextVar
+                set_current_tenant_id(tenant_id)
+                logger.debug(f"Contexto definido para Tenant: {tenant_id}")
         
         response = await call_next(request)
         return response

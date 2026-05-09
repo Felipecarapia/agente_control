@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.response import success_response, error_response, serialize_data
 from app.models.agent import AIAgent, AgentConversation
 from app.models.usuario import Usuario
+from app.models.tenant import Tenant
 from app.schemas.agent import (
     AIAgentCreate,
     AIAgentUpdate,
@@ -18,12 +19,42 @@ from app.schemas.agent import (
 )
 from app.services.openai_agent import OpenAIAgentService
 from app.core.config import settings
+from app.core.rbac import require_feature
+from app.core.plans import PLAN_LIMITS, PLAN_FEATURES
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
 # ──────────────────── CRUD ────────────────────
+
+@router.get("/module-info")
+def agents_module_info(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Retorna status do módulo de Agentes para o tenant (feature, limite e uso atual)."""
+    request_id = getattr(request.state, "request_id", None)
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        return error_response(code="TENANT_NOT_FOUND", message="Tenant não encontrado", status_code=404, request_id=request_id)
+
+    plan_key = str(tenant.plano)
+    features = PLAN_FEATURES.get(plan_key, set())
+    limits = PLAN_LIMITS.get(plan_key, {})
+    current_agents = db.query(AIAgent).filter(AIAgent.tenant_id == current_user.tenant_id).count()
+    max_agents = limits.get("ai_agents", 0)
+
+    return success_response(
+        data={
+            "enabled": "ai_agents" in features,
+            "plan": plan_key,
+            "limits": {"ai_agents": max_agents},
+            "usage": {"ai_agents": current_agents},
+        },
+        request_id=request_id,
+    )
 
 @router.get("")
 def list_agents(
@@ -35,7 +66,8 @@ def list_agents(
     """Lista todos os agentes de IA."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        q = db.query(AIAgent).order_by(desc(AIAgent.created_at))
+        tenant_id = current_user.tenant_id
+        q = db.query(AIAgent).filter(AIAgent.tenant_id == tenant_id).order_by(desc(AIAgent.created_at))
         if is_active is not None:
             q = q.filter(AIAgent.is_active == is_active)
         agents = q.all()
@@ -51,13 +83,27 @@ def create_agent(
     request: Request,
     data: AIAgentCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Usuario, Depends(get_current_user)],
+    current_user: Annotated[Usuario, Depends(require_feature("ai_agents"))],
 ):
     """Cria um novo agente de IA."""
     request_id = getattr(request.state, "request_id", None)
     try:
+        tenant_id = current_user.tenant_id
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        limits = PLAN_LIMITS.get(str(tenant.plano), {})
+        max_agents = limits.get("ai_agents", 0)
+        current_agents = db.query(AIAgent).filter(AIAgent.tenant_id == tenant_id).count()
+        if current_agents >= max_agents:
+            return error_response(
+                code="PLAN_LIMIT",
+                message=f"Limite de agentes do plano atingido ({max_agents})",
+                status_code=403,
+                request_id=request_id,
+            )
+
         obj = AIAgent(
             **data.model_dump(),
+            tenant_id=tenant_id,
             created_by_user_id=current_user.id,
         )
         db.add(obj)
@@ -79,7 +125,8 @@ def get_agent(
 ):
     """Busca um agente pelo ID."""
     request_id = getattr(request.state, "request_id", None)
-    obj = db.query(AIAgent).filter(AIAgent.id == agent_id).first()
+    tenant_id = current_user.tenant_id
+    obj = db.query(AIAgent).filter(AIAgent.id == agent_id, AIAgent.tenant_id == tenant_id).first()
     if not obj:
         return error_response(code="NOT_FOUND", message="Agente não encontrado", status_code=404, request_id=request_id)
     return success_response(data=serialize_data(obj), request_id=request_id)
@@ -96,7 +143,7 @@ def update_agent(
     """Atualiza um agente de IA."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(AIAgent).filter(AIAgent.id == agent_id).first()
+        obj = db.query(AIAgent).filter(AIAgent.id == agent_id, AIAgent.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Agente não encontrado", status_code=404, request_id=request_id)
         update_data = data.model_dump(exclude_unset=True)
@@ -121,7 +168,7 @@ def delete_agent(
     """Deleta um agente de IA."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(AIAgent).filter(AIAgent.id == agent_id).first()
+        obj = db.query(AIAgent).filter(AIAgent.id == agent_id, AIAgent.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Agente não encontrado", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -146,11 +193,13 @@ async def test_agent(
     """Testa o agente enviando uma mensagem e recebendo a resposta da IA."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(AIAgent).filter(AIAgent.id == agent_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(AIAgent).filter(AIAgent.id == agent_id, AIAgent.tenant_id == tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Agente não encontrado", status_code=404, request_id=request_id)
 
-        openai_key = settings.OPENAI_API_KEY or ""
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        openai_key = tenant.openai_api_key or settings.OPENAI_API_KEY or ""
         if not openai_key:
             return error_response(
                 code="CONFIG_ERROR",
@@ -195,9 +244,13 @@ def list_conversations(
     """Lista as conversas do agente."""
     request_id = getattr(request.state, "request_id", None)
     try:
+        tenant_id = current_user.tenant_id
         convs = (
             db.query(AgentConversation)
-            .filter(AgentConversation.agent_id == agent_id)
+            .filter(
+                AgentConversation.agent_id == agent_id,
+                AgentConversation.tenant_id == tenant_id
+            )
             .order_by(desc(AgentConversation.started_at))
             .all()
         )
@@ -205,4 +258,35 @@ def list_conversations(
         return success_response(data=data, request_id=request_id)
     except Exception as e:
         logger.error(f"Erro ao listar conversas: {e}", exc_info=True)
+        return success_response(data=[], request_id=request_id)
+
+
+# ──────────────────── Logs ────────────────────
+
+@router.get("/{agent_id}/logs")
+def list_logs(
+    request: Request,
+    agent_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Lista os logs e métricas de execução do agente."""
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        from app.models.agent import AgentLog
+        tenant_id = current_user.tenant_id
+        logs = (
+            db.query(AgentLog)
+            .filter(
+                AgentLog.agent_id == agent_id,
+                AgentLog.tenant_id == tenant_id
+            )
+            .order_by(desc(AgentLog.created_at))
+            .limit(50)
+            .all()
+        )
+        data = [serialize_data(log) for log in logs]
+        return success_response(data=data, request_id=request_id)
+    except Exception as e:
+        logger.error(f"Erro ao listar logs do agente: {e}", exc_info=True)
         return success_response(data=[], request_id=request_id)

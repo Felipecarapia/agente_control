@@ -11,6 +11,7 @@ from app.core.database import Base
 class PlanType(str, enum.Enum):
     BASIC = "basic"
     PRO = "pro"
+    ENTERPRISE = "enterprise"
 
 
 class Tenant(Base):
@@ -32,6 +33,7 @@ class Tenant(Base):
     evolution_api_url = Column(String(500), nullable=True)
     evolution_api_key = Column(String(500), nullable=True)
     evolution_instance_name = Column(String(255), nullable=True, index=True)
+    site_url = Column(String(500), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

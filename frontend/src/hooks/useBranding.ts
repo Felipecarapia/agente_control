@@ -8,8 +8,8 @@ interface BrandingData {
   companyName: string | null;
 }
 
-const DEFAULT_LOGO = "https://i.imgur.com/e9Gntop.png";
-const DEFAULT_COMPANY_NAME = "Sistemaxi CRM";
+const DEFAULT_LOGO = null;
+const DEFAULT_COMPANY_NAME = "Control.IA";
 
 export function useBranding(): BrandingData & { loading: boolean } {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -27,8 +27,6 @@ export function useBranding(): BrandingData & { loading: boolean } {
         setLogoUrl(data?.logo_url || DEFAULT_LOGO);
         setCompanyName(data?.company_name || DEFAULT_COMPANY_NAME);
       } catch (e) {
-        // Fallback para valores padrão em caso de erro (sem logar erro para não poluir console)
-        // Apenas usar valores padrão silenciosamente
         setLogoUrl(DEFAULT_LOGO);
         setCompanyName(DEFAULT_COMPANY_NAME);
       } finally {

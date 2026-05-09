@@ -33,7 +33,8 @@ def list_clientes(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        clientes = db.query(Cliente).all()
+        tenant_id = current_user.tenant_id
+        clientes = db.query(Cliente).filter(Cliente.tenant_id == tenant_id).all()
         # Converter usando serialize_data para serialização correta
         clientes_data = [serialize_data(c) for c in clientes]
         return success_response(data=clientes_data if clientes_data else [], request_id=request_id)
@@ -58,7 +59,8 @@ def get_cliente(
 
     
     try:
-        obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.tenant_id == tenant_id).first()
         if not obj:
             return error_response(
                 code="CLIENT_NOT_FOUND",
@@ -96,7 +98,7 @@ def create_cliente(
         # Validação Pydantic já é feita automaticamente pelo FastAPI
         # Verificar duplicados: CPF (PF) ou CNPJ (PJ) ou email
         if data.cpf:
-            existing = db.query(Cliente).filter(Cliente.cpf == data.cpf).first()
+            existing = db.query(Cliente).filter(Cliente.cpf == data.cpf, Cliente.tenant_id == current_user.tenant_id).first()
             if existing:
                 return error_response(
                     code="CLIENT_DUPLICATE",
@@ -106,7 +108,7 @@ def create_cliente(
                     request_id=request_id
                 )
         if data.cnpj:
-            existing = db.query(Cliente).filter(Cliente.cnpj == data.cnpj).first()
+            existing = db.query(Cliente).filter(Cliente.cnpj == data.cnpj, Cliente.tenant_id == current_user.tenant_id).first()
             if existing:
                 return error_response(
                     code="CLIENT_DUPLICATE",
@@ -116,7 +118,7 @@ def create_cliente(
                     request_id=request_id
                 )
         if data.email:
-            existing = db.query(Cliente).filter(Cliente.email == data.email).first()
+            existing = db.query(Cliente).filter(Cliente.email == data.email, Cliente.tenant_id == current_user.tenant_id).first()
             if existing:
                 return error_response(
                     code="CLIENT_DUPLICATE",
@@ -127,7 +129,7 @@ def create_cliente(
                 )
         
         # Criar cliente
-        obj = Cliente(**data.model_dump(), usuario_id=current_user.id)
+        obj = Cliente(**data.model_dump(), usuario_id=current_user.id, tenant_id=current_user.tenant_id)
         db.add(obj)
         db.commit()
         db.refresh(obj)
@@ -171,7 +173,8 @@ def update_cliente(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.tenant_id == tenant_id).first()
         if not obj:
             return error_response(
                 code="CLIENT_NOT_FOUND",
@@ -185,6 +188,7 @@ def update_cliente(
         if "cpf" in update_data and update_data["cpf"]:
             existing = db.query(Cliente).filter(
                 Cliente.cpf == update_data["cpf"],
+                Cliente.tenant_id == tenant_id,
                 Cliente.id != cliente_id
             ).first()
             if existing:
@@ -198,6 +202,7 @@ def update_cliente(
         if "cnpj" in update_data and update_data["cnpj"]:
             existing = db.query(Cliente).filter(
                 Cliente.cnpj == update_data["cnpj"],
+                Cliente.tenant_id == tenant_id,
                 Cliente.id != cliente_id
             ).first()
             if existing:
@@ -211,6 +216,7 @@ def update_cliente(
         if "email" in update_data and update_data["email"]:
             existing = db.query(Cliente).filter(
                 Cliente.email == update_data["email"],
+                Cliente.tenant_id == tenant_id,
                 Cliente.id != cliente_id
             ).first()
             if existing:
@@ -264,7 +270,7 @@ def delete_cliente(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+        obj = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(
                 code="CLIENT_NOT_FOUND",
@@ -294,7 +300,7 @@ async def upload_logo(
     file: UploadFile = File(...),
 ):
     """Upload da logo do cliente para o MinIO."""
-    obj = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    obj = db.query(Cliente).filter(Cliente.id == cliente_id, Cliente.tenant_id == current_user.tenant_id).first()
     if not obj:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 

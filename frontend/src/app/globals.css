@@ -1,110 +1,361 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    /* === LIGHT MODE === */
+    --background: 0 0% 97%;
+    --foreground: 0 0% 7%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 0 0% 7%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84.2% 60.2%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
-    --radius: 0.625rem;
-    /* Sidebar (FUSE-style) */
-    --sidebar-bg: 222 47% 11%;
-    --sidebar-accent: 217 91% 60%;
-    --sidebar-text: 210 40% 98%;
-    --sidebar-muted: 215 20% 65%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 93%;
+    --accent-foreground: 0 0% 8%;
+    --destructive: 0 72% 51%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 8%;
+    --radius: 0.75rem;
+    /* Sidebar */
+    --sidebar-bg: 0 0% 4%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-text: 0 0% 90%;
+    --sidebar-muted: 0 0% 50%;
+    --sidebar-hover: 0 0% 10%;
+    --sidebar-active: 0 0% 14%;
+    --sidebar-border: 0 0% 12%;
+    /* Accent colors for highlights (used sparingly) */
+    --accent-green: 145 60% 45%;
+    --accent-red: 0 72% 51%;
+    --accent-amber: 38 92% 50%;
+    --accent-blue: 217 91% 60%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 217 33% 17%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 22%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 22%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --border: 217 33% 22%;
-    --input: 217 33% 22%;
-    --ring: 217 91% 60%;
-    --sidebar-bg: 222 47% 8%;
-    --sidebar-accent: 217 91% 60%;
-    --sidebar-text: 210 40% 98%;
-    --sidebar-muted: 215 20% 65%;
+    /* === DARK MODE — Black dominant === */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 13%;
+    --accent-foreground: 0 0% 90%;
+    --destructive: 0 62% 40%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 70%;
+    /* Sidebar — mesmo no dark mode fica absoluto */
+    --sidebar-bg: 0 0% 3%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-text: 0 0% 88%;
+    --sidebar-muted: 0 0% 42%;
+    --sidebar-hover: 0 0% 8%;
+    --sidebar-active: 0 0% 11%;
+    --sidebar-border: 0 0% 10%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
+  }
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  /* Scrollbar premium */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Selection */
+  ::selection {
+    background: hsl(var(--foreground) / 0.15);
+    color: hsl(var(--foreground));
   }
 }
 
-/* Sidebar FUSE-style: sempre escura, destaque azul */
+/* ============================================
+   SIDEBAR PREMIUM — BLACK ABSOLUTE
+   ============================================ */
 .sidebar {
-  background-color: hsl(var(--sidebar-bg));
+  background: hsl(var(--sidebar-bg));
   color: hsl(var(--sidebar-text));
+  border-right: 1px solid hsl(var(--sidebar-border));
+  position: relative;
+  overflow: hidden;
 }
+
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--sidebar-accent) / 0.06), transparent);
+  pointer-events: none;
+}
+
 .sidebar-section-title {
-  color: hsl(var(--sidebar-accent));
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.sidebar-section-desc {
   color: hsl(var(--sidebar-muted));
-  font-size: 0.7rem;
-  margin-top: 2px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
 }
+
+.sidebar-section-desc {
+  color: hsl(var(--sidebar-muted) / 0.6);
+  font-size: 0.65rem;
+  margin-top: 1px;
+  font-weight: 400;
+  display: none; /* clean look */
+}
+
 .sidebar-link {
   color: hsl(var(--sidebar-muted));
-  transition: color 0.15s, background-color 0.15s;
-}
-.sidebar-link:hover {
-  color: hsl(var(--sidebar-text));
-  background-color: hsl(217 33% 18%);
-}
-.sidebar-link.active {
-  color: hsl(var(--sidebar-text));
-  background-color: hsl(217 33% 18%);
-  border-left: 3px solid hsl(var(--sidebar-accent));
+  transition: color 0.15s ease, background 0.15s ease;
+  position: relative;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Carrossel de logos (Nossos Clientes) */
+.sidebar-link:focus,
+.sidebar-link:focus-visible {
+  outline: none !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+
+.sidebar-link:hover {
+  color: hsl(var(--sidebar-text));
+  background: hsl(var(--sidebar-hover));
+}
+
+.sidebar-link.active {
+  color: hsl(var(--sidebar-text));
+  background: hsl(var(--sidebar-active));
+  border: none;
+}
+
+.sidebar-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
+  width: 2px;
+  background: hsl(var(--sidebar-accent));
+  border-radius: 0 2px 2px 0;
+}
+
+/* ============================================
+   PREMIUM GLASS CARDS
+   ============================================ */
+.glass-card {
+  background: hsl(var(--card) / 0.7);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: var(--radius);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: hsl(var(--foreground) / 0.1);
+  box-shadow: 0 8px 40px -8px hsl(0 0% 0% / 0.3);
+}
+
+/* ============================================
+   STAT CARD PREMIUM
+   ============================================ */
+.stat-card-glow-green { box-shadow: 0 0 0 1px hsl(var(--accent-green) / 0.1), 0 4px 20px -4px hsl(var(--accent-green) / 0.12); }
+.stat-card-glow-red   { box-shadow: 0 0 0 1px hsl(var(--accent-red) / 0.1), 0 4px 20px -4px hsl(var(--accent-red) / 0.12); }
+.stat-card-glow-amber { box-shadow: 0 0 0 1px hsl(var(--accent-amber) / 0.1), 0 4px 20px -4px hsl(var(--accent-amber) / 0.12); }
+.stat-card-glow-blue  { box-shadow: 0 0 0 1px hsl(var(--accent-blue) / 0.1), 0 4px 20px -4px hsl(var(--accent-blue) / 0.12); }
+
+/* ============================================
+   HEADER PREMIUM
+   ============================================ */
+.header-glass {
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 @keyframes scroll-left {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 .animate-scroll-left {
   animation: scroll-left 30s linear infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, hsl(var(--foreground) / 0.04) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================
+   TYPOGRAPHY UTILITIES
+   ============================================ */
+.text-balance { text-wrap: balance; }
+
+.heading-display {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  font-feature-settings: 'ss01', 'ss03';
+}
+
+.heading-section {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.label-micro {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ============================================
+   BADGE PREMIUM OVERRIDES
+   ============================================ */
+.badge-success {
+  background: hsl(var(--accent-green) / 0.1);
+  color: hsl(var(--accent-green));
+  border: 1px solid hsl(var(--accent-green) / 0.2);
+}
+
+.badge-warning {
+  background: hsl(var(--accent-amber) / 0.1);
+  color: hsl(var(--accent-amber));
+  border: 1px solid hsl(var(--accent-amber) / 0.2);
+}
+
+.badge-error {
+  background: hsl(var(--accent-red) / 0.1);
+  color: hsl(var(--accent-red));
+  border: 1px solid hsl(var(--accent-red) / 0.2);
+}
+
+/* ============================================
+   TABLE PREMIUM
+   ============================================ */
+.table-row-hover {
+  transition: background 0.12s ease;
+}
+.table-row-hover:hover {
+  background: hsl(var(--muted) / 0.4);
+}
+
+/* ============================================
+   FOCUS & INTERACTION
+   ============================================ */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fade-in-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ============================================
+   NOISE TEXTURE (subtle)
+   ============================================ */
+.noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 100px;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ============================================
+   CHART TOOLTIPS
+   ============================================ */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 30px -4px hsl(0 0% 0% / 0.25) !important;
+  font-family: 'Inter', sans-serif !important;
 }

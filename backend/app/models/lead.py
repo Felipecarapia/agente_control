@@ -140,3 +140,35 @@ class LeadMessage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     conversation = relationship("LeadConversation", back_populates="messages")
+
+
+class LeadAppointment(Base):
+    """Agendamentos criados via Agente Sofia (Google Calendar)."""
+    __tablename__ = "lead_appointments"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, index=True)
+    google_event_id = Column(String(255), nullable=True)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    summary = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    status = Column(String(50), nullable=False, default="Agendado")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    lead = relationship("Lead")
+
+
+class LeadFollowUp(Base):
+    """Controle de follow-up automático pelo Agente Sofia."""
+    __tablename__ = "lead_followups"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    level = Column(Integer, nullable=False, default=1)
+    scheduled_for = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String(50), nullable=False, default="pending")  # pending, sent, cancelled
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    lead = relationship("Lead")
+    tenant = relationship("Tenant")

@@ -7,6 +7,8 @@ from app.core.database import get_db
 from app.models.usuario import Usuario
 from app.models.role import Role, UserRole
 from app.models.permission import Permission, RolePermission
+from app.models.tenant import Tenant
+from app.core.plans import PLAN_FEATURES
 
 
 def get_user_roles(db: Session, user_id: int) -> list[str]:
@@ -115,3 +117,25 @@ def require_permission(module: str, action: str):
         return current_user
     return _check_permission
 
+
+def require_feature(feature_key: str):
+    """Dependency para exigir recurso habilitado no plano do tenant."""
+    def _check_feature(
+        db: Annotated[Session, Depends(get_db)],
+        current_user: Annotated[Usuario, Depends(get_current_user)],
+    ) -> Usuario:
+        tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant não encontrado"
+            )
+
+        feature_set = PLAN_FEATURES.get(str(tenant.plano), set())
+        if feature_key not in feature_set:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Recurso indisponível no plano atual: {feature_key}"
+            )
+        return current_user
+    return _check_feature

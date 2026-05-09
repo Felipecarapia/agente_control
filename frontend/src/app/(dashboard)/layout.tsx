@@ -37,6 +37,8 @@ import {
   Building2,
   FolderTree,
   UsersRound,
+  MonitorCog,
+  ChevronRight,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { NotificationToastManager } from "@/components/notifications/NotificationToast";
@@ -48,7 +50,6 @@ import { api } from "@/lib/api";
 const navGroups = [
   {
     title: "Principal",
-    desc: "Visão geral",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/dashboard/notificacoes", label: "Notificações", icon: Bell },
@@ -57,7 +58,6 @@ const navGroups = [
   },
   {
     title: "Gestão",
-    desc: "Clientes, projetos e entregas",
     items: [
       { href: "/dashboard/leads", label: "Leads", icon: Target },
       { href: "/dashboard/clientes", label: "Clientes", icon: UserCircle },
@@ -70,15 +70,14 @@ const navGroups = [
   },
   {
     title: "Automação",
-    desc: "Agentes, campanhas e WhatsApp",
     items: [
       { href: "/dashboard/agentes", label: "Agentes de IA", icon: Bot },
       { href: "/dashboard/campanhas", label: "Campanhas", icon: Megaphone },
+      { href: "/dashboard/cliente-area", label: "Área do Cliente", icon: MonitorCog },
     ],
   },
   {
     title: "Financeiro",
-    desc: "Gestão financeira completa",
     items: [
       { href: "/dashboard/financeiro", label: "Relatórios", icon: BarChart3 },
       { href: "/dashboard/financeiro/contas-pagar", label: "Contas a Pagar", icon: CreditCard },
@@ -90,17 +89,15 @@ const navGroups = [
   },
   {
     title: "RH",
-    desc: "Recursos humanos",
     items: [
       { href: "/dashboard/rh", label: "Funcionários", icon: UsersRound },
     ],
   },
   {
-    title: "Configurações",
-    desc: "Administração",
+    title: "Config",
     items: [
       { href: "/dashboard/configuracoes/usuarios", label: "Usuários", icon: Users },
-      { href: "/dashboard/configuracoes/roles", label: "Roles e Permissões", icon: Shield },
+      { href: "/dashboard/configuracoes/roles", label: "Roles & Permissões", icon: Shield },
       { href: "/dashboard/configuracoes/whatsapp", label: "WhatsApp", icon: MessageSquareMore },
     ],
   },
@@ -129,6 +126,7 @@ const pathToTitle: Record<string, string> = {
   "/dashboard/configuracoes/usuarios": "Usuários",
   "/dashboard/configuracoes/roles": "Roles e Permissões",
   "/dashboard/configuracoes/whatsapp": "WhatsApp",
+  "/dashboard/cliente-area": "Área do Cliente",
 };
 
 function getPageTitle(pathname: string): string {
@@ -146,6 +144,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/dashboard/rh")) return "Recursos Humanos";
   if (pathname.startsWith("/dashboard/configuracoes/whatsapp")) return "WhatsApp";
   if (pathname.startsWith("/dashboard/configuracoes/roles")) return "Roles e Permissões";
+  if (pathname.startsWith("/dashboard/cliente-area")) return "Área do Cliente";
   if (pathname.startsWith("/dashboard/configuracoes")) return "Configurações";
   return "Dashboard";
 }
@@ -169,46 +168,36 @@ export default function DashboardLayout({
   const [mounted, setMounted] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     setMounted(true);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  // Buscar informações do usuário atual (com delay para não bloquear render inicial)
   useEffect(() => {
     if (!mounted || !isAuthenticated()) return;
-    
-    // Pequeno delay para não bloquear render inicial
     const timer = setTimeout(() => {
       async function loadUserInfo() {
         try {
           setLoadingUser(true);
-          // Tentar endpoint novo primeiro
           try {
             const data = await api<UserInfo>("/api/v1/profile/me");
-            if (data) {
-              setUserInfo(data);
-            }
+            if (data) setUserInfo(data);
           } catch (e) {
-            // Se falhar, tentar endpoint antigo como fallback
             try {
               const data = await api<UserInfo>("/api/v1/auth/me");
-              if (data) {
-                setUserInfo(data);
-              }
-            } catch (e2) {
-              // Silenciar erros - usuário pode não ter perfil completo ainda
-            }
+              if (data) setUserInfo(data);
+            } catch (e2) {}
           }
         } catch (e) {
-          // Silenciar erros de timeout/rede
         } finally {
           setLoadingUser(false);
         }
       }
       loadUserInfo();
-    }, 100); // Delay de 100ms para não bloquear render
-    
+    }, 100);
     return () => clearTimeout(timer);
   }, [mounted]);
 
@@ -218,12 +207,14 @@ export default function DashboardLayout({
     }
   }, [router, mounted]);
 
-  // Evita erro de hidratação: só verifica autenticação após montar no cliente
   if (!mounted) {
     return (
       <div className="min-h-screen flex bg-background">
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-muted-foreground">Carregando...</div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-foreground/20 border-t-foreground animate-spin" />
+            <p className="text-xs text-muted-foreground tracking-widest uppercase font-medium">Carregando</p>
+          </div>
         </div>
       </div>
     );
@@ -236,109 +227,167 @@ export default function DashboardLayout({
   const pageTitle = getPageTitle(pathname);
   const isBuilder = pathname?.includes("/builder");
 
-  // Builder: tela inteira, sem sidebar e sem header do dashboard (estilo Elementor)
   if (isBuilder) {
     return <div className="min-h-screen w-full">{children}</div>;
   }
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Overlay para mobile */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar fixa escura (estilo FUSE) */}
+      {/* ==========================================
+          SIDEBAR — BLACK ABSOLUTE
+          ========================================== */}
       <aside
-        className={`sidebar fixed lg:static inset-y-0 left-0 z-50 w-[260px] flex-shrink-0 flex flex-col border-r border-white/10 transform transition-transform duration-300 ease-in-out ${
+        className={`sidebar fixed lg:static inset-y-0 left-0 z-50 w-[256px] flex-shrink-0 flex flex-col transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="p-5 flex items-center justify-center border-b border-white/10 min-h-[80px]">
-          <div className="flex items-center justify-center w-full h-full relative">
-            <Image 
-              src="https://i.imgur.com/e9Gntop.png" 
-              alt="Sistemaxi CRM" 
-              width={220}
-              height={60}
-              className="w-full h-full object-contain object-center"
-              priority
-              unoptimized
-            />
+        {/* Logo area */}
+        <div className="flex items-center px-5 h-[60px] border-b border-white/[0.06] flex-shrink-0">
+          <div className="flex items-center gap-2 flex-1">
+            {/* Wordmark Control.IA */}
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.12)" }}
+              >
+                <div className="w-2.5 h-2.5 rounded-sm bg-white" />
+              </div>
+              <span
+                className="text-white font-bold tracking-tight"
+                style={{ fontSize: "1rem", letterSpacing: "-0.03em" }}
+              >
+                Control<span style={{ color: "rgba(255,255,255,0.45)" }}>.IA</span>
+              </span>
+            </div>
           </div>
+          {/* Mobile close */}
+          <button
+            className="lg:hidden ml-auto text-white/30 hover:text-white/60 transition-colors"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-6">
-          {navGroups.map((group) => (
-            <div key={group.title}>
-              <p className="sidebar-section-title px-3">{group.title}</p>
-              <p className="sidebar-section-desc px-3">{group.desc}</p>
-              <ul className="mt-2 space-y-0.5">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 space-y-0.5 px-3">
+          {navGroups.map((group, gi) => (
+            <div key={group.title} className={gi > 0 ? "pt-4" : ""}>
+              {/* Section label */}
+              <p className="sidebar-section-title px-2.5 pb-1.5">{group.title}</p>
+
+              <ul className="space-y-0.5">
                 {group.items.map((item) => {
-                  // Verificar se há outro item no grupo que é mais específico
                   const hasMoreSpecific = group.items.some(
-                    (other) => other.href !== item.href && other.href.startsWith(item.href + "/") && (pathname === other.href || pathname.startsWith(other.href + "/"))
+                    (other) =>
+                      other.href !== item.href &&
+                      other.href.startsWith(item.href + "/") &&
+                      (pathname === other.href || pathname.startsWith(other.href + "/"))
                   );
                   const active = hasMoreSpecific
                     ? false
                     : pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
+
                   return (
                     <li key={item.href}>
                       <Link
                         href={item.href}
                         onClick={() => setSidebarOpen(false)}
-                        className={`sidebar-link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${
-                          active ? "active" : ""
-                        }`}
+                        className={`sidebar-link flex items-center gap-2.5 px-2.5 py-2 ${active ? "active" : ""}`}
                       >
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        {item.label}
+                        <Icon
+                          className={`h-[15px] w-[15px] flex-shrink-0 transition-colors ${
+                            active
+                              ? "text-white"
+                              : "text-white/30 group-hover:text-white/60"
+                          }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                        {active && (
+                          <span className="ml-auto w-1 h-1 rounded-full bg-white/60 flex-shrink-0" />
+                        )}
                       </Link>
                     </li>
                   );
                 })}
               </ul>
+
+              {/* Divider between sections */}
+              {gi < navGroups.length - 1 && (
+                <div className="mt-4 border-t border-white/[0.05]" />
+              )}
             </div>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/10 space-y-3">
+        {/* Footer user area */}
+        <div className="p-3 border-t border-white/[0.06] flex-shrink-0">
           <ProfileMenu userInfo={userInfo} />
         </div>
       </aside>
 
-      {/* Área principal: header + conteúdo */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
-        <header className="flex-shrink-0 h-14 px-4 lg:px-6 flex items-center justify-between border-b border-border bg-card shadow-sm">
+      {/* ==========================================
+          MAIN CONTENT AREA
+          ========================================== */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
+        <header className="header-glass flex-shrink-0 h-[60px] px-4 lg:px-6 flex items-center justify-between z-30 relative">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
+            {/* Mobile menu toggle */}
+            <button
+              className="lg:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label="Menu"
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-            <h1 className="text-base lg:text-lg font-semibold text-foreground truncate">{pageTitle}</h1>
+            </button>
+
+            {/* Page title */}
+            <div className="flex items-center gap-3">
+              <h1 className="text-sm font-semibold text-foreground tracking-tight">{pageTitle}</h1>
+
+              {/* Live clock pill — only on dashboard */}
+              {pageTitle === "Dashboard" && (
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-foreground/5 rounded-full border border-foreground/8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-dot" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Live</span>
+                  <span className="text-[11px] font-mono font-semibold text-foreground/80">
+                    {currentTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hidden sm:flex" aria-label="Buscar">
-              <Search className="h-5 w-5" />
+
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground hidden sm:flex h-9 w-9"
+              aria-label="Buscar"
+            >
+              <Search className="h-4 w-4" />
             </Button>
             <NotificationBell />
             <ThemeToggle />
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 lg:p-6 bg-muted/30">
+        {/* Page content */}
+        <main className="flex-1 overflow-auto p-4 lg:p-6 bg-background page-transition">
           {children}
         </main>
       </div>
+
       <NotificationToastManager />
       <Toaster />
     </div>

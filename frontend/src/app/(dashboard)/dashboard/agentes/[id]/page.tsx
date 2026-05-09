@@ -58,6 +58,14 @@ type WhatsAppConnection = {
   status: string;
 };
 
+type AgentLog = {
+  id: string;
+  action: string;
+  details: string;
+  tokens_used: number;
+  created_at: string | null;
+};
+
 export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -66,6 +74,7 @@ export default function AgentDetailPage() {
   const [agent, setAgent] = useState<AIAgent | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [waConnections, setWaConnections] = useState<WhatsAppConnection[]>([]);
+  const [logs, setLogs] = useState<AgentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testMessage, setTestMessage] = useState("");
@@ -86,14 +95,16 @@ export default function AgentDetailPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [agentData, convsData, connectionsData] = await Promise.all([
+      const [agentData, convsData, connectionsData, logsData] = await Promise.all([
         api<AIAgent>(`/api/v1/agents/${id}`),
         api<Conversation[]>(`/api/v1/agents/${id}/conversations`).catch(() => []),
         api<WhatsAppConnection[]>("/api/v1/whatsapp/connections").catch(() => []),
+        api<AgentLog[]>(`/api/v1/agents/${id}/logs`).catch(() => []),
       ]);
       setAgent(agentData);
       setConversations(Array.isArray(convsData) ? convsData : []);
       setWaConnections(Array.isArray(connectionsData) ? connectionsData : []);
+      setLogs(Array.isArray(logsData) ? logsData : []);
       setForm({
         name: agentData.name,
         description: agentData.description || "",
@@ -305,6 +316,35 @@ export default function AgentDetailPage() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Logs Recentes */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Logs de Atividade</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {logs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum log registrado</p>
+              ) : (
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                  {logs.map((log) => (
+                    <div key={log.id} className="border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">{log.action}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {log.created_at ? new Date(log.created_at).toLocaleString('pt-BR') : ""}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words">{log.details}</p>
+                      {log.tokens_used > 0 && (
+                        <p className="text-[10px] text-emerald-500 mt-1 font-mono">Tokens: {log.tokens_used}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

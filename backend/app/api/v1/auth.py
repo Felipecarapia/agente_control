@@ -19,7 +19,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     try:
         import logging
         logger = logging.getLogger(__name__)
-        logger.warning(f"TENTATIVA DE LOGIN - Email: {data.email}, Senha digitada: {data.password}")
+        logger.info(f"TENTATIVA DE LOGIN - Email: {data.email}")
         
         user = db.query(Usuario).filter(Usuario.email == data.email).first()
         if not user:
@@ -41,7 +41,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Usuário inativo",
             )
-        token = create_access_token(subject=user.id)
+        token = create_access_token(subject=user.id, tenant_id=user.tenant_id)
         return TokenResponse(access_token=token)
     except HTTPException:
         raise
@@ -121,5 +121,5 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    token = create_access_token(subject=user.id)
+    token = create_access_token(subject=user.id, tenant_id=user.tenant_id)
     return TokenResponse(access_token=token)

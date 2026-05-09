@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,11 +17,11 @@ class TenantCreate(BaseModel):
     nome_negocio: str
     plano: PlanType = PlanType.BASIC
     llm_model: str = "gpt-4o-mini"
-    system_prompt: str | None = None
-    openai_api_key: str | None = None
-    evolution_api_url: str | None = None
-    evolution_api_key: str | None = None
-    evolution_instance_name: str | None = None
+    system_prompt: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    evolution_api_url: Optional[str] = None
+    evolution_api_key: Optional[str] = None
+    evolution_instance_name: Optional[str] = None
     # Dados do dono do tenant
     admin_email: str
     admin_password: str
@@ -32,7 +32,7 @@ class TenantResponse(BaseModel):
     id: UUID
     nome_negocio: str
     plano: PlanType
-    evolution_instance_name: str | None
+    evolution_instance_name: Optional[str]
     
     class Config:
         from_attributes = True

@@ -18,6 +18,7 @@ from app.models.lead import Lead
 from app.models.agent import AIAgent
 from app.models.whatsapp import WhatsAppConnection
 from app.models.usuario import Usuario
+from app.models.tenant import Tenant
 from app.schemas.campaign import (
     CampaignCreate,
     CampaignUpdate,
@@ -27,12 +28,42 @@ from app.services.google_search import GoogleSearchService
 from app.services.evolution_api import EvolutionAPIService
 from app.services.openai_agent import OpenAIAgentService
 from app.core.config import settings
+from app.core.rbac import require_feature
+from app.core.plans import PLAN_LIMITS, PLAN_FEATURES
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
 
 # ──────────────────── CRUD ────────────────────
+
+@router.get("/module-info")
+def campaigns_module_info(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Retorna status do módulo campanhas para o tenant (feature, limite e uso atual)."""
+    request_id = getattr(request.state, "request_id", None)
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        return error_response(code="TENANT_NOT_FOUND", message="Tenant não encontrado", status_code=404, request_id=request_id)
+
+    plan_key = str(tenant.plano)
+    features = PLAN_FEATURES.get(plan_key, set())
+    limits = PLAN_LIMITS.get(plan_key, {})
+    active_campaigns = db.query(Campaign).filter(Campaign.tenant_id == current_user.tenant_id, Campaign.status.in_(["draft", "running"])).count()
+    max_campaigns = limits.get("campaigns_active", 0)
+
+    return success_response(
+        data={
+            "enabled": "campaigns" in features,
+            "plan": plan_key,
+            "limits": {"campaigns_active": max_campaigns},
+            "usage": {"campaigns_active": active_campaigns},
+        },
+        request_id=request_id,
+    )
 
 @router.get("")
 def list_campaigns(
@@ -45,7 +76,8 @@ def list_campaigns(
     """Lista todas as campanhas."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        q = db.query(Campaign).order_by(desc(Campaign.created_at))
+        tenant_id = current_user.tenant_id
+        q = db.query(Campaign).filter(Campaign.tenant_id == tenant_id).order_by(desc(Campaign.created_at))
         if campaign_type:
             q = q.filter(Campaign.type == campaign_type)
         if campaign_status:
@@ -63,13 +95,27 @@ def create_campaign(
     request: Request,
     data: CampaignCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Usuario, Depends(get_current_user)],
+    current_user: Annotated[Usuario, Depends(require_feature("campaigns"))],
 ):
     """Cria uma nova campanha."""
     request_id = getattr(request.state, "request_id", None)
     try:
+        tenant_id = current_user.tenant_id
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        limits = PLAN_LIMITS.get(str(tenant.plano), {})
+        max_campaigns_active = limits.get("campaigns_active", 0)
+        active_campaigns = db.query(Campaign).filter(Campaign.tenant_id == tenant_id, Campaign.status.in_(["draft", "running"])).count()
+        if active_campaigns >= max_campaigns_active:
+            return error_response(
+                code="PLAN_LIMIT",
+                message=f"Limite de campanhas ativas do plano atingido ({max_campaigns_active})",
+                status_code=403,
+                request_id=request_id,
+            )
+
         obj = Campaign(
             **data.model_dump(),
+            tenant_id=tenant_id,
             created_by_user_id=current_user.id,
         )
         db.add(obj)
@@ -91,13 +137,14 @@ def get_campaign(
 ):
     """Busca uma campanha pelo ID, com resumo de leads."""
     request_id = getattr(request.state, "request_id", None)
-    obj = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    tenant_id = current_user.tenant_id
+    obj = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id).first()
     if not obj:
         return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
 
     campaign_data = serialize_data(obj)
     campaign_data["total_leads_found"] = (
-        db.query(CampaignLead).filter(CampaignLead.campaign_id == campaign_id).count()
+        db.query(CampaignLead).filter(CampaignLead.campaign_id == campaign_id, CampaignLead.tenant_id == tenant_id).count()
     )
     return success_response(data=campaign_data, request_id=request_id)
 
@@ -113,7 +160,8 @@ def update_campaign(
     """Atualiza uma campanha."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
         update_data = data.model_dump(exclude_unset=True)
@@ -138,7 +186,8 @@ def delete_campaign(
     """Deleta uma campanha e seus leads."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -163,7 +212,8 @@ async def run_prospecting(
     request_id = getattr(request.state, "request_id", None)
     logger.info(f"[PROSPECÇÃO] Iniciando prospecção para campanha {campaign_id}")
     try:
-        obj = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id).first()
         if not obj:
             logger.warning(f"[PROSPECÇÃO] Campanha {campaign_id} não encontrada")
             return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
@@ -229,6 +279,7 @@ async def run_prospecting(
                 existing = (
                     db.query(CampaignLead)
                     .filter(
+                        CampaignLead.tenant_id == tenant_id,
                         CampaignLead.campaign_id == campaign_id,
                         CampaignLead.phone == ld["phone"],
                     )
@@ -236,6 +287,7 @@ async def run_prospecting(
                 )
             if not existing:
                 lead = CampaignLead(
+                    tenant_id=tenant_id,
                     campaign_id=campaign_id,
                     business_name=ld.get("business_name", "Sem nome"),
                     phone=ld.get("phone"),
@@ -258,7 +310,7 @@ async def run_prospecting(
 
         obj.status = "completed"
         obj.total_leads_found = (
-            db.query(CampaignLead).filter(CampaignLead.campaign_id == campaign_id).count()
+            db.query(CampaignLead).filter(CampaignLead.campaign_id == campaign_id, CampaignLead.tenant_id == tenant_id).count()
             + new_leads_count
         )
         db.commit()
@@ -280,7 +332,8 @@ async def run_prospecting(
         logger.error(f"Erro ao executar prospecção: {e}", exc_info=True)
         # Marcar campanha como falha
         try:
-            obj = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+            tenant_id = current_user.tenant_id
+            obj = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id).first()
             if obj:
                 obj.status = "failed"
                 db.commit()
@@ -302,9 +355,10 @@ def list_campaign_leads(
     """Lista os leads encontrados por uma campanha."""
     request_id = getattr(request.state, "request_id", None)
     try:
+        tenant_id = current_user.tenant_id
         q = (
             db.query(CampaignLead)
-            .filter(CampaignLead.campaign_id == campaign_id)
+            .filter(CampaignLead.campaign_id == campaign_id, CampaignLead.tenant_id == tenant_id)
             .order_by(desc(CampaignLead.found_at))
         )
         if lead_status:
@@ -341,6 +395,7 @@ def convert_lead_to_crm(
 
         # Criar Lead no CRM
         crm_lead = Lead(
+            tenant_id=tenant_id,
             nome=campaign_lead.business_name,
             email=campaign_lead.email,
             telefone=campaign_lead.phone,
@@ -379,6 +434,7 @@ def convert_lead_to_crm(
 # ──────────────────── Outreach IA ────────────────────
 
 async def _start_single_conversation(
+    tenant_id: uuid.UUID,
     campaign_id: uuid.UUID,
     campaign_lead_id: uuid.UUID,
     agent_id: uuid.UUID,
@@ -387,12 +443,13 @@ async def _start_single_conversation(
     """Lógica interna para iniciar uma conversa com um campaign lead. Usa sessão própria."""
     db = SessionLocal()
     try:
-        campaign_lead = db.query(CampaignLead).filter(CampaignLead.id == campaign_lead_id).first()
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        campaign_lead = db.query(CampaignLead).filter(CampaignLead.id == campaign_lead_id, CampaignLead.tenant_id == tenant_id).first()
         if not campaign_lead or not campaign_lead.phone:
             return {"error": "Lead sem telefone"}
 
-        agent = db.query(AIAgent).filter(AIAgent.id == agent_id).first()
-        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == wa_conn_id).first()
+        agent = db.query(AIAgent).filter(AIAgent.id == agent_id, AIAgent.tenant_id == tenant_id).first()
+        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == wa_conn_id, WhatsAppConnection.tenant_id == tenant_id).first()
         if not agent or not wa_conn:
             return {"error": "Agente ou conexão não encontrados"}
 
@@ -400,6 +457,7 @@ async def _start_single_conversation(
         existing = (
             db.query(CampaignLeadConversation)
             .filter(
+                CampaignLeadConversation.tenant_id == tenant_id,
                 CampaignLeadConversation.campaign_lead_id == campaign_lead_id,
                 CampaignLeadConversation.status == "active",
             )
@@ -409,7 +467,7 @@ async def _start_single_conversation(
             return {"error": "Já existe conversa ativa", "conversation_id": str(existing.id)}
 
         # Gerar mensagem com IA
-        openai_key = settings.OPENAI_API_KEY or ""
+        openai_key = tenant.openai_api_key or settings.OPENAI_API_KEY or ""
         if not openai_key:
             return {"error": "OPENAI_API_KEY não configurada"}
 
@@ -425,8 +483,9 @@ async def _start_single_conversation(
         )
 
         svc_ai = OpenAIAgentService(api_key=openai_key)
+        system_prompt = tenant.system_prompt or agent.system_prompt
         ai_result = await svc_ai.create_chat_completion(
-            system_prompt=agent.system_prompt,
+            system_prompt=system_prompt,
             messages=[{"role": "user", "content": lead_context}],
             model=agent.model,
             temperature=agent.temperature,
@@ -448,6 +507,7 @@ async def _start_single_conversation(
 
         # Criar conversa e mensagem
         conversation = CampaignLeadConversation(
+            tenant_id=tenant_id,
             campaign_lead_id=campaign_lead_id,
             agent_id=agent_id,
             whatsapp_connection_id=wa_conn_id,
@@ -459,6 +519,7 @@ async def _start_single_conversation(
         db.flush()
 
         msg = CampaignLeadMessage(
+            tenant_id=tenant_id,
             conversation_id=conversation.id,
             role="agent",
             content=message_text,
@@ -505,7 +566,7 @@ async def start_conversation(
             return error_response(code="NO_PHONE", message="Lead não possui telefone cadastrado", status_code=400, request_id=request_id)
 
         # Buscar campanha para pegar agente e conexão WhatsApp
-        campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id).first()
         if not campaign:
             return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
 
@@ -527,11 +588,15 @@ async def start_conversation(
         if not wa_conn_id:
             return error_response(code="NO_WA", message="Nenhuma conexão WhatsApp configurada.", status_code=400, request_id=request_id)
 
-        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == wa_conn_id).first()
+        wa_conn = db.query(WhatsAppConnection).filter(
+            WhatsAppConnection.id == wa_conn_id,
+            WhatsAppConnection.tenant_id == tenant_id
+        ).first()
         if not wa_conn or wa_conn.status != "connected":
             return error_response(code="WA_NOT_CONNECTED", message="Conexão WhatsApp não está conectada.", status_code=400, request_id=request_id)
 
         result = await _start_single_conversation(
+            tenant_id=tenant_id,
             campaign_id=campaign_id,
             campaign_lead_id=lead_id,
             agent_id=agent.id,
@@ -558,10 +623,14 @@ def list_campaign_conversations(
     """Lista todas as conversas de outreach de uma campanha, com mensagens."""
     request_id = getattr(request.state, "request_id", None)
     try:
+        tenant_id = current_user.tenant_id
         # Buscar campaign leads desta campanha
         lead_ids = [
             cl.id for cl in
-            db.query(CampaignLead.id).filter(CampaignLead.campaign_id == campaign_id).all()
+            db.query(CampaignLead.id).filter(
+                CampaignLead.campaign_id == campaign_id,
+                CampaignLead.tenant_id == tenant_id
+            ).all()
         ]
         if not lead_ids:
             return success_response(data=[], request_id=request_id)
@@ -569,7 +638,10 @@ def list_campaign_conversations(
         conversations = (
             db.query(CampaignLeadConversation)
             .options(joinedload(CampaignLeadConversation.messages), joinedload(CampaignLeadConversation.campaign_lead))
-            .filter(CampaignLeadConversation.campaign_lead_id.in_(lead_ids))
+            .filter(
+                CampaignLeadConversation.campaign_lead_id.in_(lead_ids),
+                CampaignLeadConversation.tenant_id == tenant_id
+            )
             .order_by(desc(CampaignLeadConversation.started_at))
             .all()
         )
@@ -591,6 +663,7 @@ def list_campaign_conversations(
 
 
 async def _batch_outreach(
+    tenant_id: uuid.UUID,
     campaign_id: uuid.UUID,
     agent_id: uuid.UUID,
     wa_conn_id: uuid.UUID,
@@ -602,6 +675,7 @@ async def _batch_outreach(
         logger.info(f"[BATCH_OUTREACH] Processando lead {i+1}/{len(lead_ids)}: {lead_id}")
         try:
             result = await _start_single_conversation(
+                tenant_id=tenant_id,
                 campaign_id=campaign_id,
                 campaign_lead_id=lead_id,
                 agent_id=agent_id,
@@ -634,7 +708,8 @@ async def start_outreach(
     """Inicia outreach em lote: envia mensagens para leads com status 'found', um por vez com delay."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        tenant_id = current_user.tenant_id
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id).first()
         if not campaign:
             return error_response(code="NOT_FOUND", message="Campanha não encontrada", status_code=404, request_id=request_id)
 
@@ -655,7 +730,10 @@ async def start_outreach(
         if not wa_conn_id:
             return error_response(code="NO_WA", message="Nenhuma conexão WhatsApp configurada.", status_code=400, request_id=request_id)
 
-        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == wa_conn_id).first()
+        wa_conn = db.query(WhatsAppConnection).filter(
+            WhatsAppConnection.id == wa_conn_id,
+            WhatsAppConnection.tenant_id == tenant_id
+        ).first()
         if not wa_conn or wa_conn.status != "connected":
             return error_response(code="WA_NOT_CONNECTED", message="Conexão WhatsApp não está conectada.", status_code=400, request_id=request_id)
 
@@ -664,6 +742,7 @@ async def start_outreach(
             db.query(CampaignLead)
             .filter(
                 CampaignLead.campaign_id == campaign_id,
+                CampaignLead.tenant_id == tenant_id,
                 CampaignLead.status == "found",
                 CampaignLead.phone.isnot(None),
                 CampaignLead.phone != "",
@@ -676,7 +755,10 @@ async def start_outreach(
         for lead in found_leads:
             has_conv = (
                 db.query(CampaignLeadConversation)
-                .filter(CampaignLeadConversation.campaign_lead_id == lead.id)
+                .filter(
+                    CampaignLeadConversation.campaign_lead_id == lead.id,
+                    CampaignLeadConversation.tenant_id == tenant_id
+                )
                 .first()
             )
             if not has_conv:
@@ -693,6 +775,7 @@ async def start_outreach(
         # Iniciar em background
         asyncio.ensure_future(
             _batch_outreach(
+                tenant_id=tenant_id,
                 campaign_id=campaign_id,
                 agent_id=agent.id,
                 wa_conn_id=wa_conn.id,

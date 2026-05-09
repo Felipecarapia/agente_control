@@ -78,3 +78,21 @@ class AgentConversation(Base):
     ended_at = Column(DateTime(timezone=True), nullable=True)
 
     agent = relationship("AIAgent", back_populates="conversations")
+
+
+class AgentLog(Base):
+    """Registro de logs de ações e consumo de tokens do agente"""
+    __tablename__ = "agent_logs"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("ai_agents.id", ondelete="CASCADE"), nullable=True, index=True)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id", ondelete="SET NULL"), nullable=True, index=True)
+    action = Column(String(255), nullable=False) # e.g. "RESPOND_MESSAGE", "TOOL_CALL"
+    details = Column(Text, nullable=True) # JSON or Text with what happened
+    tokens_used = Column(Integer, nullable=True, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    agent = relationship("AIAgent")
+    lead = relationship("Lead")

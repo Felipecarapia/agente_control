@@ -15,6 +15,7 @@ from app.models.lead import Lead, LeadConversation, LeadMessage
 from app.models.campaign import CampaignLead, CampaignLeadConversation, CampaignLeadMessage
 from app.models.agent import AIAgent
 from app.models.usuario import Usuario
+from app.models.tenant import Tenant
 from app.schemas.whatsapp import (
     WhatsAppConnectionCreate,
     WhatsAppConnectionUpdate,
@@ -23,12 +24,42 @@ from app.schemas.whatsapp import (
 from app.services.evolution_api import EvolutionAPIService
 from app.services.openai_agent import OpenAIAgentService
 from app.core.config import settings
+from app.core.rbac import require_feature
+from app.core.plans import PLAN_LIMITS, PLAN_FEATURES
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 
 
 # ──────────────────── CRUD ────────────────────
+
+@router.get("/module-info")
+def whatsapp_module_info(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Retorna status do módulo WhatsApp para o tenant (feature, limite e uso atual)."""
+    request_id = getattr(request.state, "request_id", None)
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        return error_response(code="TENANT_NOT_FOUND", message="Tenant não encontrado", status_code=404, request_id=request_id)
+
+    plan_key = str(tenant.plano)
+    features = PLAN_FEATURES.get(plan_key, set())
+    limits = PLAN_LIMITS.get(plan_key, {})
+    current_connections = db.query(WhatsAppConnection).filter(WhatsAppConnection.tenant_id == current_user.tenant_id).count()
+    max_connections = limits.get("whatsapp_connections", 0)
+
+    return success_response(
+        data={
+            "enabled": "whatsapp_automation" in features,
+            "plan": plan_key,
+            "limits": {"whatsapp_connections": max_connections},
+            "usage": {"whatsapp_connections": current_connections},
+        },
+        request_id=request_id,
+    )
 
 @router.get("/connections")
 def list_connections(
@@ -39,7 +70,8 @@ def list_connections(
     """Lista todas as conexões WhatsApp."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        connections = db.query(WhatsAppConnection).order_by(WhatsAppConnection.created_at.desc()).all()
+        tenant_id = current_user.tenant_id
+        connections = db.query(WhatsAppConnection).filter(WhatsAppConnection.tenant_id == tenant_id).order_by(WhatsAppConnection.created_at.desc()).all()
         data = [serialize_data(c) for c in connections]
         return success_response(data=data, request_id=request_id)
     except Exception as e:
@@ -52,13 +84,27 @@ def create_connection(
     request: Request,
     data: WhatsAppConnectionCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Usuario, Depends(get_current_user)],
+    current_user: Annotated[Usuario, Depends(require_feature("whatsapp_automation"))],
 ):
     """Cria uma nova conexão WhatsApp."""
     request_id = getattr(request.state, "request_id", None)
     try:
+        tenant_id = current_user.tenant_id
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        limits = PLAN_LIMITS.get(str(tenant.plano), {})
+        max_connections = limits.get("whatsapp_connections", 0)
+        current_connections = db.query(WhatsAppConnection).filter(WhatsAppConnection.tenant_id == tenant_id).count()
+        if current_connections >= max_connections:
+            return error_response(
+                code="PLAN_LIMIT",
+                message=f"Limite de conexões WhatsApp do plano atingido ({max_connections})",
+                status_code=403,
+                request_id=request_id,
+            )
+
         obj = WhatsAppConnection(
             **data.model_dump(),
+            tenant_id=tenant_id,
             created_by_user_id=current_user.id,
         )
         db.add(obj)
@@ -85,7 +131,8 @@ def get_connection(
 ):
     """Busca uma conexão pelo ID."""
     request_id = getattr(request.state, "request_id", None)
-    obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id).first()
+    tenant_id = current_user.tenant_id
+    obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id, WhatsAppConnection.tenant_id == tenant_id).first()
     if not obj:
         return error_response(code="NOT_FOUND", message="Conexão não encontrada", status_code=404, request_id=request_id)
     return success_response(data=serialize_data(obj), request_id=request_id)
@@ -102,7 +149,7 @@ def update_connection(
     """Atualiza uma conexão WhatsApp."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id).first()
+        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id, WhatsAppConnection.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conexão não encontrada", status_code=404, request_id=request_id)
         update_data = data.model_dump(exclude_unset=True)
@@ -127,7 +174,7 @@ def delete_connection(
     """Deleta uma conexão WhatsApp."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id).first()
+        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id, WhatsAppConnection.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conexão não encontrada", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -151,7 +198,7 @@ async def connect_instance(
     """Inicia conexão com a instância WhatsApp — retorna QR Code."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id).first()
+        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id, WhatsAppConnection.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conexão não encontrada", status_code=404, request_id=request_id)
 
@@ -212,7 +259,7 @@ async def connection_status(
     """Verifica status em tempo real da conexão WhatsApp."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id).first()
+        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id, WhatsAppConnection.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conexão não encontrada", status_code=404, request_id=request_id)
 
@@ -252,7 +299,7 @@ async def disconnect_instance(
     """Desconecta a instância WhatsApp."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id).first()
+        obj = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == connection_id, WhatsAppConnection.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conexão não encontrada", status_code=404, request_id=request_id)
 
@@ -301,7 +348,18 @@ async def whatsapp_webhook(
                     conn.status = status_map.get(state, conn.status)
                     db.commit()
 
-        elif event in ("messages.upsert", "MESSAGES_UPSERT", "messages.update"):
+        # Identificar o Tenant dono desta instância
+        tenant = None
+        if instance:
+            tenant = db.query(Tenant).filter(Tenant.evolution_instance_name == instance).first()
+        
+        if not tenant:
+            logger.warning(f"[WEBHOOK] Tenant não encontrado para instância: {instance}")
+            return success_response(data={"received": True})
+
+        tenant_id = tenant.id
+
+        if event in ("messages.upsert", "MESSAGES_UPSERT", "messages.update"):
             # Evolution API v1 e v2 podem ter estruturas diferentes
             data = body.get("data", {})
 
@@ -366,6 +424,7 @@ async def whatsapp_webhook(
                     conversation = (
                         db.query(LeadConversation)
                         .filter(
+                            LeadConversation.tenant_id == tenant_id,
                             LeadConversation.status == "active",
                             LeadConversation.remote_jid == remote_jid,
                         )
@@ -379,7 +438,10 @@ async def whatsapp_webhook(
                     all_active_convs = (
                         db.query(LeadConversation)
                         .join(Lead, Lead.id == LeadConversation.lead_id)
-                        .filter(LeadConversation.status == "active")
+                        .filter(
+                            LeadConversation.tenant_id == tenant_id,
+                            LeadConversation.status == "active"
+                        )
                         .all()
                     )
 
@@ -437,6 +499,7 @@ async def whatsapp_webhook(
 
                     # Salvar mensagem do lead
                     lead_msg = LeadMessage(
+                        tenant_id=tenant_id,
                         conversation_id=conversation.id,
                         role="lead",
                         content=msg_text,
@@ -449,74 +512,79 @@ async def whatsapp_webhook(
                     # Gerar resposta da IA
                     agent = conversation.agent
                     if agent:
-                        openai_key = settings.OPENAI_API_KEY or ""
-                        if openai_key:
-                            try:
-                                # Montar histórico de mensagens
-                                prev_messages = (
-                                    db.query(LeadMessage)
-                                    .filter(LeadMessage.conversation_id == conversation.id)
-                                    .order_by(LeadMessage.created_at)
-                                    .all()
-                                )
-                                history = []
-                                for pm in prev_messages:
-                                    role = "assistant" if pm.role == "agent" else "user"
-                                    history.append({"role": role, "content": pm.content})
+                        try:
+                            from app.services.sofia_agent.executor import get_agent_executor
+                            from langchain_community.callbacks.manager import get_openai_callback
+                            from app.models.agent import AgentLog
+                            
+                            # Note: The 'msg_text' is already saved in the DB by whatsapp.py above.
+                            # The executor will use this input to run the LangChain agent.
+                            executor = await get_agent_executor(tenant, lead, conversation, db)
+                            
+                            logger.info(f"[WEBHOOK] Invocando Sofia Agent para msg: '{msg_text[:50]}...'")
+                            with get_openai_callback() as cb:
+                                ai_result = await executor.ainvoke({"input": msg_text})
+                                tokens = cb.total_tokens
+                            
+                            reply_text = ai_result.get("output", "")
+                            
+                            # Salvar log do agente
+                            agent_log = AgentLog(
+                                tenant_id=tenant_id,
+                                agent_id=agent.id,
+                                lead_id=lead.id,
+                                action="RESPOND_MESSAGE",
+                                details=f"Input: {msg_text}\\nOutput: {reply_text}",
+                                tokens_used=tokens
+                            )
+                            db.add(agent_log)
+                            db.commit()
+                            
+                            logger.info(f"[WEBHOOK] Sofia Agent respondeu ({len(reply_text)} chars). Tokens: {tokens}")
 
-                                svc_ai = OpenAIAgentService(api_key=openai_key)
-                                ai_result = await svc_ai.create_chat_completion(
-                                    system_prompt=agent.system_prompt,
-                                    messages=history,
-                                    model=agent.model,
-                                    temperature=agent.temperature,
-                                    max_tokens=agent.max_tokens,
-                                )
-                                reply_text = ai_result["response"]
-                                logger.info(f"[WEBHOOK] IA respondeu ({len(reply_text)} chars): {reply_text[:100]}...")
+                            # Enviar resposta via WhatsApp
+                            # Tentar LID primeiro (remoteJid), fallback para telefone do lead
+                            wa_conn = conversation.whatsapp_connection
+                            if wa_conn and wa_conn.instance_name:
+                                lead = conversation.lead
+                                lead_phone = lead.whatsapp or lead.telefone or sender_phone
+                                reply_to = remote_jid if ("@lid" in remote_jid) else lead_phone
+                                logger.info(f"[WEBHOOK] Enviando resposta para: {reply_to} (lid={remote_jid}, lead_phone={lead_phone})")
 
-                                # Enviar resposta via WhatsApp
-                                # Tentar LID primeiro (remoteJid), fallback para telefone do lead
-                                wa_conn = conversation.whatsapp_connection
-                                if wa_conn and wa_conn.instance_name:
-                                    lead = conversation.lead
-                                    lead_phone = lead.whatsapp or lead.telefone or sender_phone
-                                    reply_to = remote_jid if ("@lid" in remote_jid) else lead_phone
-                                    logger.info(f"[WEBHOOK] Enviando resposta para: {reply_to} (lid={remote_jid}, lead_phone={lead_phone})")
-
-                                    svc_wa = EvolutionAPIService(api_url=wa_conn.api_url, api_key=wa_conn.api_key)
-                                    try:
+                                svc_wa = EvolutionAPIService(api_url=wa_conn.api_url, api_key=wa_conn.api_key)
+                                try:
+                                    wa_result = await svc_wa.send_message(
+                                        instance_name=wa_conn.instance_name,
+                                        phone=reply_to,
+                                        text=reply_text,
+                                    )
+                                except Exception as send_err:
+                                    # Se LID falhou, tenta com telefone do lead
+                                    if "@lid" in reply_to and lead_phone != reply_to:
+                                        logger.warning(f"[WEBHOOK] Envio por LID falhou, tentando por telefone: {lead_phone}")
                                         wa_result = await svc_wa.send_message(
                                             instance_name=wa_conn.instance_name,
-                                            phone=reply_to,
+                                            phone=lead_phone,
                                             text=reply_text,
                                         )
-                                    except Exception as send_err:
-                                        # Se LID falhou, tenta com telefone do lead
-                                        if "@lid" in reply_to and lead_phone != reply_to:
-                                            logger.warning(f"[WEBHOOK] Envio por LID falhou, tentando por telefone: {lead_phone}")
-                                            wa_result = await svc_wa.send_message(
-                                                instance_name=wa_conn.instance_name,
-                                                phone=lead_phone,
-                                                text=reply_text,
-                                            )
-                                        else:
-                                            raise send_err
-                                    wa_msg_id = wa_result.get("key", {}).get("id")
+                                    else:
+                                        raise send_err
+                                wa_msg_id = wa_result.get("key", {}).get("id")
 
-                                    # Salvar resposta do agente
-                                    agent_msg = LeadMessage(
-                                        conversation_id=conversation.id,
-                                        role="agent",
-                                        content=reply_text,
-                                        sent_via="whatsapp",
-                                        whatsapp_message_id=wa_msg_id,
-                                    )
-                                    db.add(agent_msg)
-                                    logger.info(f"[WEBHOOK] Resposta do agente enviada e salva!")
+                                # Salvar resposta do agente
+                                agent_msg = LeadMessage(
+                                    tenant_id=tenant_id,
+                                    conversation_id=conversation.id,
+                                    role="agent",
+                                    content=reply_text,
+                                    sent_via="whatsapp",
+                                    whatsapp_message_id=wa_msg_id,
+                                )
+                                db.add(agent_msg)
+                                logger.info(f"[WEBHOOK] Resposta do agente enviada e salva!")
 
-                            except Exception as ai_err:
-                                logger.error(f"[WEBHOOK] Erro ao processar IA: {ai_err}", exc_info=True)
+                        except Exception as ai_err:
+                            logger.error(f"[WEBHOOK] Erro ao processar IA: {ai_err}", exc_info=True)
 
                     db.commit()
                 else:
@@ -528,6 +596,7 @@ async def whatsapp_webhook(
                         campaign_conv = (
                             db.query(CampaignLeadConversation)
                             .filter(
+                                CampaignLeadConversation.tenant_id == tenant_id,
                                 CampaignLeadConversation.status == "active",
                                 CampaignLeadConversation.remote_jid == remote_jid,
                             )
@@ -541,7 +610,10 @@ async def whatsapp_webhook(
                         all_campaign_convs = (
                             db.query(CampaignLeadConversation)
                             .join(CampaignLead, CampaignLead.id == CampaignLeadConversation.campaign_lead_id)
-                            .filter(CampaignLeadConversation.status == "active")
+                            .filter(
+                                CampaignLeadConversation.tenant_id == tenant_id,
+                                CampaignLeadConversation.status == "active"
+                            )
                             .all()
                         )
 
@@ -588,6 +660,7 @@ async def whatsapp_webhook(
 
                         # Salvar mensagem do lead
                         camp_msg = CampaignLeadMessage(
+                            tenant_id=tenant_id,
                             conversation_id=campaign_conv.id,
                             role="lead",
                             content=msg_text,
@@ -632,7 +705,8 @@ async def whatsapp_webhook(
                         # Gerar resposta IA
                         agent = campaign_conv.agent
                         if agent:
-                            openai_key = settings.OPENAI_API_KEY or ""
+                            openai_key = tenant.openai_api_key or settings.OPENAI_API_KEY or ""
+                            system_prompt = tenant.system_prompt or agent.system_prompt
                             if openai_key:
                                 try:
                                     prev_msgs = (
@@ -648,7 +722,7 @@ async def whatsapp_webhook(
 
                                     svc_ai = OpenAIAgentService(api_key=openai_key)
                                     ai_result = await svc_ai.create_chat_completion(
-                                        system_prompt=agent.system_prompt,
+                                        system_prompt=system_prompt,
                                         messages=history,
                                         model=agent.model,
                                         temperature=agent.temperature,
@@ -683,6 +757,7 @@ async def whatsapp_webhook(
 
                                         wa_msg_id = wa_result.get("key", {}).get("id")
                                         agent_msg = CampaignLeadMessage(
+                                            tenant_id=tenant_id,
                                             conversation_id=campaign_conv.id,
                                             role="agent",
                                             content=reply_text,

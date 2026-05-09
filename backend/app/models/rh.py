@@ -19,6 +19,8 @@ class TipoContrato(str, enum.Enum):
 class Funcionario(Base):
     """Funcionários / colaboradores da empresa."""
     __tablename__ = "funcionarios"
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    tenant = relationship("Tenant")
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     nome = Column(String(255), nullable=False)

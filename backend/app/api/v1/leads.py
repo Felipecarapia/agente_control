@@ -16,6 +16,7 @@ from app.models.lead import Lead, LeadConversation, LeadMessage
 from app.models.agent import AIAgent
 from app.models.whatsapp import WhatsAppConnection
 from app.models.usuario import Usuario
+from app.models.tenant import Tenant
 from app.schemas.lead import LeadCreate, LeadUpdate, LeadResponse
 from app.services.openai_agent import OpenAIAgentService
 from app.services.evolution_api import EvolutionAPIService
@@ -41,7 +42,8 @@ def list_leads(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        q = db.query(Lead)
+        tenant_id = current_user.tenant_id
+        q = db.query(Lead).filter(Lead.tenant_id == tenant_id)
         if status_filter:
             q = q.filter(Lead.status == status_filter)
         if temperatura:
@@ -80,11 +82,12 @@ def leads_stats(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        total = db.query(Lead).count()
-        novos = db.query(Lead).filter(Lead.status == "novo").count()
-        quentes = db.query(Lead).filter(Lead.temperatura == "quente").count()
-        ganhos = db.query(Lead).filter(Lead.status == "ganho").count()
-        perdidos = db.query(Lead).filter(Lead.status == "perdido").count()
+        tenant_id = current_user.tenant_id
+        total = db.query(Lead).filter(Lead.tenant_id == tenant_id).count()
+        novos = db.query(Lead).filter(Lead.tenant_id == tenant_id, Lead.status == "novo").count()
+        quentes = db.query(Lead).filter(Lead.tenant_id == tenant_id, Lead.temperatura == "quente").count()
+        ganhos = db.query(Lead).filter(Lead.tenant_id == tenant_id, Lead.status == "ganho").count()
+        perdidos = db.query(Lead).filter(Lead.tenant_id == tenant_id, Lead.status == "perdido").count()
         return success_response(
             data={
                 "total": total or 0,
@@ -121,7 +124,8 @@ def get_lead(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Lead).filter(Lead.id == lead_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Lead).filter(Lead.id == lead_id, Lead.tenant_id == tenant_id).first()
         if not obj:
             return error_response(
                 code="LEAD_NOT_FOUND",
@@ -161,7 +165,8 @@ def create_lead(
         # Validação Pydantic já é feita automaticamente pelo FastAPI
         # Verificar se email já existe (duplicado)
         if data.email:
-            existing = db.query(Lead).filter(Lead.email == data.email).first()
+            tenant_id = current_user.tenant_id
+            existing = db.query(Lead).filter(Lead.email == data.email, Lead.tenant_id == tenant_id).first()
             if existing:
                 return error_response(
                     code="LEAD_DUPLICATE",
@@ -172,7 +177,8 @@ def create_lead(
                 )
         
         # Criar lead
-        obj = Lead(**data.model_dump(), criado_por_id=current_user.id)
+        tenant_id = current_user.tenant_id
+        obj = Lead(**data.model_dump(), tenant_id=tenant_id, criado_por_id=current_user.id)
         if not obj.responsavel_id:
             obj.responsavel_id = current_user.id
         db.add(obj)
@@ -219,7 +225,8 @@ def update_lead(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Lead).filter(Lead.id == lead_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Lead).filter(Lead.id == lead_id, Lead.tenant_id == tenant_id).first()
         if not obj:
             return error_response(
                 code="LEAD_NOT_FOUND",
@@ -233,6 +240,7 @@ def update_lead(
         if "email" in update_data and update_data["email"]:
             existing = db.query(Lead).filter(
                 Lead.email == update_data["email"],
+                Lead.tenant_id == tenant_id,
                 Lead.id != lead_id
             ).first()
             if existing:
@@ -288,7 +296,8 @@ def delete_lead(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Lead).filter(Lead.id == lead_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Lead).filter(Lead.id == lead_id, Lead.tenant_id == tenant_id).first()
         if not obj:
             return error_response(
                 code="LEAD_NOT_FOUND",
@@ -327,8 +336,9 @@ async def prospect_lead(
     logger.info(f"[PROSPECT] Iniciando prospecção para lead {lead_id}")
 
     try:
+        tenant_id = current_user.tenant_id
         # 1) Buscar lead
-        lead = db.query(Lead).filter(Lead.id == lead_id).first()
+        lead = db.query(Lead).filter(Lead.id == lead_id, Lead.tenant_id == tenant_id).first()
         if not lead:
             return error_response(code="LEAD_NOT_FOUND", message="Lead não encontrado", status_code=404, request_id=request_id)
 
@@ -349,7 +359,11 @@ async def prospect_lead(
         # 2) Buscar agente ativo com WhatsApp
         agent = (
             db.query(AIAgent)
-            .filter(AIAgent.is_active == True, AIAgent.whatsapp_connection_id.isnot(None))
+            .filter(
+                AIAgent.tenant_id == tenant_id,
+                AIAgent.is_active == True, 
+                AIAgent.whatsapp_connection_id.isnot(None)
+            )
             .first()
         )
         if not agent:
@@ -362,7 +376,10 @@ async def prospect_lead(
         logger.info(f"[PROSPECT] Agente: {agent.name} (model={agent.model})")
 
         # 3) Buscar conexão WhatsApp
-        wa_conn = db.query(WhatsAppConnection).filter(WhatsAppConnection.id == agent.whatsapp_connection_id).first()
+        wa_conn = db.query(WhatsAppConnection).filter(
+            WhatsAppConnection.id == agent.whatsapp_connection_id,
+            WhatsAppConnection.tenant_id == tenant_id
+        ).first()
         if not wa_conn or wa_conn.status != "connected":
             return error_response(
                 code="WA_NOT_CONNECTED",
@@ -373,7 +390,8 @@ async def prospect_lead(
         logger.info(f"[PROSPECT] WhatsApp: {wa_conn.name} (instância={wa_conn.instance_name})")
 
         # 4) Gerar mensagem com OpenAI
-        openai_key = settings.OPENAI_API_KEY or ""
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        openai_key = tenant.openai_api_key or settings.OPENAI_API_KEY or ""
         if not openai_key:
             return error_response(code="CONFIG_ERROR", message="OPENAI_API_KEY não configurada.", status_code=500, request_id=request_id)
 
@@ -391,8 +409,9 @@ async def prospect_lead(
         )
 
         svc_ai = OpenAIAgentService(api_key=openai_key)
+        system_prompt = tenant.system_prompt or agent.system_prompt
         ai_result = await svc_ai.create_chat_completion(
-            system_prompt=agent.system_prompt,
+            system_prompt=system_prompt,
             messages=[{"role": "user", "content": lead_context}],
             model=agent.model,
             temperature=agent.temperature,
@@ -408,6 +427,7 @@ async def prospect_lead(
         existing_conv = (
             db.query(LeadConversation)
             .filter(
+                LeadConversation.tenant_id == tenant_id,
                 LeadConversation.lead_id == lead_id,
                 LeadConversation.status == "active",
             )
@@ -442,6 +462,7 @@ async def prospect_lead(
             logger.info(f"[PROSPECT] Reutilizando conversa existente: {conversation.id}")
         else:
             conversation = LeadConversation(
+                tenant_id=tenant_id,
                 lead_id=lead_id,
                 agent_id=agent.id,
                 whatsapp_connection_id=wa_conn.id,
@@ -453,6 +474,7 @@ async def prospect_lead(
             logger.info(f"[PROSPECT] Nova conversa criada: {conversation.id}, remote_jid={wa_remote_jid}")
 
         msg = LeadMessage(
+            tenant_id=tenant_id,
             conversation_id=conversation.id,
             role="agent",
             content=message_text,
@@ -497,9 +519,13 @@ def list_lead_conversations(
     """Lista todas as conversas de prospecção de um lead, com mensagens."""
     request_id = getattr(request.state, "request_id", None)
     try:
+        tenant_id = current_user.tenant_id
         conversations = (
             db.query(LeadConversation)
-            .filter(LeadConversation.lead_id == lead_id)
+            .filter(
+                LeadConversation.lead_id == lead_id,
+                LeadConversation.tenant_id == tenant_id
+            )
             .order_by(desc(LeadConversation.started_at))
             .all()
         )
@@ -510,7 +536,10 @@ def list_lead_conversations(
             # Buscar mensagens
             messages = (
                 db.query(LeadMessage)
-                .filter(LeadMessage.conversation_id == conv.id)
+                .filter(
+                    LeadMessage.conversation_id == conv.id,
+                    LeadMessage.tenant_id == tenant_id
+                )
                 .order_by(LeadMessage.created_at)
                 .all()
             )

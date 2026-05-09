@@ -50,7 +50,8 @@ def list_contas_pagar(
     """Lista todas as contas a pagar."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        q = db.query(ContaPagar).order_by(desc(ContaPagar.data_vencimento))
+        tenant_id = current_user.tenant_id
+        q = db.query(ContaPagar).filter(ContaPagar.tenant_id == tenant_id).order_by(desc(ContaPagar.data_vencimento))
         if conta_status:
             q = q.filter(ContaPagar.status == conta_status)
         if categoria:
@@ -82,6 +83,7 @@ def create_conta_pagar(
     try:
         obj = ContaPagar(
             **data.model_dump(),
+            tenant_id=current_user.tenant_id,
             created_by_user_id=current_user.id,
         )
         db.add(obj)
@@ -103,7 +105,7 @@ def get_conta_pagar(
 ):
     """Busca uma conta a pagar pelo ID."""
     request_id = getattr(request.state, "request_id", None)
-    obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id).first()
+    obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id, ContaPagar.tenant_id == current_user.tenant_id).first()
     if not obj:
         return error_response(code="NOT_FOUND", message="Conta a pagar não encontrada", status_code=404, request_id=request_id)
     return success_response(data=serialize_data(obj), request_id=request_id)
@@ -120,7 +122,7 @@ def update_conta_pagar(
     """Atualiza uma conta a pagar."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id).first()
+        obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id, ContaPagar.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta a pagar não encontrada", status_code=404, request_id=request_id)
         update_data = data.model_dump(exclude_unset=True)
@@ -145,7 +147,7 @@ def delete_conta_pagar(
     """Deleta uma conta a pagar."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id).first()
+        obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id, ContaPagar.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta a pagar não encontrada", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -167,7 +169,7 @@ def marcar_conta_paga(
     """Marca uma conta como paga (define data_pagamento = hoje e status = pago)."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id).first()
+        obj = db.query(ContaPagar).filter(ContaPagar.id == conta_id, ContaPagar.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta a pagar não encontrada", status_code=404, request_id=request_id)
         obj.status = "pago"
@@ -198,7 +200,8 @@ def list_contas_receber(
     """Lista todas as contas a receber."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        q = db.query(ContaReceber).order_by(desc(ContaReceber.data_vencimento))
+        tenant_id = current_user.tenant_id
+        q = db.query(ContaReceber).filter(ContaReceber.tenant_id == tenant_id).order_by(desc(ContaReceber.data_vencimento))
         if conta_status:
             q = q.filter(ContaReceber.status == conta_status)
         if categoria:
@@ -230,6 +233,7 @@ def create_conta_receber(
     try:
         obj = ContaReceber(
             **data.model_dump(),
+            tenant_id=current_user.tenant_id,
             created_by_user_id=current_user.id,
         )
         db.add(obj)
@@ -251,7 +255,7 @@ def get_conta_receber(
 ):
     """Busca uma conta a receber pelo ID."""
     request_id = getattr(request.state, "request_id", None)
-    obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id).first()
+    obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id, ContaReceber.tenant_id == current_user.tenant_id).first()
     if not obj:
         return error_response(code="NOT_FOUND", message="Conta a receber não encontrada", status_code=404, request_id=request_id)
     return success_response(data=serialize_data(obj), request_id=request_id)
@@ -268,7 +272,7 @@ def update_conta_receber(
     """Atualiza uma conta a receber."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id).first()
+        obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id, ContaReceber.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta a receber não encontrada", status_code=404, request_id=request_id)
         update_data = data.model_dump(exclude_unset=True)
@@ -293,7 +297,7 @@ def delete_conta_receber(
     """Deleta uma conta a receber."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id).first()
+        obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id, ContaReceber.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta a receber não encontrada", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -315,7 +319,7 @@ def marcar_conta_recebida(
     """Marca uma conta como recebida (define data_recebimento = hoje e status = recebido)."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id).first()
+        obj = db.query(ContaReceber).filter(ContaReceber.id == conta_id, ContaReceber.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta a receber não encontrada", status_code=404, request_id=request_id)
         obj.status = "recebido"
@@ -347,8 +351,9 @@ def resumo_financeiro(
         today = date.today()
 
         # Contas a pagar
-        q_pagar = db.query(ContaPagar)
-        q_receber = db.query(ContaReceber)
+        tenant_id = current_user.tenant_id
+        q_pagar = db.query(ContaPagar).filter(ContaPagar.tenant_id == tenant_id)
+        q_receber = db.query(ContaReceber).filter(ContaReceber.tenant_id == tenant_id)
 
         if mes and ano:
             q_pagar = q_pagar.filter(
@@ -433,6 +438,7 @@ def dashboard_financeiro(
         receita_mes = (
             db.query(func.coalesce(func.sum(ContaReceber.valor), 0))
             .filter(
+                ContaReceber.tenant_id == current_user.tenant_id,
                 ContaReceber.status == "recebido",
                 extract("month", ContaReceber.data_recebimento) == today.month,
                 extract("year", ContaReceber.data_recebimento) == today.year,
@@ -442,6 +448,7 @@ def dashboard_financeiro(
         despesas_mes = (
             db.query(func.coalesce(func.sum(ContaPagar.valor), 0))
             .filter(
+                ContaPagar.tenant_id == current_user.tenant_id,
                 ContaPagar.status == "pago",
                 extract("month", ContaPagar.data_pagamento) == today.month,
                 extract("year", ContaPagar.data_pagamento) == today.year,
@@ -452,7 +459,7 @@ def dashboard_financeiro(
 
         saldo_bancario = (
             db.query(func.coalesce(func.sum(ContaBancaria.saldo_inicial), 0))
-            .filter(ContaBancaria.ativo == True)
+            .filter(ContaBancaria.ativo == True, ContaBancaria.tenant_id == current_user.tenant_id)
             .scalar()
         )
 
@@ -474,6 +481,7 @@ def dashboard_financeiro(
             rec = (
                 db.query(func.coalesce(func.sum(ContaReceber.valor), 0))
                 .filter(
+                    ContaReceber.tenant_id == current_user.tenant_id,
                     ContaReceber.status == "recebido",
                     extract("month", ContaReceber.data_recebimento) == m,
                     extract("year", ContaReceber.data_recebimento) == y,
@@ -483,6 +491,7 @@ def dashboard_financeiro(
             desp = (
                 db.query(func.coalesce(func.sum(ContaPagar.valor), 0))
                 .filter(
+                    ContaPagar.tenant_id == current_user.tenant_id,
                     ContaPagar.status == "pago",
                     extract("month", ContaPagar.data_pagamento) == m,
                     extract("year", ContaPagar.data_pagamento) == y,
@@ -512,6 +521,7 @@ def dashboard_financeiro(
         desp_categorias = (
             db.query(ContaPagar.categoria, func.sum(ContaPagar.valor))
             .filter(
+                ContaPagar.tenant_id == current_user.tenant_id,
                 ContaPagar.status == "pago",
                 extract("month", ContaPagar.data_pagamento) == today.month,
                 extract("year", ContaPagar.data_pagamento) == today.year,
@@ -529,6 +539,7 @@ def dashboard_financeiro(
         contas_pagar_vencendo = (
             db.query(ContaPagar)
             .filter(
+                ContaPagar.tenant_id == current_user.tenant_id,
                 ContaPagar.status == "pendente",
                 ContaPagar.data_vencimento >= today,
                 ContaPagar.data_vencimento <= limite,
@@ -539,6 +550,7 @@ def dashboard_financeiro(
         contas_receber_vencendo = (
             db.query(ContaReceber)
             .filter(
+                ContaReceber.tenant_id == current_user.tenant_id,
                 ContaReceber.status == "pendente",
                 ContaReceber.data_vencimento >= today,
                 ContaReceber.data_vencimento <= limite,
@@ -604,7 +616,7 @@ def list_centros_custo(
     """Lista todos os centros de custo."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        items = db.query(CentroCusto).order_by(CentroCusto.nome).all()
+        items = db.query(CentroCusto).filter(CentroCusto.tenant_id == current_user.tenant_id).order_by(CentroCusto.nome).all()
         return success_response(data=[serialize_data(i) for i in items], request_id=request_id)
     except Exception as e:
         logger.error(f"Erro ao listar centros de custo: {e}", exc_info=True)
@@ -621,7 +633,7 @@ def create_centro_custo(
     """Cria um novo centro de custo."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = CentroCusto(**data.model_dump())
+        obj = CentroCusto(**data.model_dump(), tenant_id=current_user.tenant_id)
         db.add(obj)
         db.commit()
         db.refresh(obj)
@@ -643,7 +655,7 @@ def update_centro_custo(
     """Atualiza um centro de custo."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(CentroCusto).filter(CentroCusto.id == item_id).first()
+        obj = db.query(CentroCusto).filter(CentroCusto.id == item_id, CentroCusto.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Centro de custo não encontrado", status_code=404, request_id=request_id)
         for k, v in data.model_dump(exclude_unset=True).items():
@@ -667,7 +679,7 @@ def delete_centro_custo(
     """Deleta um centro de custo."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(CentroCusto).filter(CentroCusto.id == item_id).first()
+        obj = db.query(CentroCusto).filter(CentroCusto.id == item_id, CentroCusto.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Centro de custo não encontrado", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -692,7 +704,7 @@ def list_contas_bancarias(
     """Lista todas as contas bancárias."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        items = db.query(ContaBancaria).order_by(ContaBancaria.nome_banco).all()
+        items = db.query(ContaBancaria).filter(ContaBancaria.tenant_id == current_user.tenant_id).order_by(ContaBancaria.nome_banco).all()
         return success_response(data=[serialize_data(i) for i in items], request_id=request_id)
     except Exception as e:
         logger.error(f"Erro ao listar contas bancárias: {e}", exc_info=True)
@@ -709,7 +721,7 @@ def create_conta_bancaria(
     """Cria uma nova conta bancária."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = ContaBancaria(**data.model_dump())
+        obj = ContaBancaria(**data.model_dump(), tenant_id=current_user.tenant_id)
         db.add(obj)
         db.commit()
         db.refresh(obj)
@@ -731,7 +743,7 @@ def update_conta_bancaria(
     """Atualiza uma conta bancária."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaBancaria).filter(ContaBancaria.id == item_id).first()
+        obj = db.query(ContaBancaria).filter(ContaBancaria.id == item_id, ContaBancaria.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta bancária não encontrada", status_code=404, request_id=request_id)
         for k, v in data.model_dump(exclude_unset=True).items():
@@ -755,7 +767,7 @@ def delete_conta_bancaria(
     """Deleta uma conta bancária."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(ContaBancaria).filter(ContaBancaria.id == item_id).first()
+        obj = db.query(ContaBancaria).filter(ContaBancaria.id == item_id, ContaBancaria.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Conta bancária não encontrada", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -783,6 +795,7 @@ def _gerar_conta_pagar_despesa_fixa(db: Session, despesa: DespesaFixa, mes: int,
         db.query(ContaPagar)
         .filter(
             ContaPagar.despesa_fixa_id == despesa.id,
+            ContaPagar.tenant_id == despesa.tenant_id,
             extract("month", ContaPagar.data_vencimento) == mes,
             extract("year", ContaPagar.data_vencimento) == ano,
         )
@@ -792,6 +805,7 @@ def _gerar_conta_pagar_despesa_fixa(db: Session, despesa: DespesaFixa, mes: int,
         return None  # Já gerada
 
     conta = ContaPagar(
+        tenant_id=despesa.tenant_id,
         descricao=f"[Fixa] {despesa.descricao}",
         fornecedor=despesa.fornecedor,
         categoria=despesa.categoria,
@@ -819,7 +833,7 @@ def list_despesas_fixas(
     """Lista todas as despesas fixas."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        items = db.query(DespesaFixa).order_by(DespesaFixa.descricao).all()
+        items = db.query(DespesaFixa).filter(DespesaFixa.tenant_id == current_user.tenant_id).order_by(DespesaFixa.descricao).all()
         return success_response(data=[serialize_data(i) for i in items], request_id=request_id)
     except Exception as e:
         logger.error(f"Erro ao listar despesas fixas: {e}", exc_info=True)
@@ -838,6 +852,7 @@ def create_despesa_fixa(
     try:
         obj = DespesaFixa(
             **data.model_dump(),
+            tenant_id=current_user.tenant_id,
             created_by_user_id=current_user.id,
         )
         db.add(obj)
@@ -867,7 +882,7 @@ def update_despesa_fixa(
     """Atualiza uma despesa fixa."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(DespesaFixa).filter(DespesaFixa.id == item_id).first()
+        obj = db.query(DespesaFixa).filter(DespesaFixa.id == item_id, DespesaFixa.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Despesa fixa não encontrada", status_code=404, request_id=request_id)
         for k, v in data.model_dump(exclude_unset=True).items():
@@ -891,7 +906,7 @@ def delete_despesa_fixa(
     """Deleta uma despesa fixa."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(DespesaFixa).filter(DespesaFixa.id == item_id).first()
+        obj = db.query(DespesaFixa).filter(DespesaFixa.id == item_id, DespesaFixa.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Despesa fixa não encontrada", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -918,7 +933,7 @@ def gerar_despesas_fixas_mes(
         target_mes = mes or today.month
         target_ano = ano or today.year
 
-        despesas = db.query(DespesaFixa).filter(DespesaFixa.ativo == True).all()
+        despesas = db.query(DespesaFixa).filter(DespesaFixa.ativo == True, DespesaFixa.tenant_id == current_user.tenant_id).all()
         geradas = 0
         for d in despesas:
             conta = _gerar_conta_pagar_despesa_fixa(db, d, target_mes, target_ano, user_id=current_user.id)

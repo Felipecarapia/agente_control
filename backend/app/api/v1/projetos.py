@@ -37,7 +37,8 @@ def list_projetos(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        projetos = db.query(Projeto).all()
+        tenant_id = current_user.tenant_id
+        projetos = db.query(Projeto).filter(Projeto.tenant_id == tenant_id).all()
         # Converter usando serialize_data para serialização correta (datas/decimal)
         projetos_data = [serialize_data(p) for p in projetos]
         return success_response(data=projetos_data if projetos_data else [], request_id=request_id)
@@ -62,7 +63,8 @@ def get_projeto(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Projeto).filter(Projeto.id == projeto_id, Projeto.tenant_id == tenant_id).first()
         if not obj:
             return error_response(
                 code="PROJECT_NOT_FOUND",
@@ -101,7 +103,8 @@ def create_projeto(
         # Verificar duplicado: mesmo nome + cliente_id
         existing = db.query(Projeto).filter(
             Projeto.nome == data.nome,
-            Projeto.cliente_id == data.cliente_id
+            Projeto.cliente_id == data.cliente_id,
+            Projeto.tenant_id == current_user.tenant_id
         ).first()
         if existing:
             return error_response(
@@ -114,7 +117,7 @@ def create_projeto(
         
         # Verificar se cliente existe
         from app.models.cliente import Cliente
-        cliente = db.query(Cliente).filter(Cliente.id == data.cliente_id).first()
+        cliente = db.query(Cliente).filter(Cliente.id == data.cliente_id, Cliente.tenant_id == current_user.tenant_id).first()
         if not cliente:
             return error_response(
                 code="CLIENT_NOT_FOUND",
@@ -124,7 +127,7 @@ def create_projeto(
             )
         
         # Criar projeto
-        obj = Projeto(**data.model_dump(), usuario_id=current_user.id)
+        obj = Projeto(**data.model_dump(), usuario_id=current_user.id, tenant_id=current_user.tenant_id)
         db.add(obj)
         db.commit()
         db.refresh(obj)
@@ -168,7 +171,8 @@ def update_projeto(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+        tenant_id = current_user.tenant_id
+        obj = db.query(Projeto).filter(Projeto.id == projeto_id, Projeto.tenant_id == tenant_id).first()
         if not obj:
             return error_response(
                 code="PROJECT_NOT_FOUND",
@@ -185,6 +189,7 @@ def update_projeto(
             existing = db.query(Projeto).filter(
                 Projeto.nome == nome,
                 Projeto.cliente_id == cliente_id,
+                Projeto.tenant_id == tenant_id,
                 Projeto.id != projeto_id
             ).first()
             if existing:
@@ -199,7 +204,7 @@ def update_projeto(
         # Verificar se cliente existe (se cliente_id está sendo atualizado)
         if "cliente_id" in update_data:
             from app.models.cliente import Cliente
-            cliente = db.query(Cliente).filter(Cliente.id == update_data["cliente_id"]).first()
+            cliente = db.query(Cliente).filter(Cliente.id == update_data["cliente_id"], Cliente.tenant_id == tenant_id).first()
             if not cliente:
                 return error_response(
                     code="CLIENT_NOT_FOUND",
@@ -250,7 +255,7 @@ def delete_projeto(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        obj = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+        obj = db.query(Projeto).filter(Projeto.id == projeto_id, Projeto.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(
                 code="PROJECT_NOT_FOUND",
@@ -279,7 +284,7 @@ def get_projeto_members(
     current_user: Annotated[Usuario, Depends(get_current_user)],
 ):
     """Lista membros envolvidos no projeto."""
-    projeto = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+    projeto = db.query(Projeto).filter(Projeto.id == projeto_id, Projeto.tenant_id == current_user.tenant_id).first()
     if not projeto:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return get_project_members(db, projeto_id)
@@ -294,7 +299,7 @@ def nudge_projeto(
     current_user: Annotated[Usuario, Depends(get_current_user)],  # Removida restrição de permissão
 ):
     """Envia notificação de cobrança para membros do projeto."""
-    projeto = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+    projeto = db.query(Projeto).filter(Projeto.id == projeto_id, Projeto.tenant_id == current_user.tenant_id).first()
     if not projeto:
         return error_response(
             code="PROJECT_NOT_FOUND",
@@ -347,7 +352,8 @@ def update_project_expense(
     try:
         expense = db.query(ProjectExpense).filter(
             ProjectExpense.id == expense_id,
-            ProjectExpense.project_id == projeto_id
+            ProjectExpense.project_id == projeto_id,
+            ProjectExpense.tenant_id == current_user.tenant_id,
         ).first()
         
         if not expense:
@@ -394,7 +400,7 @@ def get_project_financials(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        projeto = db.query(Projeto).filter(Projeto.id == projeto_id).options(joinedload(Projeto.expenses)).first()
+        projeto = db.query(Projeto).filter(Projeto.id == projeto_id, Projeto.tenant_id == current_user.tenant_id).options(joinedload(Projeto.expenses)).first()
         if not projeto:
              return error_response(
                 code="PROJECT_NOT_FOUND",
@@ -491,7 +497,7 @@ def create_project_expense(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        projeto = db.query(Projeto).filter(Projeto.id == projeto_id).first()
+        projeto = db.query(Projeto).filter(Projeto.id == projeto_id, Projeto.tenant_id == current_user.tenant_id).first()
         if not projeto:
              return error_response(
                 code="PROJECT_NOT_FOUND",
@@ -503,6 +509,7 @@ def create_project_expense(
         expense = ProjectExpense(
             **data.model_dump(),
             project_id=projeto_id,
+            tenant_id=current_user.tenant_id,
             created_by_id=current_user.id
         )
         db.add(expense)
@@ -537,7 +544,8 @@ def delete_project_expense(
     try:
         expense = db.query(ProjectExpense).filter(
             ProjectExpense.id == expense_id,
-            ProjectExpense.project_id == projeto_id
+            ProjectExpense.project_id == projeto_id,
+            ProjectExpense.tenant_id == current_user.tenant_id,
         ).first()
         
         if not expense:
@@ -562,4 +570,3 @@ def delete_project_expense(
             status_code=500,
             request_id=request_id
         )
-

@@ -43,7 +43,7 @@ def list_funcionarios(
     """Lista todos os funcionários."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        items = db.query(Funcionario).order_by(Funcionario.nome).all()
+        items = db.query(Funcionario).filter(Funcionario.tenant_id == current_user.tenant_id).order_by(Funcionario.nome).all()
         return success_response(data=[serialize_data(i) for i in items], request_id=request_id)
     except Exception as e:
         logger.error(f"Erro ao listar funcionários: {e}", exc_info=True)
@@ -62,6 +62,7 @@ def create_funcionario(
     try:
         obj = Funcionario(
             **data.model_dump(),
+            tenant_id=current_user.tenant_id,
             created_by_user_id=current_user.id,
         )
         db.add(obj)
@@ -78,6 +79,7 @@ def create_funcionario(
             }.get(obj.tipo_contrato, obj.tipo_contrato)
 
             despesa = DespesaFixa(
+                tenant_id=current_user.tenant_id,
                 descricao=f"Salário - {obj.nome} ({tipo_label})",
                 valor=custo,
                 categoria="salario",
@@ -113,7 +115,7 @@ def get_funcionario(
 ):
     """Busca um funcionário pelo ID."""
     request_id = getattr(request.state, "request_id", None)
-    obj = db.query(Funcionario).filter(Funcionario.id == func_id).first()
+    obj = db.query(Funcionario).filter(Funcionario.id == func_id, Funcionario.tenant_id == current_user.tenant_id).first()
     if not obj:
         return error_response(code="NOT_FOUND", message="Funcionário não encontrado", status_code=404, request_id=request_id)
     return success_response(data=serialize_data(obj), request_id=request_id)
@@ -130,7 +132,7 @@ def update_funcionario(
     """Atualiza um funcionário."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(Funcionario).filter(Funcionario.id == func_id).first()
+        obj = db.query(Funcionario).filter(Funcionario.id == func_id, Funcionario.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Funcionário não encontrado", status_code=404, request_id=request_id)
         for k, v in data.model_dump(exclude_unset=True).items():
@@ -154,7 +156,7 @@ def delete_funcionario(
     """Deleta um funcionário."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        obj = db.query(Funcionario).filter(Funcionario.id == func_id).first()
+        obj = db.query(Funcionario).filter(Funcionario.id == func_id, Funcionario.tenant_id == current_user.tenant_id).first()
         if not obj:
             return error_response(code="NOT_FOUND", message="Funcionário não encontrado", status_code=404, request_id=request_id)
         db.delete(obj)
@@ -179,22 +181,23 @@ def resumo_rh(
     """Retorna resumo de RH: totais de funcionários, folha e benefícios."""
     request_id = getattr(request.state, "request_id", None)
     try:
-        total = db.query(Funcionario).count()
-        ativos = db.query(Funcionario).filter(Funcionario.ativo == True).count()
-        total_clt = db.query(Funcionario).filter(Funcionario.ativo == True, Funcionario.tipo_contrato == "clt").count()
-        total_pj = db.query(Funcionario).filter(Funcionario.ativo == True, Funcionario.tipo_contrato == "pj").count()
-        total_estagiarios = db.query(Funcionario).filter(Funcionario.ativo == True, Funcionario.tipo_contrato == "estagiario").count()
+        tenant_id = current_user.tenant_id
+        total = db.query(Funcionario).filter(Funcionario.tenant_id == tenant_id).count()
+        ativos = db.query(Funcionario).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True).count()
+        total_clt = db.query(Funcionario).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True, Funcionario.tipo_contrato == "clt").count()
+        total_pj = db.query(Funcionario).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True, Funcionario.tipo_contrato == "pj").count()
+        total_estagiarios = db.query(Funcionario).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True, Funcionario.tipo_contrato == "estagiario").count()
 
         total_folha = (
             db.query(func.coalesce(func.sum(Funcionario.salario_bruto), 0))
-            .filter(Funcionario.ativo == True)
+            .filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True)
             .scalar()
         )
 
-        total_vt = db.query(func.coalesce(func.sum(Funcionario.vale_transporte), 0)).filter(Funcionario.ativo == True).scalar()
-        total_vr = db.query(func.coalesce(func.sum(Funcionario.vale_refeicao), 0)).filter(Funcionario.ativo == True).scalar()
-        total_ps = db.query(func.coalesce(func.sum(Funcionario.plano_saude), 0)).filter(Funcionario.ativo == True).scalar()
-        total_ob = db.query(func.coalesce(func.sum(Funcionario.outros_beneficios), 0)).filter(Funcionario.ativo == True).scalar()
+        total_vt = db.query(func.coalesce(func.sum(Funcionario.vale_transporte), 0)).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True).scalar()
+        total_vr = db.query(func.coalesce(func.sum(Funcionario.vale_refeicao), 0)).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True).scalar()
+        total_ps = db.query(func.coalesce(func.sum(Funcionario.plano_saude), 0)).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True).scalar()
+        total_ob = db.query(func.coalesce(func.sum(Funcionario.outros_beneficios), 0)).filter(Funcionario.tenant_id == tenant_id, Funcionario.ativo == True).scalar()
 
         total_beneficios = Decimal(str(total_vt)) + Decimal(str(total_vr)) + Decimal(str(total_ps)) + Decimal(str(total_ob))
         custo_total = Decimal(str(total_folha)) + total_beneficios

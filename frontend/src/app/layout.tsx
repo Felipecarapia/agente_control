@@ -3,13 +3,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sistemaxi",
-  description: "ERP/CRM para gerenciamento de projetos",
-  icons: {
-    icon: "https://i.imgur.com/PrOd6nf.png",
-    shortcut: "https://i.imgur.com/PrOd6nf.png",
-    apple: "https://i.imgur.com/PrOd6nf.png",
-  },
+  title: "Control.IA",
+  description: "Plataforma de CRM e gestão operacional com IA",
 };
 
 export default function RootLayout({

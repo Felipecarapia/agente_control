@@ -1,9 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Loader2 } from "lucide-react";
-import Image from "next/image";
-import { useBranding } from "@/hooks/useBranding";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface LoginTransitionOverlayProps {
@@ -17,7 +15,6 @@ export function LoginTransitionOverlay({
   onRetry,
   showTimeoutMessage = false,
 }: LoginTransitionOverlayProps) {
-  const { logoUrl, companyName, loading: brandingLoading } = useBranding();
 
   return (
     <AnimatePresence>
@@ -42,50 +39,24 @@ export function LoginTransitionOverlay({
             transition={{ duration: 0.4 }}
             className="relative z-10 flex flex-col items-center justify-center text-center px-6"
           >
-            {/* Logo */}
+            {/* Wordmark */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
               className="mb-8"
             >
-              {brandingLoading ? (
-                <div className="h-16 w-48 bg-white/10 rounded-lg animate-pulse" />
-              ) : logoUrl ? (
-                <motion.div
-                  animate={{
-                    filter: [
-                      "brightness(1)",
-                      "brightness(1.1)",
-                      "brightness(1)",
-                    ],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    repeatType: "reverse",
-                  }}
+              <div className="flex items-center gap-3 justify-center">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}
                 >
-                  <Image
-                    src={logoUrl}
-                    alt={companyName || "Sistemaxi CRM"}
-                    width={192}
-                    height={64}
-                    className="h-16 w-auto object-contain"
-                    priority
-                    unoptimized
-                  />
-                </motion.div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="h-16 w-16 rounded-lg bg-white/20 flex items-center justify-center">
-                    <Sparkles className="h-8 w-8 text-white" />
-                  </div>
-                  <span className="text-3xl font-bold text-white">
-                    {companyName || "Sistemaxi CRM"}
-                  </span>
+                  <div className="w-5 h-5 rounded bg-white" />
                 </div>
-              )}
+                <span className="text-3xl font-bold text-white" style={{ letterSpacing: "-0.05em" }}>
+                  Control<span style={{ color: "rgba(255,255,255,0.4)" }}>.IA</span>
+                </span>
+              </div>
             </motion.div>
 
             {/* Texto principal */}
@@ -117,19 +88,13 @@ export function LoginTransitionOverlay({
               transition={{ duration: 0.5, delay: 0.5 }}
               className="w-full max-w-xs"
             >
-              {/* Barra de progresso animada */}
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden mb-6">
+              {/* Progress bar — white/neutral */}
+              <div className="h-px bg-white/10 rounded-full overflow-hidden mb-6">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 rounded-full"
-                  initial={{ width: "0%" }}
-                  animate={{
-                    width: ["0%", "100%"],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  className="h-full bg-white/50 rounded-full"
+                  initial={{ width: "0%", x: "-100%" }}
+                  animate={{ x: ["0%", "100%"] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                 />
               </div>
 

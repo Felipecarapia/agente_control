@@ -36,7 +36,7 @@ def list_usuarios(
         # Carregar usuários com roles usando selectinload para evitar N+1
         users = db.query(Usuario).options(
             selectinload(Usuario.user_roles).joinedload(UserRole.role)
-        ).all()
+        ).filter(Usuario.tenant_id == current_user.tenant_id).all()
         
         result = []
         for user in users:
@@ -79,7 +79,7 @@ def get_usuario(
     try:
         user = db.query(Usuario).options(
             selectinload(Usuario.user_roles).joinedload(UserRole.role)
-        ).filter(Usuario.id == usuario_id).first()
+        ).filter(Usuario.id == usuario_id, Usuario.tenant_id == current_user.tenant_id).first()
         
         if not user:
             return error_response(
@@ -146,6 +146,7 @@ def create_usuario(
             hashed_password=get_password_hash(data.password),
             nome=data.nome,
             ativo=data.ativo,
+            tenant_id=current_user.tenant_id,
         )
         db.add(user)
         db.commit()
@@ -154,7 +155,7 @@ def create_usuario(
         # Recarregar com roles
         user = db.query(Usuario).options(
             selectinload(Usuario.user_roles).joinedload(UserRole.role)
-        ).filter(Usuario.id == user.id).first()
+        ).filter(Usuario.id == user.id, Usuario.tenant_id == current_user.tenant_id).first()
         
         # Serializar
         user_dict = serialize_data(user)
@@ -207,7 +208,7 @@ def update_usuario(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        user = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        user = db.query(Usuario).filter(Usuario.id == usuario_id, Usuario.tenant_id == current_user.tenant_id).first()
         if not user:
             return error_response(
                 code="USER_NOT_FOUND",
@@ -247,7 +248,7 @@ def update_usuario(
         # Recarregar com roles
         user = db.query(Usuario).options(
             selectinload(Usuario.user_roles).joinedload(UserRole.role)
-        ).filter(Usuario.id == usuario_id).first()
+        ).filter(Usuario.id == usuario_id, Usuario.tenant_id == current_user.tenant_id).first()
         
         # Serializar
         user_dict = serialize_data(user)
@@ -297,7 +298,7 @@ def delete_usuario(
     request_id = getattr(request.state, "request_id", None)
     
     try:
-        user = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        user = db.query(Usuario).filter(Usuario.id == usuario_id, Usuario.tenant_id == current_user.tenant_id).first()
         if not user:
             return error_response(
                 code="USER_NOT_FOUND",
