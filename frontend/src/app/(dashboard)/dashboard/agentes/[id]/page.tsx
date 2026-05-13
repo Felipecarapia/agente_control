@@ -155,20 +155,41 @@ export default function AgentDetailPage() {
     }
   }
 
+  // Estado para o histórico do chat de teste
+  const [testChat, setTestChat] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+
   async function sendTest() {
     if (!testMessage.trim()) return;
+    
+    const userMsg = testMessage.trim();
+    setTestMessage("");
+    setTestChat(prev => [...prev, { role: "user", content: userMsg }]);
     setTestLoading(true);
+    
     try {
+      // Enviamos o histórico atual + a nova mensagem para o backend
       const result = await api<{ response: string; tokens_used?: number }>(
         `/api/v1/agents/${id}/test`,
-        { method: "POST", body: JSON.stringify({ message: testMessage }) }
+        { 
+          method: "POST", 
+          body: JSON.stringify({ 
+            message: userMsg,
+            history: testChat
+          }) 
+        }
       );
-      setTestResponse(result.response);
+      
+      setTestChat(prev => [...prev, { role: "assistant", content: result.response }]);
     } catch (e: any) {
-      setTestResponse(`Erro: ${e?.message || "Falha ao testar agente"}`);
+      setTestChat(prev => [...prev, { role: "assistant", content: `❌ Erro: ${e?.message || "Falha ao processar mensagem"}` }]);
     } finally {
       setTestLoading(false);
     }
+  }
+
+  function clearTestChat() {
+    setTestChat([]);
+    setTestResponse("");
   }
 
   if (loading) {
@@ -298,28 +319,88 @@ export default function AgentDetailPage() {
 
         {/* Testar agente */}
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" /> Testar Agente
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
-                value={testMessage}
-                onChange={(e) => setTestMessage(e.target.value)}
-                placeholder="Digite uma mensagem..."
-                className="min-h-[80px]"
-              />
-              <Button className="w-full" onClick={sendTest} disabled={testLoading || !testMessage.trim()}>
-                {testLoading ? "Processando..." : "Enviar"}
-              </Button>
-              {testResponse && (
-                <div className="rounded-lg border p-3 bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Resposta:</p>
-                  <p className="text-sm whitespace-pre-wrap">{testResponse}</p>
+          <Card className="flex flex-col h-[500px] border-primary/20 shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 bg-muted/30">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <div className="p-1 rounded-md bg-primary/10">
+                  <MessageSquare className="h-4 w-4 text-primary" />
                 </div>
-              )}
+                Sandbox do Agente
+              </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearTestChat} 
+                className="h-7 px-2 text-[10px] uppercase font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                Limpar
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-4">
+              {/* Área do Chat */}
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-primary/10 scroll-smooth">
+                {testChat.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 opacity-60">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-2 shadow-inner">
+                      <Bot className="h-8 w-8 text-primary animate-pulse" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-wider text-primary">Inicie o Teste</p>
+                      <p className="text-[10px] text-muted-foreground max-w-[180px]">Mande um oi para validar o comportamento e o tom de voz do seu agente.</p>
+                    </div>
+                  </div>
+                ) : (
+                  testChat.map((msg, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+                    >
+                      <div className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+                        msg.role === "user" 
+                          ? "bg-primary text-primary-foreground rounded-tr-none" 
+                          : "bg-muted/80 border border-primary/10 rounded-tl-none"
+                      }`}>
+                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {testLoading && (
+                  <div className="flex justify-start animate-in fade-in duration-200">
+                    <div className="bg-muted/80 border border-primary/10 rounded-2xl rounded-tl-none px-4 py-3 flex gap-1.5 items-center">
+                      <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1.5 h-1.5 bg-primary/40 rounded-full" />
+                      <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-primary/40 rounded-full" />
+                      <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-primary/40 rounded-full" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Input de Mensagem */}
+              <div className="flex gap-2 pt-3 border-t mt-auto items-end">
+                <Textarea
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendTest();
+                    }
+                  }}
+                  placeholder="Envie uma mensagem de teste..."
+                  className="min-h-[44px] max-h-[120px] bg-muted/40 border-primary/10 focus-visible:ring-primary/30 resize-none py-3 text-xs"
+                  disabled={testLoading}
+                />
+                <Button 
+                  size="icon" 
+                  onClick={sendTest} 
+                  disabled={testLoading || !testMessage.trim()} 
+                  className="shrink-0 h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+                >
+                  <Save className="h-5 w-5 rotate-90" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
