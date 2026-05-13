@@ -21,16 +21,33 @@ REDIRECT_URI = "http://localhost:8000/api/v1/auth/google/callback"
 @router.get("/login")
 async def google_login(tenant_id: str):
     """Gera a URL de autenticação do Google."""
-    # Precisamos do arquivo credentials.json ou das variáveis de ambiente
-    creds_path = 'credentials.json'
-    if not os.path.exists(creds_path):
-        raise HTTPException(status_code=500, detail="Arquivo credentials.json não encontrado no servidor.")
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    
+    if os.path.exists('credentials.json'):
+        flow = Flow.from_client_secrets_file(
+            'credentials.json',
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
+        )
+    elif client_id and client_secret:
+        client_config = {
+            "web": {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [REDIRECT_URI]
+            }
+        }
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
+        )
+    else:
+        raise HTTPException(status_code=500, detail="Configurações do Google (credentials.json ou Env Vars) não encontradas.")
 
-    flow = Flow.from_client_secrets_file(
-        creds_path,
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI
-    )
     
     # Gerar a URL de autorização
     # state ajuda a identificar o tenant quando voltar
@@ -46,12 +63,32 @@ async def google_login(tenant_id: str):
 @router.get("/callback")
 async def google_callback(code: str, state: str, db: Session = Depends(get_db)):
     """Recebe o código do Google e salva o token."""
-    creds_path = 'credentials.json'
-    flow = Flow.from_client_secrets_file(
-        creds_path,
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI
-    )
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    
+    if os.path.exists('credentials.json'):
+        flow = Flow.from_client_secrets_file(
+            'credentials.json',
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
+        )
+    elif client_id and client_secret:
+        client_config = {
+            "web": {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [REDIRECT_URI]
+            }
+        }
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
+        )
+    else:
+        raise HTTPException(status_code=500, detail="Configurações do Google não encontradas.")
     
     # Trocar o código pelo token
     flow.fetch_token(code=code)
