@@ -15,8 +15,8 @@ router = APIRouter()
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 def get_redirect_uri(request: Request):
-    """Como o seu backend está rodando no localhost:8000, o callback DEVE ser no localhost."""
-    return "http://localhost:8000/api/v1/auth/google/callback"
+    """Retorna a URI de produção oficial para evitar que a Vercel quebre a resposta com 404."""
+    return "https://sistemaxi-crm-production.up.railway.app/api/v1/auth/google/callback"
 
 def build_client_config():
     # Dividindo as strings para evitar o bloqueio antifraude do GitHub
