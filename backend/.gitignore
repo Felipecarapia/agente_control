@@ -7,3 +7,4 @@ venv/
 .env.local
 uploads/
 .env
+credentials.json
