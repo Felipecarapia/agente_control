@@ -14,13 +14,17 @@ router = APIRouter()
 # Scopes necessários
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-# O redirecionamento deve bater com o cadastrado no Google Cloud Console
-# Em produção, isso deve ser a URL do seu backend/Vercel
-REDIRECT_URI = "http://localhost:8000/api/v1/auth/google/callback"
+def get_redirect_uri(request: Request):
+    """Detecta a URL de redirecionamento baseada no host da requisição."""
+    # Se estiver em produção (HTTPS), garante o protocolo correto
+    host = request.headers.get("host", "localhost:8000")
+    protocol = "https" if "localhost" not in host else "http"
+    return f"{protocol}://{host}/api/v1/auth/google/callback"
 
 @router.get("/login")
-async def google_login(tenant_id: str):
+async def google_login(tenant_id: str, request: Request):
     """Gera a URL de autenticação do Google."""
+    redirect_uri = get_redirect_uri(request)
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
     
@@ -28,7 +32,7 @@ async def google_login(tenant_id: str):
         flow = Flow.from_client_secrets_file(
             'credentials.json',
             scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
+            redirect_uri=redirect_uri
         )
     elif client_id and client_secret:
         client_config = {
@@ -37,13 +41,13 @@ async def google_login(tenant_id: str):
                 "client_secret": client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [REDIRECT_URI]
+                "redirect_uris": [redirect_uri]
             }
         }
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
+            redirect_uri=redirect_uri
         )
     else:
         raise HTTPException(status_code=500, detail="Configurações do Google (credentials.json ou Env Vars) não encontradas.")
@@ -61,8 +65,9 @@ async def google_login(tenant_id: str):
     return {"url": auth_url}
 
 @router.get("/callback")
-async def google_callback(code: str, state: str, db: Session = Depends(get_db)):
+async def google_callback(code: str, state: str, request: Request, db: Session = Depends(get_db)):
     """Recebe o código do Google e salva o token."""
+    redirect_uri = get_redirect_uri(request)
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
     
@@ -70,7 +75,7 @@ async def google_callback(code: str, state: str, db: Session = Depends(get_db)):
         flow = Flow.from_client_secrets_file(
             'credentials.json',
             scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
+            redirect_uri=redirect_uri
         )
     elif client_id and client_secret:
         client_config = {
@@ -79,13 +84,13 @@ async def google_callback(code: str, state: str, db: Session = Depends(get_db)):
                 "client_secret": client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [REDIRECT_URI]
+                "redirect_uris": [redirect_uri]
             }
         }
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
+            redirect_uri=redirect_uri
         )
     else:
         raise HTTPException(status_code=500, detail="Configurações do Google não encontradas.")
