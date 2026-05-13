@@ -325,8 +325,8 @@ export default function AgentDetailPage() {
                         try {
                           const res = await api<{url: string}>(`/api/v1/auth/google/login?tenant_id=${form.id || ""}`); // Usando form.id como fallback ou adicione lógica para o tenant
                           if (res.url) window.location.href = res.url;
-                        } catch (e) {
-                          alert("Erro ao iniciar conexão com Google");
+                        } catch (e: any) {
+                          alert(`Erro ao iniciar conexão: ${e?.message || JSON.stringify(e)}`);
                         }
                       }}
                     >
