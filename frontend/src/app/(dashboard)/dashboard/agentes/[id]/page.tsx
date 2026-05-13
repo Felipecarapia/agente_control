@@ -38,6 +38,8 @@ type AIAgent = {
   max_tokens: number | null;
   whatsapp_connection_id: string | null;
   cliente_id: string | null;
+  google_client_id: string | null;
+  google_calendar_id: string | null;
   is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
@@ -97,6 +99,8 @@ export default function AgentDetailPage() {
     max_tokens: 1024,
     whatsapp_connection_id: "",
     cliente_id: "",
+    google_client_id: "",
+    google_calendar_id: "",
     is_active: true,
   });
 
@@ -125,6 +129,8 @@ export default function AgentDetailPage() {
         max_tokens: agentData.max_tokens || 1024,
         whatsapp_connection_id: agentData.whatsapp_connection_id || "",
         cliente_id: agentData.cliente_id || "",
+        google_client_id: agentData.google_client_id || "",
+        google_calendar_id: agentData.google_calendar_id || "",
         is_active: agentData.is_active,
       });
     } catch {
@@ -145,6 +151,8 @@ export default function AgentDetailPage() {
         ...form,
         whatsapp_connection_id: form.whatsapp_connection_id && form.whatsapp_connection_id !== "none" ? form.whatsapp_connection_id : null,
         cliente_id: form.cliente_id && form.cliente_id !== "none" ? form.cliente_id : null,
+        google_client_id: form.google_client_id || null,
+        google_calendar_id: form.google_calendar_id || null,
       };
       await api(`/api/v1/agents/${id}`, { method: "PUT", body: JSON.stringify(body) });
       loadData();
@@ -293,6 +301,25 @@ export default function AgentDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-2">
+                <div className="grid gap-2">
+                  <Label>Google Client ID</Label>
+                  <Input 
+                    placeholder="Ex: 123456789-abc.apps.googleusercontent.com" 
+                    value={form.google_client_id} 
+                    onChange={(e) => setForm((f) => ({ ...f, google_client_id: e.target.value }))} 
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Google Calendar ID</Label>
+                  <Input 
+                    placeholder="Ex: primary ou hash@group.calendar.google.com" 
+                    value={form.google_calendar_id} 
+                    onChange={(e) => setForm((f) => ({ ...f, google_calendar_id: e.target.value }))} 
+                  />
+                </div>
               </div>
 
               <div className="grid gap-2">

@@ -17,6 +17,8 @@ class AIAgentBase(BaseModel):
     knowledge_base_json: Optional[Any] = None
     whatsapp_connection_id: Optional[uuid.UUID] = None
     cliente_id: Optional[uuid.UUID] = None
+    google_client_id: Optional[str] = None
+    google_calendar_id: Optional[str] = None
     is_active: bool = True
 
 
@@ -37,6 +39,8 @@ class AIAgentUpdate(BaseModel):
     knowledge_base_json: Optional[Any] = None
     whatsapp_connection_id: Optional[uuid.UUID] = None
     cliente_id: Optional[uuid.UUID] = None
+    google_client_id: Optional[str] = None
+    google_calendar_id: Optional[str] = None
     is_active: Optional[bool] = None
 
 

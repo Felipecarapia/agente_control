@@ -46,6 +46,8 @@ class AIAgent(Base):
     knowledge_base_json = Column(JSONB, nullable=True)  # Documentos/contexto do agente
     whatsapp_connection_id = Column(UUID(as_uuid=True), ForeignKey("whatsapp_connections.id", ondelete="SET NULL"), nullable=True)
     cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True, index=True)
+    google_client_id = Column(String(255), nullable=True)
+    google_calendar_id = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

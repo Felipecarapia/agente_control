@@ -35,8 +35,10 @@ async def get_agent_executor(tenant: Tenant, lead: Lead, conversation: LeadConve
     """
     
     # 1. Contexto das Ferramentas
-    from app.services.sofia_agent.context import current_tenant
+    from app.services.sofia_agent.context import current_tenant, current_agent
     current_tenant.set(tenant)
+    if conversation.agent:
+        current_agent.set(conversation.agent)
     
     # 2. Configuração de Cérebro (API Key e IA)
     api_key = tenant.openai_api_key or settings.OPENAI_API_KEY

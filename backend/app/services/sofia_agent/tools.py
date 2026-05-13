@@ -1,7 +1,7 @@
 from langchain.tools import tool
 from app.services.sofia_agent.integrations.google_calendar import GoogleCalendarClient
 from app.core.database import SessionLocal
-from app.services.sofia_agent.context import current_tenant
+from app.services.sofia_agent.context import current_tenant, current_agent
 import datetime
 import logging
 import uuid
@@ -33,6 +33,14 @@ async def Buscar_janelas_disponiveis(data_preferida: str, id_profissional: str =
     client = await get_calendar_client()
     if not client:
         return "Erro: Google Calendar não autenticado para este cliente."
+
+    try:
+        agent = current_agent.get()
+        if id_profissional == "primary" and agent and agent.google_calendar_id:
+            id_profissional = agent.google_calendar_id
+            logger.info(f"📅 Ferramenta usando agenda do Agente: {id_profissional}")
+    except:
+        pass
 
     try:
         start_dt = datetime.datetime.strptime(f"{data_preferida} 08:00:00", "%Y-%m-%d %H:%M:%S")
@@ -87,6 +95,13 @@ async def Criar_agendamento(titulo: str, data_hora_inicio: str, lead_id: str, du
     if not client: return "Erro Google Calendar."
 
     try:
+        agent = current_agent.get()
+        if id_profissional == "primary" and agent and agent.google_calendar_id:
+            id_profissional = agent.google_calendar_id
+    except:
+        pass
+
+    try:
         start_dt = datetime.datetime.fromisoformat(data_hora_inicio)
         
         # --- TRAVA DE SEGURANÇA: HORÁRIO COMERCIAL ---
@@ -138,10 +153,17 @@ async def Reagendar_atendimento(lead_id: str, nova_data_hora: str, descricao: st
             db.close()
             return "Você não possui nenhum agendamento ativo para reagendar. Deseja criar um novo?"
             
+        calendar_id = "primary"
+        try:
+            agent = current_agent.get()
+            if agent and agent.google_calendar_id:
+                calendar_id = agent.google_calendar_id
+        except: pass
+
         for appt in appointments:
             target_event_id = appt.google_event_id
             try:
-                await client.delete_event(calendar_id="primary", event_id=target_event_id)
+                await client.delete_event(calendar_id=calendar_id, event_id=target_event_id)
             except Exception as e:
                 print(f"Aviso ao deletar no Google: {e}")
             delete_appointment_by_event_id(db, target_event_id)
@@ -160,7 +182,7 @@ async def Reagendar_atendimento(lead_id: str, nova_data_hora: str, descricao: st
         end_dt = start_dt + datetime.timedelta(minutes=90) # Padrão 90 min
         
         event = await client.create_event(
-            calendar_id="primary",
+            calendar_id=calendar_id,
             summary=titulo,
             start_time=start_dt.isoformat(),
             end_time=end_dt.isoformat(),

@@ -1,5 +1,6 @@
 import contextvars
-from database.models import Tenant
+from typing import Any
 
-# Context Variable to store the current tenant in the execution thread
-current_tenant: contextvars.ContextVar[Tenant] = contextvars.ContextVar("current_tenant")
+# Context Variables to store the current tenant and agent in the execution thread
+current_tenant: contextvars.ContextVar[Any] = contextvars.ContextVar("current_tenant")
+current_agent: contextvars.ContextVar[Any] = contextvars.ContextVar("current_agent")
