@@ -313,7 +313,24 @@ export default function AgentDetailPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Google Calendar ID</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Google Calendar ID</Label>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-[10px] gap-1.5 border-primary/30 hover:bg-primary/10"
+                      onClick={async () => {
+                        try {
+                          const res = await api<{url: string}>(`/api/v1/auth/google/login?tenant_id=${form.id || ""}`); // Usando form.id como fallback ou adicione lógica para o tenant
+                          if (res.url) window.location.href = res.url;
+                        } catch (e) {
+                          alert("Erro ao iniciar conexão com Google");
+                        }
+                      }}
+                    >
+                      <Bot className="h-3 w-3" /> Conectar Conta
+                    </Button>
+                  </div>
                   <Input 
                     placeholder="Ex: primary ou hash@group.calendar.google.com" 
                     value={form.google_calendar_id} 
