@@ -15,10 +15,9 @@ router = APIRouter()
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 def get_redirect_uri(request: Request):
-    """Detecta a URL de redirecionamento baseada no host da requisição."""
-    host = request.headers.get("host", "localhost:8000")
-    protocol = "https" if "localhost" not in host else "http"
-    return f"{protocol}://{host}/api/v1/auth/google/callback"
+    """Retorna uma URI fixa para forçar a autorização do Google com sucesso na Vercel."""
+    # Para evitar confusões de proxy entre Vercel e Railway, fixamos o callback para o que está no Google:
+    return "https://agente-control.vercel.app/api/v1/auth/google/callback"
 
 def build_client_config():
     # Dividindo as strings para evitar o bloqueio antifraude do GitHub
