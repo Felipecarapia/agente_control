@@ -90,6 +90,7 @@ export default function AgentDetailPage() {
   const [testResponse, setTestResponse] = useState("");
   const [testLoading, setTestLoading] = useState(false);
   const [form, setForm] = useState({
+    id: "",
     name: "",
     description: "",
     system_prompt: "",
@@ -120,6 +121,7 @@ export default function AgentDetailPage() {
       setLogs(Array.isArray(logsData) ? logsData : []);
       setClientes(Array.isArray(clsData) ? clsData : []);
       setForm({
+        id: agentData.id,
         name: agentData.name,
         description: agentData.description || "",
         system_prompt: agentData.system_prompt,
