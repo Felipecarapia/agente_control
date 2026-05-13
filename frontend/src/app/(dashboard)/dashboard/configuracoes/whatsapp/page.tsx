@@ -101,7 +101,7 @@ export default function WhatsAppConfigPage() {
 
   function openCreate() {
     setEditId(null);
-    setForm({ name: "", phone_number: "", provider: "evolution", api_url: "", api_key: "", instance_name: "", webhook_url: "" });
+    setForm({ name: "", phone_number: "", provider: "evolution", api_url: "", api_key: "", instance_name: "", webhook_url: "", cliente_id: "" });
     setOpen(true);
   }
 
@@ -161,7 +161,7 @@ export default function WhatsAppConfigPage() {
     } catch (e: any) {
       const msg = e?.message || "Erro desconhecido";
       alert(`Erro ao conectar: ${msg}\n\nVerifique se a URL e API Key da sua Evolution API estão corretas.`);
-      loadList(); // reload para mostrar status atualizado
+      loadData(); // reload para mostrar status atualizado
     } finally {
       setConnectingId(null);
     }
