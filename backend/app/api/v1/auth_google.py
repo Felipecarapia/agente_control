@@ -158,5 +158,8 @@ async def google_callback(code: str, state: str, request: Request, db: Session =
         tenant.google_calendar_token = json.dumps(token_dict)
         db.commit()
         
-    # Redirecionar de volta para o dashboard (ajuste a URL se necessário)
-    return RedirectResponse(url="http://localhost:3000/dashboard/configuracoes?google=success")
+    # Redirecionar de volta para o dashboard
+    host = request.headers.get("host", "localhost:8000")
+    if "railway.app" in host or "vercel.app" in host:
+        return RedirectResponse(url="https://agente-control.vercel.app/dashboard/agentes?google=success")
+    return RedirectResponse(url="http://localhost:3000/dashboard/agentes?google=success")
