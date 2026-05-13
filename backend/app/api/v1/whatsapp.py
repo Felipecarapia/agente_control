@@ -206,11 +206,14 @@ async def connect_instance(
             svc = EvolutionAPIService(api_url=obj.api_url, api_key=obj.api_key)
             instance_name = obj.instance_name or f"crm_{obj.id.hex[:8]}"
 
+            logger.info(f"[WA CONNECT] api_url={obj.api_url}, instance={instance_name}")
+
             # Cria instância se necessário
             try:
                 await svc.create_instance(instance_name, obj.phone_number)
-            except Exception:
-                pass  # instância pode já existir
+                logger.info(f"[WA CONNECT] Instância criada ou já existia: {instance_name}")
+            except Exception as create_err:
+                logger.warning(f"[WA CONNECT] Erro ao criar instância (pode já existir): {create_err}")
 
             # Configura webhook se houver
             if obj.webhook_url:
@@ -220,16 +223,33 @@ async def connect_instance(
                     logger.warning(f"Falha ao configurar webhook: {wh_err}")
 
             # Obtém QR Code
-            qr_data = await svc.get_qrcode(instance_name)
+            try:
+                qr_data = await svc.get_qrcode(instance_name)
+                logger.info(f"[WA CONNECT] QR Data recebido: {list(qr_data.keys())}")
+            except Exception as qr_err:
+                # Se falhar ao obter QR, volta o status para disconnected
+                logger.error(f"[WA CONNECT] Falha ao obter QR Code: {qr_err}")
+                obj.status = "disconnected"
+                obj.instance_name = instance_name  # salva o nome mesmo assim
+                db.commit()
+                return error_response(
+                    code="QR_ERROR",
+                    message=f"Erro ao obter QR Code da Evolution API: {str(qr_err)}. Verifique a URL e API Key da instância.",
+                    status_code=502,
+                    request_id=request_id,
+                )
 
             obj.instance_name = instance_name
             obj.status = "connecting"
             db.commit()
             db.refresh(obj)
 
+            qr_base64 = qr_data.get("base64") or qr_data.get("qrcode", {}).get("base64")
+            logger.info(f"[WA CONNECT] QR base64 presente: {bool(qr_base64)}")
+
             return success_response(
                 data={
-                    "qr_code": qr_data.get("base64") or qr_data.get("qrcode", {}).get("base64"),
+                    "qr_code": qr_base64,
                     "status": "connecting",
                     "instance_name": instance_name,
                 },
@@ -246,7 +266,38 @@ async def connect_instance(
 
     except Exception as e:
         logger.error(f"Erro ao conectar instância WhatsApp: {e}", exc_info=True)
+        # Resetar status para não ficar preso em "connecting"
+        try:
+            if obj:
+                obj.status = "disconnected"
+                db.commit()
+        except Exception:
+            pass
         return error_response(code="CONNECT_ERROR", message=str(e), status_code=500, request_id=request_id)
+
+
+@router.post("/connections/{connection_id}/reset")
+async def reset_connection(
+    request: Request,
+    connection_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Usuario, Depends(get_current_user)],
+):
+    """Reseta o status da conexão para 'disconnected' (desbloqueia estado 'connecting' preso)."""
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        obj = db.query(WhatsAppConnection).filter(
+            WhatsAppConnection.id == connection_id,
+            WhatsAppConnection.tenant_id == current_user.tenant_id
+        ).first()
+        if not obj:
+            return error_response(code="NOT_FOUND", message="Conexão não encontrada", status_code=404, request_id=request_id)
+        obj.status = "disconnected"
+        db.commit()
+        return success_response(data={"status": "disconnected"}, request_id=request_id)
+    except Exception as e:
+        db.rollback()
+        return error_response(code="RESET_ERROR", message=str(e), status_code=500, request_id=request_id)
 
 
 @router.get("/connections/{connection_id}/status")
@@ -497,18 +548,6 @@ async def whatsapp_webhook(
                         conversation.remote_jid = remote_jid
                         logger.info(f"[WEBHOOK] remote_jid atualizado: {old_jid} -> {remote_jid}")
 
-                    # Salvar mensagem do lead
-                    lead_msg = LeadMessage(
-                        tenant_id=tenant_id,
-                        conversation_id=conversation.id,
-                        role="lead",
-                        content=msg_text,
-                        sent_via="whatsapp",
-                    )
-                    db.add(lead_msg)
-                    db.flush()
-                    logger.info(f"[WEBHOOK] Mensagem do lead salva! id={lead_msg.id}")
-
                     # Gerar resposta da IA
                     agent = conversation.agent
                     if agent:
@@ -521,20 +560,50 @@ async def whatsapp_webhook(
                             # The executor will use this input to run the LangChain agent.
                             executor = await get_agent_executor(tenant, lead, conversation, db)
                             
-                            logger.info(f"[WEBHOOK] Invocando Sofia Agent para msg: '{msg_text[:50]}...'")
+                            # Carregar histórico manualmente (Garante a memória perfeita)
+                            from app.services.sofia_agent.memory import PostgresChatMessageHistory
+                            history_manager = PostgresChatMessageHistory(db, conversation.id, tenant.id)
+                            history_manager.load_messages()
+                            chat_history = history_manager.messages # Lista de mensagens HumanMessage/AIMessage
+
+                            logger.info(f"[WEBHOOK] Invocando Sofia Agent para msg: '{msg_text[:50]}...' com {len(chat_history)} mensagens de histórico.")
                             with get_openai_callback() as cb:
-                                ai_result = await executor.ainvoke({"input": msg_text})
+                                ai_result = await executor.ainvoke({
+                                    "input": msg_text,
+                                    "chat_history": chat_history
+                                })
                                 tokens = cb.total_tokens
                             
                             reply_text = ai_result.get("output", "")
                             
-                            # Salvar log do agente
+                            # SALVAR MENSAGENS NO BANCO APÓS O PROCESSAMENTO
+                            # 1. Salvar mensagem do lead
+                            lead_msg = LeadMessage(
+                                tenant_id=tenant_id,
+                                conversation_id=conversation.id,
+                                role="lead",
+                                content=msg_text,
+                                sent_via="whatsapp",
+                            )
+                            db.add(lead_msg)
+                            
+                            # 2. Salvar resposta da IA no histórico (CRUCIAL PARA A MEMÓRIA)
+                            agent_reply_msg = LeadMessage(
+                                tenant_id=tenant_id,
+                                conversation_id=conversation.id,
+                                role="agent",
+                                content=reply_text,
+                                sent_via="whatsapp",
+                            )
+                            db.add(agent_reply_msg)
+                            
+                            # 3. Salvar log do agente
                             agent_log = AgentLog(
                                 tenant_id=tenant_id,
                                 agent_id=agent.id,
                                 lead_id=lead.id,
                                 action="RESPOND_MESSAGE",
-                                details=f"Input: {msg_text}\\nOutput: {reply_text}",
+                                details=f"Input: {msg_text}\nOutput: {reply_text}",
                                 tokens_used=tokens
                             )
                             db.add(agent_log)

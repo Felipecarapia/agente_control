@@ -41,9 +41,11 @@ class WhatsAppConnection(Base):
         nullable=False, default=WhatsAppConnectionStatus.DISCONNECTED
     )
     webhook_url = Column(String(500), nullable=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True, index=True)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     created_by = relationship("Usuario", foreign_keys=[created_by_user_id])
+    cliente = relationship("Cliente")
     agents = relationship("AIAgent", back_populates="whatsapp_connection")

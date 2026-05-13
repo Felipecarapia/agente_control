@@ -37,9 +37,15 @@ type AIAgent = {
   temperature: number;
   max_tokens: number | null;
   whatsapp_connection_id: string | null;
+  cliente_id: string | null;
   is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type ClienteSimple = {
+  id: string;
+  nome: string;
 };
 
 type Conversation = {
@@ -74,6 +80,7 @@ export default function AgentDetailPage() {
   const [agent, setAgent] = useState<AIAgent | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [waConnections, setWaConnections] = useState<WhatsAppConnection[]>([]);
+  const [clientes, setClientes] = useState<ClienteSimple[]>([]);
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -89,22 +96,25 @@ export default function AgentDetailPage() {
     temperature: 0.7,
     max_tokens: 1024,
     whatsapp_connection_id: "",
+    cliente_id: "",
     is_active: true,
   });
 
   async function loadData() {
     setLoading(true);
     try {
-      const [agentData, convsData, connectionsData, logsData] = await Promise.all([
+      const [agentData, convsData, connectionsData, logsData, clsData] = await Promise.all([
         api<AIAgent>(`/api/v1/agents/${id}`),
         api<Conversation[]>(`/api/v1/agents/${id}/conversations`).catch(() => []),
         api<WhatsAppConnection[]>("/api/v1/whatsapp/connections").catch(() => []),
         api<AgentLog[]>(`/api/v1/agents/${id}/logs`).catch(() => []),
+        api<ClienteSimple[]>("/api/v1/clientes").catch(() => []),
       ]);
       setAgent(agentData);
       setConversations(Array.isArray(convsData) ? convsData : []);
       setWaConnections(Array.isArray(connectionsData) ? connectionsData : []);
       setLogs(Array.isArray(logsData) ? logsData : []);
+      setClientes(Array.isArray(clsData) ? clsData : []);
       setForm({
         name: agentData.name,
         description: agentData.description || "",
@@ -114,6 +124,7 @@ export default function AgentDetailPage() {
         temperature: agentData.temperature,
         max_tokens: agentData.max_tokens || 1024,
         whatsapp_connection_id: agentData.whatsapp_connection_id || "",
+        cliente_id: agentData.cliente_id || "",
         is_active: agentData.is_active,
       });
     } catch {
@@ -133,6 +144,7 @@ export default function AgentDetailPage() {
       const body = {
         ...form,
         whatsapp_connection_id: form.whatsapp_connection_id && form.whatsapp_connection_id !== "none" ? form.whatsapp_connection_id : null,
+        cliente_id: form.cliente_id && form.cliente_id !== "none" ? form.cliente_id : null,
       };
       await api(`/api/v1/agents/${id}`, { method: "PUT", body: JSON.stringify(body) });
       loadData();
@@ -179,7 +191,14 @@ export default function AgentDetailPage() {
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <Bot className="h-6 w-6" /> {agent.name}
           </h1>
-          <p className="text-muted-foreground text-sm">{agent.description || "Sem descrição"}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-muted-foreground text-sm">{agent.description || "Sem descrição"}</p>
+            {agent.cliente_id && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-400 border border-indigo-500/20">
+                Dono: {clientes.find(cl => cl.id === agent.cliente_id)?.nome || "Cliente"}
+              </span>
+            )}
+          </div>
         </div>
         <Button onClick={save} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
@@ -254,6 +273,21 @@ export default function AgentDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="grid gap-2">
+                <Label>Dono (Cliente)</Label>
+                <Select value={form.cliente_id} onValueChange={(v) => setForm((f) => ({ ...f, cliente_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum (Global)</SelectItem>
+                    {clientes.map((cl) => (
+                      <SelectItem key={cl.id} value={cl.id}>{cl.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground italic">Associe este agente a um cliente para organizar o atendimento.</p>
+              </div>
+
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded border-input" />
                 <Label htmlFor="is_active">Agente ativo</Label>

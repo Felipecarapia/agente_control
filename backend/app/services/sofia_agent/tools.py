@@ -36,11 +36,12 @@ async def Buscar_janelas_disponiveis(data_preferida: str, id_profissional: str =
 
     try:
         start_dt = datetime.datetime.strptime(f"{data_preferida} 08:00:00", "%Y-%m-%d %H:%M:%S")
-        end_dt = datetime.datetime.strptime(f"{data_preferida} 18:00:00", "%Y-%m-%d %H:%M:%S")
+        end_dt = datetime.datetime.strptime(f"{data_preferida} 20:00:00", "%Y-%m-%d %H:%M:%S")
         
         busy_times = await client.get_free_busy(id_profissional, start_dt, end_dt)
         
-        suggestions = [f"{h:02d}:00" for h in range(8, 18)]
+        # Horário estendido até 20h
+        suggestions = [f"{h:02d}:00" for h in range(8, 20)]
         available = []
         
         for s in suggestions:
@@ -93,8 +94,11 @@ async def Criar_agendamento(titulo: str, data_hora_inicio: str, lead_id: str, du
         if start_dt.weekday() == 6:
             return "ERRO: Fechado aos domingos. Por favor, escolha outro dia (Seg-Sáb)."
         
-        if start_dt.hour < 8 or start_dt.hour >= 17:
-            return "ERRO: Fora do horário de funcionamento (08:00 às 17:00)."
+        # Trava: Seg-Sex (08-20), Sáb (08-17)
+        max_hour = 20 if start_dt.weekday() < 5 else 17
+        
+        if start_dt.hour < 8 or start_dt.hour >= max_hour:
+            return f"ERRO: Fora do horário de funcionamento ({'08:00 às 20:00' if start_dt.weekday() < 5 else '08:00 às 17:00'})."
         # --------------------------------------------
 
         end_dt = start_dt + datetime.timedelta(minutes=duracao)
@@ -146,8 +150,12 @@ async def Reagendar_atendimento(lead_id: str, nova_data_hora: str, descricao: st
         start_dt = datetime.datetime.fromisoformat(nova_data_hora)
         if start_dt.weekday() == 6:
             return "ERRO: Fechado aos domingos."
-        if start_dt.hour < 8 or start_dt.hour >= 17:
-            return "ERRO: Fora do horário de funcionamento (08:00 às 17:00)."
+        
+        # Trava: Seg-Sex (08-20), Sáb (08-17)
+        max_hour = 20 if start_dt.weekday() < 5 else 17
+        
+        if start_dt.hour < 8 or start_dt.hour >= max_hour:
+            return f"ERRO: Fora do horário de funcionamento ({'08:00 às 20:00' if start_dt.weekday() < 5 else '08:00 às 17:00'})."
 
         end_dt = start_dt + datetime.timedelta(minutes=90) # Padrão 90 min
         

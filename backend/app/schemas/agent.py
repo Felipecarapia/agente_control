@@ -16,6 +16,7 @@ class AIAgentBase(BaseModel):
     tools_json: Optional[Any] = None
     knowledge_base_json: Optional[Any] = None
     whatsapp_connection_id: Optional[uuid.UUID] = None
+    cliente_id: Optional[uuid.UUID] = None
     is_active: bool = True
 
 
@@ -35,6 +36,7 @@ class AIAgentUpdate(BaseModel):
     tools_json: Optional[Any] = None
     knowledge_base_json: Optional[Any] = None
     whatsapp_connection_id: Optional[uuid.UUID] = None
+    cliente_id: Optional[uuid.UUID] = None
     is_active: Optional[bool] = None
 
 

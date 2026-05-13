@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, Wifi, WifiOff, QrCode, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Wifi, WifiOff, QrCode, RefreshCw, Loader2, XCircle } from "lucide-react";
 
 type WhatsAppConnection = {
   id: string;
@@ -43,7 +43,13 @@ type WhatsAppConnection = {
   instance_name: string | null;
   status: string;
   webhook_url: string | null;
+  cliente_id: string | null;
   created_at: string | null;
+};
+
+type ClienteSimple = {
+  id: string;
+  nome: string;
 };
 
 const statusBadge: Record<string, { label: string; color: string }> = {
@@ -61,6 +67,7 @@ export default function WhatsAppConfigPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [clientes, setClientes] = useState<ClienteSimple[]>([]);
   const [form, setForm] = useState({
     name: "",
     phone_number: "",
@@ -69,13 +76,18 @@ export default function WhatsAppConfigPage() {
     api_key: "",
     instance_name: "",
     webhook_url: "",
+    cliente_id: "",
   });
 
-  async function loadList() {
+  async function loadData() {
     setLoading(true);
     try {
-      const data = await api<WhatsAppConnection[]>("/api/v1/whatsapp/connections");
+      const [data, clientsData] = await Promise.all([
+        api<WhatsAppConnection[]>("/api/v1/whatsapp/connections"),
+        api<ClienteSimple[]>("/api/v1/clientes"),
+      ]);
       setList(Array.isArray(data) ? data : []);
+      setClientes(Array.isArray(clientsData) ? clientsData : []);
     } catch {
       setList([]);
     } finally {
@@ -84,7 +96,7 @@ export default function WhatsAppConfigPage() {
   }
 
   useEffect(() => {
-    loadList();
+    loadData();
   }, []);
 
   function openCreate() {
@@ -103,20 +115,24 @@ export default function WhatsAppConfigPage() {
       api_key: c.api_key,
       instance_name: c.instance_name || "",
       webhook_url: c.webhook_url || "",
+      cliente_id: c.cliente_id || "",
     });
     setOpen(true);
   }
 
   async function save() {
     try {
-      const body = { ...form };
+      const body = {
+        ...form,
+        cliente_id: form.cliente_id === "none" || !form.cliente_id ? null : form.cliente_id,
+      };
       if (editId) {
         await api(`/api/v1/whatsapp/connections/${editId}`, { method: "PUT", body: JSON.stringify(body) });
       } else {
         await api("/api/v1/whatsapp/connections", { method: "POST", body: JSON.stringify(body) });
       }
       setOpen(false);
-      loadList();
+      loadData();
     } catch (e: any) {
       alert(`Erro ao salvar: ${e?.message || "Erro desconhecido"}`);
     }
@@ -127,7 +143,7 @@ export default function WhatsAppConfigPage() {
     try {
       await api(`/api/v1/whatsapp/connections/${deleteId}`, { method: "DELETE" });
       setDeleteId(null);
-      loadList();
+      loadData();
     } catch (e: any) {
       alert(`Erro ao excluir: ${e?.message || "Erro desconhecido"}`);
     }
@@ -141,18 +157,29 @@ export default function WhatsAppConfigPage() {
         setQrCode(result.qr_code);
         setQrOpen(true);
       }
-      loadList();
+      loadData();
     } catch (e: any) {
-      alert(`Erro ao conectar: ${e?.message || "Erro desconhecido"}`);
+      const msg = e?.message || "Erro desconhecido";
+      alert(`Erro ao conectar: ${msg}\n\nVerifique se a URL e API Key da sua Evolution API estão corretas.`);
+      loadList(); // reload para mostrar status atualizado
     } finally {
       setConnectingId(null);
+    }
+  }
+
+  async function resetConnection(c: WhatsAppConnection) {
+    try {
+      await api(`/api/v1/whatsapp/connections/${c.id}/reset`, { method: "POST" });
+      loadData();
+    } catch (e: any) {
+      alert(`Erro ao resetar: ${e?.message || "Erro desconhecido"}`);
     }
   }
 
   async function disconnect(c: WhatsAppConnection) {
     try {
       await api(`/api/v1/whatsapp/connections/${c.id}/disconnect`, { method: "POST" });
-      loadList();
+      loadData();
     } catch (e: any) {
       alert(`Erro ao desconectar: ${e?.message || "Erro desconhecido"}`);
     }
@@ -161,7 +188,7 @@ export default function WhatsAppConfigPage() {
   async function checkStatus(c: WhatsAppConnection) {
     try {
       await api(`/api/v1/whatsapp/connections/${c.id}/status`);
-      loadList();
+      loadData();
     } catch {
       // silenciar
     }
@@ -220,14 +247,21 @@ export default function WhatsAppConfigPage() {
                         <WifiOff className="h-3 w-3 mr-1" /> Desconectar
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => connect(c)} disabled={connectingId === c.id}>
-                        {connectingId === c.id ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Wifi className="h-3 w-3 mr-1" />
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => connect(c)} disabled={connectingId === c.id}>
+                          {connectingId === c.id ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Wifi className="h-3 w-3 mr-1" />
+                          )}
+                          Conectar
+                        </Button>
+                        {c.status === "connecting" && (
+                          <Button variant="ghost" size="sm" onClick={() => resetConnection(c)} title="Resetar Status">
+                            <XCircle className="h-3 w-3 text-yellow-500" />
+                          </Button>
                         )}
-                        Conectar
-                      </Button>
+                      </>
                     )}
                     <Button variant="ghost" size="sm" onClick={() => checkStatus(c)}>
                       <RefreshCw className="h-3 w-3" />
@@ -239,7 +273,13 @@ export default function WhatsAppConfigPage() {
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>
-                </CardContent>
+                {c.cliente_id && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground border-t border-border/40 pt-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                    Dono: <span className="font-medium text-foreground">{clientes.find(cl => cl.id === c.cliente_id)?.nome || "Cliente"}</span>
+                  </div>
+                )}
+              </CardContent>
               </Card>
             );
           })}
@@ -288,6 +328,22 @@ export default function WhatsAppConfigPage() {
             <div className="grid gap-2">
               <Label>Webhook URL (opcional)</Label>
               <Input value={form.webhook_url} onChange={(e) => setForm((f) => ({ ...f, webhook_url: e.target.value }))} placeholder="https://seudominio.com/api/v1/whatsapp/webhook" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Dono (Cliente)</Label>
+              <Select value={form.cliente_id} onValueChange={(v) => setForm((f) => ({ ...f, cliente_id: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum (Global)</SelectItem>
+                  {clientes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground italic">Vincule esta conexão a um cliente específico para melhor organização.</p>
             </div>
           </div>
           <DialogFooter>

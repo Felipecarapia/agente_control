@@ -32,6 +32,8 @@ class Cliente(Base):
     cidade = Column(String(100), nullable=True)
     estado = Column(String(2), nullable=True)
     logo_url = Column(String(1000), nullable=True)
+    openai_api_key = Column(String(255), nullable=True)
+    plano = Column(String(20), nullable=False, default="basic")  # basic | pro | premium
     usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

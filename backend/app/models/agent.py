@@ -45,12 +45,14 @@ class AIAgent(Base):
     tools_json = Column(JSONB, nullable=True)  # Ferramentas disponíveis para o agente
     knowledge_base_json = Column(JSONB, nullable=True)  # Documentos/contexto do agente
     whatsapp_connection_id = Column(UUID(as_uuid=True), ForeignKey("whatsapp_connections.id", ondelete="SET NULL"), nullable=True)
+    cliente_id = Column(UUID(as_uuid=True), ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     created_by = relationship("Usuario", foreign_keys=[created_by_user_id])
+    cliente = relationship("Cliente")
     whatsapp_connection = relationship("WhatsAppConnection", back_populates="agents")
     conversations = relationship("AgentConversation", back_populates="agent", cascade="all, delete-orphan")
     campaigns = relationship("Campaign", back_populates="agent")

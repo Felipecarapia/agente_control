@@ -40,6 +40,7 @@ type Cliente = {
   cidade: string | null;
   estado: string | null;
   logo_url: string | null;
+  plano: string;
 };
 
 const emptyForm = {
@@ -60,6 +61,7 @@ const emptyForm = {
   bairro: "",
   cidade: "",
   estado: "",
+  plano: "basic",
 };
 
 export default function EditarClientePage() {
@@ -94,6 +96,7 @@ export default function EditarClientePage() {
           bairro: c.bairro || "",
           cidade: c.cidade || "",
           estado: c.estado || "",
+          plano: c.plano || "basic",
         });
         setLogoUrl(c.logo_url || null);
       })
@@ -148,6 +151,7 @@ export default function EditarClientePage() {
           bairro: form.bairro || null,
           cidade: form.cidade || null,
           estado: form.estado || null,
+          plano: form.plano,
         }),
       });
       router.push("/dashboard/clientes");
@@ -258,16 +262,34 @@ export default function EditarClientePage() {
                 <CardTitle>Dados do cliente</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid gap-2">
-                  <Label>Tipo</Label>
-                  <select
-                    className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={form.tipo}
-                    onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as "pf" | "pj" }))}
-                  >
-                    <option value="pf">Pessoa física</option>
-                    <option value="pj">Pessoa jurídica</option>
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Tipo</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={form.tipo}
+                      onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as "pf" | "pj" }))}
+                    >
+                      <option value="pf">Pessoa física</option>
+                      <option value="pj">Pessoa jurídica</option>
+                    </select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label className="flex items-center gap-2">
+                      Plano do Agente
+                      <Brain className="h-3.5 w-3.5 text-primary" />
+                    </Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary"
+                      value={form.plano}
+                      onChange={(e) => setForm((f) => ({ ...f, plano: e.target.value }))}
+                    >
+                      <option value="basic">Basic (Simples)</option>
+                      <option value="pro">Pro (Site + Avulso)</option>
+                      <option value="premium">Premium (Kanban + CRM)</option>
+                    </select>
+                  </div>
                 </div>
 
                 {isPj ? (

@@ -7,8 +7,9 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 # Configura logging ANTES de tudo
+log_level = logging.INFO if os.getenv("DEBUG", "").lower() == "true" else logging.WARNING
 logging.basicConfig(
-    level=logging.WARNING,
+    level=log_level,
     format="%(levelname)s:     %(name)s - %(message)s",
 )
 

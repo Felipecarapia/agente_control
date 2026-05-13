@@ -199,11 +199,29 @@ async def test_agent(
             return error_response(code="NOT_FOUND", message="Agente não encontrado", status_code=404, request_id=request_id)
 
         tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-        openai_key = tenant.openai_api_key or settings.OPENAI_API_KEY or ""
+        
+        # Prioridade de chave: 1. Cliente vinculado -> 2. Empresa (Tenant) -> 3. Global
+        openai_key = None
+        
+        # 1. Tentar chave do cliente se o agente estiver vinculado
+        if obj.cliente_id:
+            from app.models.cliente import Cliente
+            cliente = db.query(Cliente).filter(Cliente.id == obj.cliente_id).first()
+            if cliente and cliente.openai_api_key:
+                openai_key = cliente.openai_api_key
+        
+        # 2. Tentar chave da empresa
+        if not openai_key and tenant:
+            openai_key = tenant.openai_api_key
+            
+        # 3. Tentar chave global
+        if not openai_key:
+            openai_key = settings.OPENAI_API_KEY
+
         if not openai_key:
             return error_response(
                 code="CONFIG_ERROR",
-                message="OPENAI_API_KEY não configurada no servidor",
+                message="OPENAI_API_KEY não configurada. Por favor, insira uma chave no cadastro do cliente ou nas configurações da empresa.",
                 status_code=500,
                 request_id=request_id,
             )

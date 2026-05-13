@@ -23,6 +23,8 @@ class ClienteBase(BaseModel):
     cidade: Optional[str] = None
     estado: Optional[str] = None
     logo_url: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    plano: str = "basic"
 
 
 class ClienteCreate(ClienteBase):
@@ -48,6 +50,8 @@ class ClienteUpdate(BaseModel):
     cidade: Optional[str] = None
     estado: Optional[str] = None
     logo_url: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    plano: Optional[str] = None
 
 
 class ClienteResponse(ClienteBase):

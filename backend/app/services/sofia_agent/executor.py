@@ -1,14 +1,18 @@
-from typing import List
+import re
+import pytz
+from datetime import datetime
+from typing import Optional, List
+
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.memory import ConversationBufferWindowMemory
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.tenant import Tenant
 from app.models.lead import Lead, LeadConversation
+from app.models.cliente import Cliente
 from app.services.sofia_agent.memory import PostgresChatMessageHistory
-from app.services.sofia_agent.context import current_tenant
 from app.services.sofia_agent.tools import (
     Buscar_janelas_disponiveis,
     Criar_agendamento,
@@ -23,25 +27,36 @@ from app.services.sofia_agent.premium_tools import (
     Kanban_Mover_Card,
     Kanban_Atualizar_Card
 )
-from sqlalchemy.orm import Session
-from app.core.config import settings
-import re
-from datetime import datetime
-import pytz
 
 async def get_agent_executor(tenant: Tenant, lead: Lead, conversation: LeadConversation, db_session: Session):
-    # Set context for tools
+    """
+    Retorna um Executor de Agente configurado para o Tenant, Lead e Plano específico.
+    Versão PROFISSIONAL: Gerenciamento manual de história para evitar erros de biblioteca.
+    """
+    
+    # 1. Contexto das Ferramentas
+    from app.services.sofia_agent.context import current_tenant
     current_tenant.set(tenant)
     
-    # 1. Initialize LLM
+    # 2. Configuração de Cérebro (API Key e IA)
     api_key = tenant.openai_api_key or settings.OPENAI_API_KEY
+    plan_name = str(tenant.plano).lower() if tenant.plano else "basic"
+    
+    if conversation.agent and conversation.agent.cliente_id:
+        cliente = db_session.query(Cliente).filter(Cliente.id == conversation.agent.cliente_id).first()
+        if cliente:
+            if cliente.openai_api_key:
+                api_key = cliente.openai_api_key
+            if cliente.plano:
+                plan_name = cliente.plano.lower()
+
     llm = ChatOpenAI(
-        model=tenant.llm_model or "gpt-4o-mini",
+        model="gpt-4o-mini",
         temperature=0,
         api_key=api_key
     )
     
-    # 2. Add Tools (ferramentas base para todos os planos)
+    # 3. Ferramentas (Tools)
     tools = [
         Buscar_janelas_disponiveis,
         Criar_agendamento,
@@ -51,9 +66,6 @@ async def get_agent_executor(tenant: Tenant, lead: Lead, conversation: LeadConve
         Reagendar_atendimento
     ]
     
-    # Ferramentas exclusivas do plano Premium (CRM + Kanban)
-    # Adaptado: no sistemavitus o plano chama-se "plano", então checamos string lower ou upper
-    plan_name = str(tenant.plano).lower() if hasattr(tenant, "plano") and tenant.plano else ""
     if "premium" in plan_name:
         tools += [
             CRM_Cadastrar_Cliente,
@@ -62,22 +74,22 @@ async def get_agent_executor(tenant: Tenant, lead: Lead, conversation: LeadConve
             Kanban_Atualizar_Card
         ]
     
-    # 3. Create prompt — fallback automático por plano
+    # 4. Prompt do Sistema (Templates Invioláveis)
+    from app.services.sofia_agent.prompts import PROMPT_BASIC, PROMPT_PRO, PROMPT_PREMIUM
+    
     system_p = tenant.system_prompt
     if not system_p:
         if "premium" in plan_name:
-            from app.services.sofia_agent.prompts import PROMPT_PREMIUM
             system_p = PROMPT_PREMIUM
         elif "pro" in plan_name:
-            from app.services.sofia_agent.prompts import PROMPT_PRO
             system_p = PROMPT_PRO
         else:
-            from app.services.sofia_agent.prompts import PROMPT_BASIC
             system_p = PROMPT_BASIC
-        
+            
+    # Suporte a template {{ var }} compatível com original
     system_p = re.sub(r'\{\{\s*(.*?)\s*\}\}', r'{\1}', system_p)
     
-    # Injetar Data/Hora real para saudação dinâmica
+    # Injeção Dinâmica de Horário
     fuso_br = pytz.timezone('America/Sao_Paulo')
     agora = datetime.now(fuso_br)
     dias_semana = {
@@ -87,7 +99,7 @@ async def get_agent_executor(tenant: Tenant, lead: Lead, conversation: LeadConve
     }
     dia_semana_atual = dias_semana.get(agora.strftime('%A'), agora.strftime('%A'))
     
-    info_tempo = f"DATA ATUAL: {agora.strftime('%d/%m/%Y')} | HORA: {agora.strftime('%H:%M')} | DIA: {dia_semana_atual}\n\n"
+    info_tempo = f"### INFO AMBIENTE\nDATA ATUAL: {agora.strftime('%d/%m/%Y')} | HORA: {agora.strftime('%H:%M')} | DIA: {dia_semana_atual}\n\n"
     system_p = info_tempo + system_p
 
     prompt = ChatPromptTemplate.from_messages([
@@ -97,7 +109,7 @@ async def get_agent_executor(tenant: Tenant, lead: Lead, conversation: LeadConve
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])
     
-    # 4. Bind prompt variables
+    # Injetar variáveis fixas
     prompt = prompt.partial(
         data_atual=agora.strftime("%d/%m/%Y"),
         hora_atual=agora.strftime("%H:%M"),
@@ -105,27 +117,15 @@ async def get_agent_executor(tenant: Tenant, lead: Lead, conversation: LeadConve
         lead_id=str(lead.id)
     )
     
-    # 5. Set up memory
-    chat_history = PostgresChatMessageHistory(db_session, conversation.id, tenant.id)
-    chat_history.load_messages()
-    
-    memory = ConversationBufferWindowMemory(
-        memory_key="chat_history",
-        chat_memory=chat_history,
-        return_messages=True,
-        k=15
-    )
-    
-    # 6. Build the agent executor
+    # 5. Criar o Agente e Executor
+    # Nota: Não usamos mais 'memory=' para evitar erros de módulo no VS Code.
+    # O histórico será passado manualmente no momento do invoke (veja whatsapp.py).
     agent = create_tool_calling_agent(llm, tools, prompt)
-    executor = AgentExecutor(
+    
+    return AgentExecutor(
         agent=agent, 
         tools=tools, 
-        memory=memory, 
         verbose=True,
         handle_parsing_errors=True,
-        input_key="input",
-        output_key="output"
+        max_iterations=10
     )
-    
-    return executor

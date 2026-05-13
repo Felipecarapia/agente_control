@@ -12,6 +12,7 @@ class WhatsAppConnectionBase(BaseModel):
     api_key: str
     instance_name: Optional[str] = None
     webhook_url: Optional[str] = None
+    cliente_id: Optional[uuid.UUID] = None
 
 
 class WhatsAppConnectionCreate(WhatsAppConnectionBase):
@@ -26,6 +27,7 @@ class WhatsAppConnectionUpdate(BaseModel):
     api_key: Optional[str] = None
     instance_name: Optional[str] = None
     webhook_url: Optional[str] = None
+    cliente_id: Optional[uuid.UUID] = None
 
 
 class WhatsAppConnectionResponse(WhatsAppConnectionBase):

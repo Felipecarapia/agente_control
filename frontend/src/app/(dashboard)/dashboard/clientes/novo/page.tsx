@@ -34,12 +34,13 @@ const emptyForm = {
   plano: "pro",
   vincular_sofia: true,
   criar_crm: true,
+  openai_api_key: "",
 };
 
 const PLANS = [
   { id: "basic", name: "Basic", price: "R$ 497/mês", description: "CRM Simples" },
   { id: "pro", name: "Pro", price: "R$ 997/mês", description: "CRM + Automação" },
-  { id: "enterprise", name: "Enterprise", price: "R$ 2.497/mês", description: "CRM + Sofia IA + Multi-atendentes" }
+  { id: "premium", name: "Premium", price: "R$ 2.497/mês", description: "CRM + Sofia IA Premium" }
 ];
 
 export default function NovoClientePage() {
@@ -71,7 +72,8 @@ export default function NovoClientePage() {
           bairro: form.bairro || null,
           cidade: form.cidade || null,
           estado: form.estado || null,
-          // Em um sistema real, aqui enviariamos os dados de plano e setup
+          openai_api_key: form.openai_api_key || null,
+          plano: form.plano,
         }),
       });
       router.push("/dashboard/clientes");
@@ -288,6 +290,24 @@ export default function NovoClientePage() {
                   <p className="text-xs text-muted-foreground mt-0.5">Conectar assistente inteligente ao celular do cliente via Evolution API.</p>
                 </div>
               </label>
+
+              {form.vincular_sofia && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-2 pt-2">
+                  <Label htmlFor="openai_key" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">OpenAI API Key do Cliente</Label>
+                  <div className="relative">
+                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500" />
+                    <Input 
+                      id="openai_key"
+                      type="password"
+                      placeholder="sk-..."
+                      value={form.openai_api_key}
+                      onChange={e => setForm(f => ({ ...f, openai_api_key: e.target.value }))}
+                      className="pl-9 bg-muted/20 border-indigo-500/30 focus:border-indigo-500 h-11"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic">* Esta chave será usada exclusivamente para os agentes deste cliente.</p>
+                </motion.div>
+              )}
 
             </CardContent>
           </Card>

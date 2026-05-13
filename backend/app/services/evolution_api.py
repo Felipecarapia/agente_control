@@ -57,34 +57,44 @@ class EvolutionAPIService:
         if phone_number:
             payload["number"] = phone_number
 
+        logger.info(f"[EVOLUTION] Criando instância: {self.api_url}/instance/create")
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 f"{self.api_url}/instance/create",
                 json=payload,
                 headers=self.headers,
             )
+            if response.status_code >= 400:
+                logger.error(f"[EVOLUTION] Erro ao criar instância: {response.status_code} - {response.text}")
             response.raise_for_status()
             return response.json()
 
     async def get_qrcode(self, instance_name: str) -> Dict[str, Any]:
         """Obtém o QR Code para conectar o WhatsApp."""
+        logger.info(f"[EVOLUTION] Obtendo QR Code: {self.api_url}/instance/connect/{instance_name}")
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.get(
                 f"{self.api_url}/instance/connect/{instance_name}",
                 headers=self.headers,
             )
+            if response.status_code >= 400:
+                logger.error(f"[EVOLUTION] Erro ao obter QR Code: {response.status_code} - {response.text}")
             response.raise_for_status()
             return response.json()
 
     async def get_connection_status(self, instance_name: str) -> Dict[str, Any]:
-        """Verifica o status da conexão da instância."""
+        logger.info(f"[EVOLUTION] Verificando status: {self.api_url}/instance/connectionState/{instance_name}")
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.get(
                 f"{self.api_url}/instance/connectionState/{instance_name}",
                 headers=self.headers,
             )
+            if response.status_code >= 400:
+                logger.error(f"[EVOLUTION] Erro ao verificar status: {response.status_code} - {response.text}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            logger.info(f"[EVOLUTION] Resposta status: {data}")
+            return data
 
     async def send_message(self, instance_name: str, phone: str, text: str) -> Dict[str, Any]:
         """Envia uma mensagem de texto via WhatsApp."""
