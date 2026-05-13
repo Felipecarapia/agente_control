@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -52,6 +52,7 @@ class AIAgentResponse(AIAgentBase):
 
 class AgentTestRequest(BaseModel):
     message: str
+    history: Optional[List[Dict[str, str]]] = None
 
 
 class AgentTestResponse(BaseModel):
