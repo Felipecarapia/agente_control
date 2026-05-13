@@ -41,7 +41,8 @@ def build_client_config():
             "client_secret": csecret,
             "redirect_uris": [
                 "https://sistemaxi-crm-production.up.railway.app/api/v1/auth/google/callback",
-                "http://localhost:8000/api/v1/auth/google/callback"
+                "http://localhost:8000/api/v1/auth/google/callback",
+                "https://agente-control.vercel.app/api/v1/auth/google/callback"
             ]
         }
     }
