@@ -200,7 +200,7 @@ async def test_agent(
 
         tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
         
-        from app.services.agent_factory import AgentFactory
+        from app.services.openai_agent import OpenAIAgentService
         
         # Obter histórico enviado pelo frontend (opcional)
         history = data.history if hasattr(data, "history") and data.history else []
@@ -215,36 +215,26 @@ async def test_agent(
         if obj.cliente_id:
             from app.models.cliente import Cliente
             cliente = db.query(Cliente).filter(Cliente.id == obj.cliente_id).first()
-            if cliente:
-                if obj.provider == "openai" and cliente.openai_api_key:
-                    api_key = cliente.openai_api_key
-                elif obj.provider == "gemini" and cliente.gemini_api_key:
-                    api_key = cliente.gemini_api_key
+            if cliente and cliente.openai_api_key:
+                api_key = cliente.openai_api_key
         
         # 2. Tentar chave da empresa
         if not api_key and tenant:
-            if obj.provider == "openai" and tenant.openai_api_key:
-                api_key = tenant.openai_api_key
-            elif obj.provider == "gemini" and tenant.gemini_api_key:
-                api_key = tenant.gemini_api_key
+            api_key = tenant.openai_api_key
             
         # 3. Tentar chave global (do .env)
         if not api_key:
-            if obj.provider == "openai":
-                api_key = settings.OPENAI_API_KEY
-            elif obj.provider == "gemini":
-                api_key = settings.GEMINI_API_KEY
+            api_key = settings.OPENAI_API_KEY
 
         if not api_key:
             return error_response(
                 code="CONFIG_ERROR",
-                message=f"Chave para o provedor {obj.provider} não configurada.",
+                message="Chave de API não configurada.",
                 status_code=500,
                 request_id=request_id,
             )
 
-        # Usar factory para obter o serviço correto (OpenAI ou Gemini)
-        svc = AgentFactory.get_service(obj.provider, api_key=api_key)
+        svc = OpenAIAgentService(api_key=api_key)
         
         result = await svc.create_chat_completion(
             system_prompt=obj.system_prompt,
