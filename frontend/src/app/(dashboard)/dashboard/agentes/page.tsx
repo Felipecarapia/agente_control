@@ -34,11 +34,13 @@ export default function AgentesPage() {
             method: "POST", 
             body: JSON.stringify(body) 
           });
-          
           router.push(`/dashboard/agentes/${newAgent.id}`);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Erro ao inicializar Sofia:", err);
+        alert(`Erro ao tentar carregar seus agentes: ${err.message || 'Falha de conexão'}. Você tem a funcionalidade de Agentes liberada em seu Plano?`);
+        // Pode redirecionar para fora ou destrancar a tela se quiser
+        router.push("/dashboard/clientes");
       }
     }
     initSofia();

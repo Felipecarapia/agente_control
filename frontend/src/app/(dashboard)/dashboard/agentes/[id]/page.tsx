@@ -135,10 +135,16 @@ export default function AgentDetailPage() {
         google_calendar_id: agentData.google_calendar_id || "",
         is_active: agentData.is_active,
       });
-    } catch {
-      router.push("/dashboard/agentes");
+    } catch (e: any) {
+      console.error("Erro ao carregar dados do agente:", e);
     } finally {
       setLoading(false);
+      // Checar sucesso do google via URL
+      if (typeof window !== "undefined" && window.location.search.includes("google=success")) {
+          setTimeout(() => {
+              alert("✅ Sucesso! A sua conta Google Calendar foi conectada ao sistema!");
+          }, 500);
+      }
     }
   }
 
