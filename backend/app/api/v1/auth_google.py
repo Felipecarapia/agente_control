@@ -14,10 +14,17 @@ router = APIRouter()
 # Scopes necessários
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
+from app.models.usuario import Usuario
+from app.api.deps import get_current_user
+
 @router.get("/status")
-def google_auth_status(request: Request, db: Session = Depends(get_db)):
-    """Verifica se há um token do google na sessão atual (usando tenant de desenvolvimento fallback)"""
-    tenant = db.query(Tenant).first()
+def google_auth_status(
+    request: Request, 
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Verifica se há um token do google na sessão atual"""
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
     is_connected = False
     if tenant and tenant.google_calendar_token:
         try:
@@ -61,8 +68,12 @@ def build_client_config():
 
 
 @router.get("/login")
-async def google_login(tenant_id: str, request: Request):
+async def google_login(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user)
+):
     """Gera a URL de autenticação do Google."""
+    tenant_id = current_user.tenant_id
     redirect_uri = get_redirect_uri(request)
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     

@@ -334,7 +334,7 @@ export default function AgentDetailPage() {
                       className={`h-7 text-[10px] gap-1.5 transition-all ${isGoogleConnected ? "bg-green-600 hover:bg-green-700 text-white border-none" : "border-primary/30 hover:bg-primary/10"}`}
                       onClick={async () => {
                         try {
-                          const res = await api<{url: string}>(`/api/v1/auth/google/login?tenant_id=${form.id || ""}`); // Usando form.id como fallback ou adicione lógica para o tenant
+                          const res = await api<{url: string}>(`/api/v1/auth/google/login`);
                           if (res.url) window.location.href = res.url;
                         } catch (e: any) {
                           alert(`Erro ao iniciar conexão: ${e?.message || JSON.stringify(e)}`);
