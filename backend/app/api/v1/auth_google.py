@@ -15,8 +15,8 @@ router = APIRouter()
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 def get_redirect_uri(request: Request):
-    """Retorna a URI de produção oficial para evitar que a Vercel quebre a resposta com 404."""
-    return "https://sistemaxi-crm-production.up.railway.app/api/v1/auth/google/callback"
+    """Retorna a URI do backend local."""
+    return "http://localhost:8000/api/v1/auth/google/callback"
 
 def build_client_config():
     # Dividindo as strings para evitar o bloqueio antifraude do GitHub
@@ -50,38 +50,15 @@ def build_client_config():
 async def google_login(tenant_id: str, request: Request):
     """Gera a URL de autenticação do Google."""
     redirect_uri = get_redirect_uri(request)
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     
-    if os.path.exists('credentials.json'):
-        flow = Flow.from_client_secrets_file(
-            'credentials.json',
-            scopes=SCOPES,
-            redirect_uri=redirect_uri
-        )
-    elif client_id and client_secret:
-        client_config = {
-            "web": {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [redirect_uri]
-            }
-        }
-        flow = Flow.from_client_config(
-            client_config,
-            scopes=SCOPES,
-            redirect_uri=redirect_uri
-        )
-    else:
-        # Fallback para as credenciais escondidas
-        client_config = build_client_config()
-        flow = Flow.from_client_config(
-            client_config,
-            scopes=SCOPES,
-            redirect_uri=redirect_uri
-        )
+    # Ignora logs ou arquivos desatualizados para ter consistência com o callback
+    client_config = build_client_config()
+    flow = Flow.from_client_config(
+        client_config,
+        scopes=SCOPES,
+        redirect_uri=redirect_uri
+    )
 
     
     # Gerar a URL de autorização
@@ -99,38 +76,15 @@ async def google_login(tenant_id: str, request: Request):
 async def google_callback(code: str, state: str, request: Request, db: Session = Depends(get_db)):
     """Recebe o código do Google e salva o token."""
     redirect_uri = get_redirect_uri(request)
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     
-    if os.path.exists('credentials.json'):
-        flow = Flow.from_client_secrets_file(
-            'credentials.json',
-            scopes=SCOPES,
-            redirect_uri=redirect_uri
-        )
-    elif client_id and client_secret:
-        client_config = {
-            "web": {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [redirect_uri]
-            }
-        }
-        flow = Flow.from_client_config(
-            client_config,
-            scopes=SCOPES,
-            redirect_uri=redirect_uri
-        )
-    else:
-        # Fallback para as credenciais escondidas
-        client_config = build_client_config()
-        flow = Flow.from_client_config(
-            client_config,
-            scopes=SCOPES,
-            redirect_uri=redirect_uri
-        )
+    # Ignora logs antigos ou credentials manuais quebradas e usa a config master sempre
+    client_config = build_client_config()
+    flow = Flow.from_client_config(
+        client_config,
+        scopes=SCOPES,
+        redirect_uri=redirect_uri
+    )
     
     # Trocar o código pelo token
     flow.fetch_token(code=code)
