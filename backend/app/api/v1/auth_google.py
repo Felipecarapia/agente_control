@@ -14,6 +14,20 @@ router = APIRouter()
 # Scopes necessários
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
+@router.get("/status")
+def google_auth_status(request: Request, db: Session = Depends(get_db)):
+    """Verifica se há um token do google na sessão atual (usando tenant de desenvolvimento fallback)"""
+    tenant = db.query(Tenant).first()
+    is_connected = False
+    if tenant and tenant.google_calendar_token:
+        try:
+            token_data = json.loads(tenant.google_calendar_token)
+            if token_data and "token" in token_data:
+                is_connected = True
+        except:
+            pass
+    return {"ok": True, "connected": is_connected}
+
 def get_redirect_uri(request: Request):
     """Retorna a URI do backend local."""
     return "http://localhost:8000/api/v1/auth/google/callback"

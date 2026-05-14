@@ -89,6 +89,8 @@ export default function AgentDetailPage() {
   const [testMessage, setTestMessage] = useState("");
   const [testResponse, setTestResponse] = useState("");
   const [testLoading, setTestLoading] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  
   const [form, setForm] = useState({
     id: "",
     name: "",
@@ -108,13 +110,16 @@ export default function AgentDetailPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [agentData, convsData, connectionsData, logsData, clsData] = await Promise.all([
+      const [agentData, convsData, connectionsData, logsData, clsData, googleStatus] = await Promise.all([
         api<AIAgent>(`/api/v1/agents/${id}`),
         api<Conversation[]>(`/api/v1/agents/${id}/conversations`).catch(() => []),
         api<WhatsAppConnection[]>("/api/v1/whatsapp/connections").catch(() => []),
         api<AgentLog[]>(`/api/v1/agents/${id}/logs`).catch(() => []),
         api<ClienteSimple[]>("/api/v1/clientes").catch(() => []),
+        api<{connected: boolean}>("/api/v1/auth/google/status").catch(() => ({connected: false})),
       ]);
+      
+      setIsGoogleConnected(googleStatus?.connected || false);
       setAgent(agentData);
       setConversations(Array.isArray(convsData) ? convsData : []);
       setWaConnections(Array.isArray(connectionsData) ? connectionsData : []);
@@ -324,9 +329,9 @@ export default function AgentDetailPage() {
                   <div className="flex items-center justify-between">
                     <Label>Google Calendar ID</Label>
                     <Button 
-                      variant="outline" 
+                      variant={isGoogleConnected ? "default" : "outline"}
                       size="sm" 
-                      className="h-7 text-[10px] gap-1.5 border-primary/30 hover:bg-primary/10"
+                      className={`h-7 text-[10px] gap-1.5 transition-all ${isGoogleConnected ? "bg-green-600 hover:bg-green-700 text-white border-none" : "border-primary/30 hover:bg-primary/10"}`}
                       onClick={async () => {
                         try {
                           const res = await api<{url: string}>(`/api/v1/auth/google/login?tenant_id=${form.id || ""}`); // Usando form.id como fallback ou adicione lógica para o tenant
@@ -336,7 +341,7 @@ export default function AgentDetailPage() {
                         }
                       }}
                     >
-                      <Bot className="h-3 w-3" /> Conectar Conta
+                      <Bot className="h-3 w-3" /> {isGoogleConnected ? "✅ Conectado" : "Conectar Conta"}
                     </Button>
                   </div>
                   <Input 
