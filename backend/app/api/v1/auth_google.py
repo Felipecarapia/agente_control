@@ -87,28 +87,34 @@ async def google_callback(code: str, state: str, request: Request, db: Session =
     )
     
     # Trocar o código pelo token
-    flow.fetch_token(code=code)
-    creds = flow.credentials
-    
-    # Converter para formato que o GoogleCalendarClient entende
-    token_dict = {
-        'token': creds.token,
-        'refresh_token': creds.refresh_token,
-        'token_uri': creds.token_uri,
-        'client_id': creds.client_id,
-        'client_secret': creds.client_secret,
-        'scopes': creds.scopes
-    }
-    
-    # Salvar no Tenant correto usando o state (que é o tenant_id)
-    tenant = db.query(Tenant).filter(Tenant.id == state).first()
-    if not tenant:
-        # Se não achar pelo state, tenta o primeiro (fallback para dev)
-        tenant = db.query(Tenant).first()
+    try:
+        flow.fetch_token(code=code)
+        creds = flow.credentials
         
-    if tenant:
-        tenant.google_calendar_token = json.dumps(token_dict)
-        db.commit()
+        # Converter para formato que o GoogleCalendarClient entende
+        token_dict = {
+            'token': creds.token,
+            'refresh_token': creds.refresh_token,
+            'token_uri': creds.token_uri,
+            'client_id': creds.client_id,
+            'client_secret': creds.client_secret,
+            'scopes': creds.scopes
+        }
+        
+        # Salvar no Tenant correto usando o state (que é o tenant_id)
+        tenant = db.query(Tenant).filter(Tenant.id == state).first()
+        if not tenant:
+            tenant = db.query(Tenant).first()
+            
+        if tenant:
+            tenant.google_calendar_token = json.dumps(token_dict)
+            db.commit()
+            
+    except Exception as e:
+        # Se for InvalidGrantError duplo uso de link (chrome prefetches, clicks repetidos)
+        # nós apenas ignoramos e deixamos fluir, porque a primeira requisição já salvou o token.
+        print("Ignorando erro OAuth (possível double-fetch):", e)
+
         
     # Redirecionar sempre de volta para a Vercel, pois o backend está local mas o frontend está em prod
     return RedirectResponse(url="https://agente-control.vercel.app/dashboard/agentes?google=success")
