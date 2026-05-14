@@ -43,6 +43,8 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
+IS_VERCEL = os.getenv("VERCEL", "") == "1"
+
 app = FastAPI(title="Sistemaxi CRM", version="0.1.0")
 
 # Executar bootstrap automático no startup
@@ -55,14 +57,19 @@ async def startup_event():
         logger.info("✅ Bootstrap concluído")
     except Exception as e:
         logger.warning(f"⚠️  Erro no bootstrap (pode ser normal se tabelas não existem ainda): {e}")
-        
-    try:
-        from app.services.sofia_agent.workers import start_workers
-        import asyncio
-        asyncio.create_task(start_workers())
-        logger.info("✅ Sofia Agent Workers iniciados")
-    except Exception as e:
-        logger.error(f"⚠️ Erro ao iniciar Sofia Agent Workers: {e}")
+    
+    # Workers de background NÃO funcionam em serverless (Vercel)
+    # Só iniciam em ambientes persistentes (local, Railway, VPS, etc.)
+    if not IS_VERCEL:
+        try:
+            from app.services.sofia_agent.workers import start_workers
+            import asyncio
+            asyncio.create_task(start_workers())
+            logger.info("✅ Sofia Agent Workers iniciados")
+        except Exception as e:
+            logger.error(f"⚠️ Erro ao iniciar Sofia Agent Workers: {e}")
+    else:
+        logger.info("⚠️ Modo Vercel Serverless - workers de background desabilitados")
 
 # Adicionar middleware de request_id (deve ser o primeiro)
 app.add_middleware(RequestIDMiddleware)
@@ -101,10 +108,12 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
-# Servir arquivos estáticos (avatars)
-upload_dir = Path("uploads")
-upload_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Servir arquivos estáticos (avatars) - apenas em servidores persistentes
+# No Vercel serverless, o filesystem é efêmero e read-only
+if not IS_VERCEL:
+    upload_dir = Path("uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/")

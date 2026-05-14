@@ -4,7 +4,9 @@
  * Inclui tratamento de erros, retry, e gerenciamento de tokens.
  */
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Em produção, usa string vazia para fazer as chamadas via proxy do Next.js (rewrites)
+// Em desenvolvimento, usa a variável NEXT_PUBLIC_API_URL ou localhost:8000
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export interface ApiError {
   code: string;
